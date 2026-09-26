@@ -1,0 +1,17 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriptions",
+  "info": { "singularName": "subscription", "pluralName": "subscriptions", "displayName": "Subscription" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "plan": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan" },
+    "state": { "type": "enumeration", "enum": ["pending_payment", "active", "suspended", "cancelled", "expired"], "default": "pending_payment", "required": true },
+    "startOn": { "type": "date", "required": true },
+    "endOn": { "type": "date", "required": true },
+    "renewalOn": { "type": "date" },
+    "paymentMethodToken": { "type": "string", "private": true },
+    "usages": { "type": "relation", "relation": "oneToMany", "target": "api::billing.benefit-usage", "mappedBy": "subscription" }
+  }
+}

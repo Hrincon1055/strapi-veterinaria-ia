@@ -1,0 +1,11 @@
+{
+  "kind": "collectionType",
+  "collectionName": "species",
+  "info": { "singularName": "species", "pluralName": "species-list", "displayName": "Species" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 60 },
+    "isActive": { "type": "boolean", "default": true },
+    "breeds": { "type": "relation", "relation": "oneToMany", "target": "api::pet.breed", "mappedBy": "species" }
+  }
+}

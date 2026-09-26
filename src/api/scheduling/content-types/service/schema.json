@@ -1,0 +1,16 @@
+{
+  "kind": "collectionType",
+  "collectionName": "services",
+  "info": { "singularName": "service", "pluralName": "services", "displayName": "Service" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "category": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service-category", "inversedBy": "services" },
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "description": { "type": "text" },
+    "defaultDurationMinutes": { "type": "integer", "required": true, "default": 30, "min": 5 },
+    "basePrice": { "type": "integer", "min": 0 },
+    "currency": { "type": "string", "default": "COP", "regex": "^[A-Z]{3}$" },
+    "colorHex": { "type": "string", "regex": "^#[0-9A-Fa-f]{6}$" },
+    "isActive": { "type": "boolean", "default": true }
+  }
+}

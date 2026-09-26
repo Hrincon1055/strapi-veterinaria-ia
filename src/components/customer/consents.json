@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_customer_consents",
+  "info": { "displayName": "Consents", "icon": "shield" },
+  "options": {},
+  "attributes": {
+    "marketing": { "type": "boolean", "default": false, "required": true },
+    "sms": { "type": "boolean", "default": false, "required": true },
+    "email": { "type": "boolean", "default": false, "required": true },
+    "dataProcessing": { "type": "boolean", "default": false, "required": true },
+    "lastChangedAt": { "type": "datetime" }
+  }
+}

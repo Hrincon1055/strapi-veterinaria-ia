@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "signed_documents",
+  "info": { "singularName": "signed-document", "pluralName": "signed-documents", "displayName": "Signed document" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "documentType": { "type": "enumeration", "enum": ["consent", "contract", "authorization", "terms_and_conditions", "privacy_notice", "other"], "required": true },
+    "title": { "type": "string", "required": true, "maxLength": 200 },
+    "documentRef": { "type": "string", "maxLength": 100 },
+    "state": { "type": "enumeration", "enum": ["draft", "pending_signature", "partially_signed", "signed", "voided", "expired"], "default": "pending_signature", "required": true },
+    "isSequential": { "type": "boolean", "default": false, "required": true },
+    "expiresAt": { "type": "datetime" },
+    "completedAt": { "type": "datetime" },
+    "voidedAt": { "type": "datetime" },
+    "voidReason": { "type": "text" },
+    "version": { "type": "integer", "default": 1, "min": 1, "required": true },
+    "replacedBy": { "type": "relation", "relation": "oneToOne", "target": "api::documents.signed-document", "inversedBy": "replaces" },
+    "replaces": { "type": "relation", "relation": "oneToOne", "target": "api::documents.signed-document", "mappedBy": "replacedBy" },
+    "files": { "type": "component", "repeatable": true, "component": "documents.document-file" },
+    "signers": { "type": "relation", "relation": "oneToMany", "target": "api::documents.signed-document-signer", "mappedBy": "signedDocument" },
+    "events": { "type": "relation", "relation": "oneToMany", "target": "api::documents.signed-document-event", "mappedBy": "signedDocument" },
+    "notes": { "type": "text" },
+    "archivedAt": { "type": "datetime" }
+  }
+}

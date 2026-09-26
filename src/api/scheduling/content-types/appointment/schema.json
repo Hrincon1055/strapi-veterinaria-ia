@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "appointments",
+  "info": { "singularName": "appointment", "pluralName": "appointments", "displayName": "Appointment" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "responsible": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
+    "bookedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "startAt": { "type": "datetime", "required": true },
+    "endAt": { "type": "datetime", "required": true },
+    "state": { "type": "enumeration", "enum": ["draft", "scheduled", "confirmed", "arrived", "in_progress", "completed", "cancelled", "no_show"], "default": "scheduled", "required": true },
+    "source": { "type": "enumeration", "enum": ["front_desk", "online", "phone", "whatsapp", "internal"], "default": "front_desk", "required": true },
+    "title": { "type": "string", "maxLength": 150 },
+    "notes": { "type": "text" },
+    "services": { "type": "component", "repeatable": true, "component": "scheduling.appointment-service" },
+    "cancelledAt": { "type": "datetime" },
+    "cancelReason": { "type": "enumeration", "enum": ["client_cancelled", "clinic_cancelled", "other"] },
+    "cancelNotes": { "type": "text" },
+    "arrivedAt": { "type": "datetime" },
+    "completedAt": { "type": "datetime" },
+    "consultation": { "type": "relation", "relation": "oneToOne", "target": "api::clinical.consultation", "mappedBy": "appointment" }
+  }
+}

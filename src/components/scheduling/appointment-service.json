@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_scheduling_appointment_services",
+  "info": { "displayName": "Appointment service", "icon": "clock" },
+  "options": {},
+  "attributes": {
+    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "durationMinutes": { "type": "integer", "min": 5 },
+    "price": { "type": "integer", "min": 0 }
+  }
+}

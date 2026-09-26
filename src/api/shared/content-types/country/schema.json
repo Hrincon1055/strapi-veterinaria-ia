@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "countries",
+  "info": {
+    "singularName": "country",
+    "pluralName": "countries",
+    "displayName": "Country"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "isoCode": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "regex": "^[A-Z]{2}$"
+    },
+    "dialCode": {
+      "type": "string",
+      "regex": "^\\+[0-9]{1,4}$"
+    },
+    "flag": {
+      "type": "string",
+      "maxLength": 16
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "collectionType",
+  "collectionName": "travel_cases",
+  "info": { "singularName": "travel-case", "pluralName": "travel-cases", "displayName": "Travel case" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "destinationCountry": { "type": "relation", "relation": "manyToOne", "target": "api::shared.country" },
+    "airline": { "type": "string", "maxLength": 100 },
+    "travelOn": { "type": "date", "required": true },
+    "state": { "type": "enumeration", "enum": ["initiated", "docs_collected", "vet_check_passed", "ready_to_fly", "completed", "cancelled"], "default": "initiated", "required": true },
+    "requirements": { "type": "component", "repeatable": true, "component": "travel.requirement" }
+  }
+}

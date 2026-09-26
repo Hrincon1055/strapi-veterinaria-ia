@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_shared_addresses",
+  "info": { "displayName": "Address", "icon": "pinMap" },
+  "options": {},
+  "attributes": {
+    "addressType": { "type": "enumeration", "enum": ["home", "work"], "default": "home", "required": true },
+    "addressLine": { "type": "string", "required": true, "maxLength": 255 },
+    "city": { "type": "string", "required": true, "maxLength": 100 },
+    "region": { "type": "string", "maxLength": 100 },
+    "country": { "type": "relation", "relation": "manyToOne", "target": "api::shared.country" },
+    "postalCode": { "type": "string", "maxLength": 20 },
+    "reference": { "type": "string", "maxLength": 255 },
+    "isPrimary": { "type": "boolean", "default": false }
+  }
+}

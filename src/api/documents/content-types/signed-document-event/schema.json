@@ -1,0 +1,16 @@
+{
+  "kind": "collectionType",
+  "collectionName": "signed_document_events",
+  "info": { "singularName": "signed-document-event", "pluralName": "signed-document-events", "displayName": "Signed document event" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "signedDocument": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document", "inversedBy": "events" },
+    "signer": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document-signer" },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "eventType": { "type": "enumeration", "enum": ["created", "sent", "viewed", "signed", "declined", "voided", "file_added"], "required": true },
+    "eventAt": { "type": "datetime", "required": true },
+    "ip": { "type": "string" },
+    "userAgent": { "type": "string" },
+    "metadata": { "type": "json" }
+  }
+}

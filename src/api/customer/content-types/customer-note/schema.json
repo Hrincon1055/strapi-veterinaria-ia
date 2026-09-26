@@ -1,0 +1,12 @@
+{
+  "kind": "collectionType",
+  "collectionName": "customer_notes",
+  "info": { "singularName": "customer-note", "pluralName": "customer-notes", "displayName": "Customer note" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "notes" },
+    "rating": { "type": "enumeration", "enum": ["good", "regular", "bad"] },
+    "body": { "type": "text", "required": true },
+    "author": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+  }
+}

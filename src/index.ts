@@ -1,20 +1,27 @@
-// import type { Core } from '@strapi/strapi';
+import type { Core } from '@strapi/strapi';
+
+import registerValidations from './validations';
+import ensureIndexes from './bootstrap/indexes';
+import seedCatalogs from './bootstrap/seed';
+import setupRoles from './bootstrap/roles';
 
 export default {
   /**
-   * An asynchronous register function that runs before
-   * your application is initialized.
-   *
-   * This gives you an opportunity to extend code.
+   * Las reglas de negocio se registran antes de que arranque la aplicación,
+   * para que ninguna escritura pueda esquivarlas: los middlewares del Document
+   * Service se aplican tanto a la API REST como al panel de administración.
    */
-  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+  register({ strapi }: { strapi: Core.Strapi }) {
+    registerValidations(strapi);
+  },
 
   /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
+   * Con el esquema ya sincronizado: índices de negocio, roles nativos de
+   * users-permissions y catálogos mínimos. Los tres pasos son idempotentes.
    */
-  bootstrap(/* { strapi }: { strapi: Core.Strapi } */) {},
+  async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    await ensureIndexes(strapi);
+    await setupRoles(strapi);
+    await seedCatalogs(strapi);
+  },
 };

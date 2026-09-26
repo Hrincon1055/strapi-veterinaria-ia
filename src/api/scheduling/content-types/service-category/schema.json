@@ -1,0 +1,12 @@
+{
+  "kind": "collectionType",
+  "collectionName": "service_categories",
+  "info": { "singularName": "service-category", "pluralName": "service-categories", "displayName": "Service category" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 100 },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isActive": { "type": "boolean", "default": true },
+    "services": { "type": "relation", "relation": "oneToMany", "target": "api::scheduling.service", "mappedBy": "category" }
+  }
+}

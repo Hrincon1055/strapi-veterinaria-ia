@@ -1,0 +1,13 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vaccines",
+  "info": { "singularName": "vaccine", "pluralName": "vaccines", "displayName": "Vaccine" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "species": { "type": "relation", "relation": "manyToOne", "target": "api::pet.species" },
+    "manufacturer": { "type": "string", "maxLength": 120 },
+    "isMandatory": { "type": "boolean", "default": false },
+    "isActive": { "type": "boolean", "default": true }
+  }
+}

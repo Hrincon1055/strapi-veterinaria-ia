@@ -1,0 +1,14 @@
+{
+  "kind": "collectionType",
+  "collectionName": "verification_codes",
+  "info": { "singularName": "verification-code", "pluralName": "verification-codes", "displayName": "Verification code" },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": { "content-manager": { "visible": false } },
+  "attributes": {
+    "contact": { "type": "relation", "relation": "manyToOne", "target": "api::shared.contact" },
+    "codeHash": { "type": "string", "required": true, "private": true },
+    "purpose": { "type": "enumeration", "enum": ["email_verification", "phone_verification"], "required": true },
+    "expiresAt": { "type": "datetime", "required": true },
+    "usedAt": { "type": "datetime" }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_documents_document_files",
+  "info": { "displayName": "Document file", "icon": "file" },
+  "options": {},
+  "attributes": {
+    "fileKind": { "type": "enumeration", "enum": ["draft_pdf", "final_signed_pdf", "attachment"], "required": true },
+    "file": { "type": "media", "multiple": false, "required": true, "allowedTypes": ["files", "images"] },
+    "sha256": { "type": "string", "required": true, "regex": "^[a-f0-9]{64}$" }
+  }
+}

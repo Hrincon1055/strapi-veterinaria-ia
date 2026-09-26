@@ -1,0 +1,16 @@
+{
+  "kind": "collectionType",
+  "collectionName": "consultation_services",
+  "info": { "singularName": "consultation-service", "pluralName": "consultation-services", "displayName": "Consultation service" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation", "inversedBy": "services" },
+    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "quantity": { "type": "integer", "required": true, "default": 1, "min": 1 },
+    "durationMinutes": { "type": "integer", "min": 0 },
+    "unitPrice": { "type": "integer", "required": true, "min": 0 },
+    "totalPrice": { "type": "integer", "min": 0 },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "notes": { "type": "text" }
+  }
+}

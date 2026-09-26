@@ -1,0 +1,13 @@
+{
+  "kind": "collectionType",
+  "collectionName": "benefit_usages",
+  "info": { "singularName": "benefit-usage", "pluralName": "benefit-usages", "displayName": "Benefit usage" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription", "inversedBy": "usages" },
+    "benefit": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan-benefit" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "usedAt": { "type": "datetime", "required": true },
+    "notes": { "type": "string", "maxLength": 255 }
+  }
+}

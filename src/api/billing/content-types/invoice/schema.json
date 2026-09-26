@@ -1,0 +1,19 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoices",
+  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Invoice" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
+    "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "amount": { "type": "integer", "required": true, "min": 0 },
+    "currency": { "type": "string", "required": true, "default": "COP", "regex": "^[A-Z]{3}$" },
+    "state": { "type": "enumeration", "enum": ["draft", "issued", "paid", "voided", "dian_error"], "default": "draft", "required": true },
+    "dataicoInvoiceId": { "type": "string", "unique": true },
+    "dianState": { "type": "string" },
+    "pdfUrl": { "type": "string" },
+    "xmlUrl": { "type": "string" },
+    "archivedAt": { "type": "datetime" }
+  }
+}

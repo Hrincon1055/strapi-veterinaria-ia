@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notification_deliveries",
+  "info": { "singularName": "notification-delivery", "pluralName": "notification-deliveries", "displayName": "Notification delivery" },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": { "content-manager": { "visible": false } },
+  "attributes": {
+    "recipient": { "type": "relation", "relation": "manyToOne", "target": "api::notification.notification-recipient", "inversedBy": "deliveries" },
+    "channel": { "type": "enumeration", "enum": ["in_app", "email", "sms", "push", "whatsapp"], "required": true },
+    "scheduledAt": { "type": "datetime", "required": true },
+    "nextAttemptAt": { "type": "datetime", "required": true },
+    "attemptCount": { "type": "integer", "default": 0, "min": 0, "required": true },
+    "maxAttempts": { "type": "integer", "default": 8, "min": 1, "required": true },
+    "state": { "type": "enumeration", "enum": ["pending", "processing", "sent", "failed_retry", "failed_final", "cancelled"], "default": "pending", "required": true },
+    "lockedAt": { "type": "datetime", "private": true },
+    "lockedBy": { "type": "string", "private": true },
+    "lockExpiresAt": { "type": "datetime", "private": true },
+    "idempotencyKey": { "type": "string", "required": true, "unique": true },
+    "sentAt": { "type": "datetime" },
+    "providerMessageId": { "type": "string" },
+    "lastErrorCode": { "type": "string" },
+    "lastErrorMessage": { "type": "text" },
+    "lastErrorAt": { "type": "datetime" }
+  }
+}

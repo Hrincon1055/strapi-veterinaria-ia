@@ -1,0 +1,19 @@
+{
+  "kind": "collectionType",
+  "collectionName": "allergies",
+  "info": { "singularName": "allergy", "pluralName": "allergies", "displayName": "Allergy" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "allergies" },
+    "allergen": { "type": "string", "required": true, "maxLength": 150 },
+    "category": { "type": "enumeration", "enum": ["food", "environmental", "medication", "parasite", "other"] },
+    "reaction": { "type": "text" },
+    "severity": { "type": "enumeration", "enum": ["low", "moderate", "high", "life_threatening"] },
+    "diagnosedOn": { "type": "date" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "isActive": { "type": "boolean", "default": true },
+    "resolvedOn": { "type": "date" },
+    "notes": { "type": "text" }
+  }
+}

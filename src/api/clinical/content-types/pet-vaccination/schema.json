@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pet_vaccinations",
+  "info": { "singularName": "pet-vaccination", "pluralName": "pet-vaccinations", "displayName": "Pet vaccination" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "vaccinations" },
+    "vaccine": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.vaccine" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "doseNumber": { "type": "integer", "min": 1 },
+    "appliedOn": { "type": "date", "required": true },
+    "nextDueOn": { "type": "date" },
+    "batchNumber": { "type": "string", "maxLength": 60 },
+    "batchExpiresOn": { "type": "date" },
+    "notes": { "type": "text" }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "consultations",
+  "info": { "singularName": "consultation", "pluralName": "consultations", "displayName": "Consultation" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "consultations" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "appointment": { "type": "relation", "relation": "oneToOne", "target": "api::scheduling.appointment", "inversedBy": "consultation" },
+    "consultedAt": { "type": "datetime" },
+    "reason": { "type": "text" },
+    "anamnesis": { "type": "blocks" },
+    "diagnosis": { "type": "blocks" },
+    "treatmentNotes": { "type": "blocks" },
+    "weightKg": { "type": "decimal", "min": 0 },
+    "nextControlOn": { "type": "date" },
+    "attachments": { "type": "component", "repeatable": true, "component": "clinical.attachment" },
+    "services": { "type": "relation", "relation": "oneToMany", "target": "api::scheduling.consultation-service", "mappedBy": "consultation" },
+    "archivedAt": { "type": "datetime" }
+  }
+}

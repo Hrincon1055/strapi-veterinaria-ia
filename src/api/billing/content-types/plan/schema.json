@@ -1,0 +1,15 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plans",
+  "info": { "singularName": "plan", "pluralName": "plans", "displayName": "Plan" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 100 },
+    "description": { "type": "text" },
+    "priceMonthly": { "type": "integer", "required": true, "min": 0 },
+    "priceYearly": { "type": "integer", "min": 0 },
+    "currency": { "type": "string", "default": "COP", "regex": "^[A-Z]{3}$" },
+    "isActive": { "type": "boolean", "default": true },
+    "benefits": { "type": "relation", "relation": "oneToMany", "target": "api::billing.plan-benefit", "mappedBy": "plan" }
+  }
+}

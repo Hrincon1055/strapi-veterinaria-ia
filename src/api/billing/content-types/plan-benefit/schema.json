@@ -1,0 +1,13 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plan_benefits",
+  "info": { "singularName": "plan-benefit", "pluralName": "plan-benefits", "displayName": "Plan benefit" },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "plan": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan", "inversedBy": "benefits" },
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "quantityPerYear": { "type": "integer", "min": 0 },
+    "copayAmount": { "type": "integer", "min": 0 },
+    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" }
+  }
+}
