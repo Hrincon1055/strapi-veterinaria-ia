@@ -1,17 +1,36 @@
 import { factories } from '@strapi/strapi';
 
 /**
- * La policy global `is-owner` restringe estas rutas a los datos del cliente
- * autenticado. Solo actúa sobre usuarios con rol `client`; el staff pasa sin
- * filtro porque su alcance lo define el permiso del rol.
+ * Suscripciones. Lo que se consulta a diario es qué planes vencen pronto,
+ * de ahí el atajo `?venceAntesDe=`.
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
+const lectura = {
+  ...ownerOnly,
+  middlewares: [
+    'global::date-range',
+    {
+      name: 'global::query-defaults',
+      config: {
+        sort: 'endOn:asc',
+        populate: { plan: true, pet: true, customer: true },
+        atajos: {
+          estado: { campo: 'state' },
+          pet: { campo: 'pet', relacionPor: 'documentId' },
+          plan: { campo: 'plan', relacionPor: 'documentId' },
+          venceAntesDe: { campo: 'endOn', operador: '$lte' },
+          desde: { campo: 'startOn', operador: '$gte' },
+          hasta: { campo: 'startOn', operador: '$lte' },
+        },
+        porRol: {
+          client: { populate: { plan: true, pet: true } },
+        },
+      },
+    },
+  ],
+};
+
 export default factories.createCoreRouter('api::billing.subscription', {
-  config: {
-    find: ownerOnly,
-    findOne: ownerOnly,
-    update: ownerOnly,
-    delete: ownerOnly,
-  },
+  config: { find: lectura, findOne: lectura, update: ownerOnly, delete: ownerOnly },
 });

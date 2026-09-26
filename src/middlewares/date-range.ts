@@ -38,9 +38,46 @@ function esFechaValida(valor: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === valor;
 }
 
+/** AAAA-MM-DD de una fecha desplazada N días. */
+function dia(offset = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Atajos de calendario. Recepción no piensa en fechas ISO: piensa en "hoy" y
+ * "esta semana". Se resuelven aquí y salen convertidos en `desde`/`hasta`, de
+ * modo que `query-defaults` no tiene que saber nada de ellos.
+ */
+const ATAJOS: Record<string, () => { desde: string; hasta: string }> = {
+  hoy: () => ({ desde: dia(0), hasta: dia(0) }),
+  manana: () => ({ desde: dia(1), hasta: dia(1) }),
+  semana: () => ({ desde: dia(0), hasta: dia(7) }),
+  mes: () => ({ desde: dia(0), hasta: dia(30) }),
+};
+
 export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
   return async (ctx: any, next: () => Promise<any>) => {
-    const { desde, hasta } = ctx.query ?? {};
+    const query = { ...(ctx.query ?? {}) };
+
+    // Un atajo de calendario se expande a desde/hasta antes de validar.
+    for (const [nombre, calcular] of Object.entries(ATAJOS)) {
+      if (query[nombre] === undefined) continue;
+
+      const activo = query[nombre] === 'true' || query[nombre] === true;
+      // Se borra siempre: `strictParams` no perdona una clave desconocida.
+      delete query[nombre];
+
+      if (!activo) continue;
+      if (query.desde || query.hasta) {
+        throw new ValidationError(`No combines "${nombre}" con "desde"/"hasta": elige uno`);
+      }
+      Object.assign(query, calcular());
+    }
+
+    ctx.query = query;
+    const { desde, hasta } = query;
 
     for (const [nombre, valor] of [
       ['desde', desde],

@@ -47,6 +47,9 @@ const HISTORIA = {
       vet: { fields: ['username', 'email'] },
       appointment: { populate: ['room'] },
       sections: { on: SECCIONES },
+      // Las líneas de servicio son un componente desde la migración: si no se
+      // piden, la historia sale sin lo que se cobró en cada visita.
+      services: { populate: ['service'] },
     },
   },
   vaccinations: {

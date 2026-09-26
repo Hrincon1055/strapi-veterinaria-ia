@@ -23,7 +23,7 @@ import type { Core } from '@strapi/strapi';
  *   ?pet=xxx&desde=2025-01-01&hasta=2025-12-31
  *
  * Se configura por ruta, así que un solo middleware sirve para consultas,
- * vacunas, alergias y citas, cada una con su campo de fecha y su orden.
+ * vacunas, citas, facturas y viajes, cada una con su campo de fecha y su orden.
  *
  * Reglas de convivencia con el cliente:
  * - `sort` y `populate` solo se ponen si el cliente NO mandó los suyos. Quien
@@ -44,11 +44,29 @@ export type AtajoConfig = {
   relacionPor?: string;
 };
 
-export type QueryDefaultsConfig = {
+export type DefaultsBase = {
   sort?: string;
   populate?: Record<string, unknown>;
   /** Nombre del parámetro amigable -> a dónde va. */
   atajos?: Record<string, AtajoConfig>;
+};
+
+export type QueryDefaultsConfig = DefaultsBase & {
+  /**
+   * Ajustes por tipo de rol de users-permissions (`client`, `receptionist`,
+   * `veterinarian`, `clinic_admin`). Se fusionan sobre la base.
+   *
+   * No es cosmético: el staff y el cliente miran los mismos datos con
+   * intenciones opuestas. En la agenda, recepción quiere la próxima cita
+   * primero y el cliente su historial más reciente primero. Y poblar
+   * `pet.owner` para un cliente es trabajo tirado: el saneado lo descarta
+   * porque no puede leer `customer`.
+   *
+   * El rol está disponible aquí porque la autenticación corre antes que los
+   * middlewares de ruta. La propiedad (`ctx.state.ownership`) NO lo está: la
+   * pone la policy, que corre después.
+   */
+  porRol?: Record<string, DefaultsBase>;
 };
 
 /** Construye el fragmento de filtro que corresponde a un atajo. */
@@ -59,13 +77,26 @@ function filtroDe(atajo: AtajoConfig, valor: string) {
     : { [atajo.campo]: comparacion };
 }
 
+/** Fusiona la base con lo que diga el rol de quien pregunta. */
+function resolverConfig(config: QueryDefaultsConfig, rol: string | undefined): DefaultsBase {
+  const delRol = rol ? config.porRol?.[rol] : undefined;
+  if (!delRol) return config;
+
+  return {
+    sort: delRol.sort ?? config.sort,
+    populate: delRol.populate ?? config.populate,
+    atajos: { ...(config.atajos ?? {}), ...(delRol.atajos ?? {}) },
+  };
+}
+
 export default (config: QueryDefaultsConfig, { strapi }: { strapi: Core.Strapi }) => {
   return async (ctx: any, next: () => Promise<any>) => {
     const query = { ...(ctx.query ?? {}) };
+    const efectiva = resolverConfig(config, ctx.state?.user?.role?.type);
 
     // --- atajos -> filtros ---
     const nuevos: any[] = [];
-    for (const [parametro, atajo] of Object.entries(config.atajos ?? {})) {
+    for (const [parametro, atajo] of Object.entries(efectiva.atajos ?? {})) {
       const valor = query[parametro];
       if (valor === undefined || valor === '') continue;
 
@@ -79,12 +110,12 @@ export default (config: QueryDefaultsConfig, { strapi }: { strapi: Core.Strapi }
     }
 
     // --- valores por defecto, solo si el cliente no pidió los suyos ---
-    if (config.sort && !query.sort) {
-      query.sort = config.sort;
+    if (efectiva.sort && !query.sort) {
+      query.sort = efectiva.sort;
     }
 
-    if (config.populate && !query.populate) {
-      query.populate = { ...config.populate };
+    if (efectiva.populate && !query.populate) {
+      query.populate = { ...efectiva.populate };
     }
 
     ctx.query = query;

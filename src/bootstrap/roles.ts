@@ -66,11 +66,26 @@ const CLIENT_READ = [
   'api::notification.notification-recipient',
 ];
 
+/**
+ * Lectura de cuentas de usuario, solo para el staff.
+ *
+ * Sin esto el saneado descarta en silencio TODO populate que apunte a
+ * `plugin::users-permissions.user`: la agenda no dice quién atiende, la
+ * consulta no dice qué veterinario la firmó y el requisito de viaje no dice
+ * quién lo verificó. No hay error, los campos simplemente faltan.
+ *
+ * Al cliente NO se le concede: le permitiría listar `/api/users` entero. El
+ * precio de dárselo al staff es que puede listar las cuentas, pero ya ve los
+ * datos de contacto por `profile`, así que no expone una clase de dato nueva.
+ */
+const LECTURA_USUARIOS = actions(['plugin::users-permissions.user'], READ);
+
 const receptionActions = [
   ...actions(RECEPTION_CRUD, CRUD),
   ...actions(MANAGED_CATALOGS, READ),
   ...actions(['api::clinical.consultation'], READ),
   'api::clinical.consultation.searchBySection',
+  ...LECTURA_USUARIOS,
 ];
 
 /** Búsqueda dentro de la dynamic zone de la historia clínica. */

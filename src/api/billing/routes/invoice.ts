@@ -1,17 +1,39 @@
 import { factories } from '@strapi/strapi';
 
 /**
- * La policy global `is-owner` restringe estas rutas a los datos del cliente
- * autenticado. Solo actúa sobre usuarios con rol `client`; el staff pasa sin
- * filtro porque su alcance lo define el permiso del rol.
+ * Facturación. El cliente ve las suyas más recientes primero; el staff
+ * necesita además de qué cliente es cada una para cobrar.
+ *
+ * `?estado=issued` y `?desde=/hasta=` cubren el cierre de caja y la
+ * conciliación con el proveedor de facturación electrónica.
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
+const lectura = {
+  ...ownerOnly,
+  middlewares: [
+    'global::date-range',
+    {
+      name: 'global::query-defaults',
+      config: {
+        sort: 'createdAt:desc',
+        populate: { customer: true, subscription: true, consultation: true },
+        atajos: {
+          estado: { campo: 'state' },
+          cliente: { campo: 'customer', relacionPor: 'documentId' },
+          desde: { campo: 'createdAt', operador: '$gte' },
+          hasta: { campo: 'createdAt', operador: '$lte' },
+        },
+        porRol: {
+          // Poblar `customer` a un cliente es trabajo tirado: el saneado lo
+          // descarta porque no puede leer ese content type.
+          client: { populate: { subscription: true, consultation: true } },
+        },
+      },
+    },
+  ],
+};
+
 export default factories.createCoreRouter('api::billing.invoice', {
-  config: {
-    find: ownerOnly,
-    findOne: ownerOnly,
-    update: ownerOnly,
-    delete: ownerOnly,
-  },
+  config: { find: lectura, findOne: lectura, update: ownerOnly, delete: ownerOnly },
 });

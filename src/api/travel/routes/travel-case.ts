@@ -13,7 +13,6 @@ const lectura = {
   ...ownerOnly,
   middlewares: [
     'global::date-range',
-    'api::travel.populate-requirements',
     {
       name: 'global::query-defaults',
       config: {
@@ -28,6 +27,10 @@ const lectura = {
         },
       },
     },
+
+    // Después de query-defaults: este merge añade la zona sobre el
+    // populate por defecto, en lugar de impedir que se aplique.
+    'api::travel.populate-requirements',
   ],
 };
 

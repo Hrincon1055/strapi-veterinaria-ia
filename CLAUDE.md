@@ -79,20 +79,32 @@ La ruta de búsqueda declara el handler completo (`api::clinical.consultation.se
 
 `verify-model-doc.js` comprueba que `strapi-veterinaria-prompt.md` sigue describiendo el código: compara cada bloque JSON del documento con su archivo, la dynamic zone con el esquema y el total de componentes. Ejecútalo tras tocar un componente — el documento lleva copias de los esquemas y se desincroniza en cuanto se cambia un icono.
 
-**Cuatro middlewares de ruta absorben la verbosidad de las consultas clínicas.** `strapi generate middleware` es interactivo y no corre sin terminal, así que están escritos a mano con su misma plantilla.
+**Los middlewares de ruta absorben la verbosidad de las consultas.** `strapi generate middleware` es interactivo y no corre sin terminal, así que están escritos a mano con su misma plantilla.
 
 | Middleware | Dónde | Qué hace |
 | --- | --- | --- |
-| `global::query-defaults` | consultation, pet-vaccination, allergy, pet | Traduce atajos (`?pet=`, `?desde=`, `?hasta=`, `?activa=`) a `filters`, y pone `sort`/`populate` por defecto. Configurable por ruta |
-| `global::date-range` | las tres rutas clínicas + `/consultations/search` | Valida `desde`/`hasta` (400 si no es AAAA-MM-DD real o el rango está invertido) y deja `ctx.state.rango` para los endpoints propios |
-| `api::clinical.populate-sections` | consultation find/findOne | Rellena la dynamic zone |
-| `api::pet.populate-history` | pet find/findOne | Con `?historia=true`, la historia completa (consultas + secciones + vacunas + alergias) en una petición |
+| `global::query-defaults` | las 10 rutas de lectura | Traduce atajos (`?pet=`, `?estado=`, `?buscar=`, `?desde=`…) a `filters`, y pone `sort`/`populate` por defecto **según el rol** |
+| `global::date-range` | todo lo que tiene fechas | Expande `?hoy=` / `?manana=` / `?semana=` / `?mes=` a `desde`/`hasta`, valida el formato (400 si no es AAAA-MM-DD real o el rango está invertido) y deja `ctx.state.rango` para los endpoints propios |
+| `api::clinical.populate-sections` | consultation | Rellena la dynamic zone de la historia |
+| `api::travel.populate-requirements` | travel-case | Rellena la zona de requisitos |
+| `api::marketing.populate-segment` | campaign | Rellena la zona de reglas de segmento |
+| `api::pet.populate-history` | pet | Con `?historia=true`, la historia completa en una petición |
 
 Tres reglas que respetan todos: el valor por defecto solo se pone **si el cliente no mandó el suyo**; los filtros de los atajos se **combinan** con los que ya vengan; y el parámetro del atajo se **borra** de la query antes de seguir — con `strictParams: true` una clave que Strapi no conoce hace fallar la petición entera.
 
-`populate-history` es opcional a propósito: aplicado siempre, listar las mascotas del portal arrastraría años de consultas de cada una.
+**El orden de los middlewares de populate importa y no es intuitivo.** Los que rellenan una zona *mergean* sobre el populate existente; `query-defaults` en cambio *se abstiene* si ya hay uno. Por tanto `query-defaults` va **antes** y el de la zona después. Al revés —que fue como lo escribí primero— el populate por defecto no se aplica nunca y la respuesta pierde `vet`, `services` y el dueño, **sin ningún error**. El orden correcto es: `date-range` → `query-defaults` → `populate-<zona>`.
 
-**Un populate que no aparece suele ser permisos, no el middleware.** El saneado descarta en silencio lo que el rol no puede leer: `pet.owner` nunca llega a un cliente (no puede leer `customer`), y `pet-vaccination.vaccine` tampoco llegaba hasta que se concedió `api::clinical.vaccine` al rol `client`. No hay error ni aviso: el campo simplemente falta. Antes de depurar el middleware, mira los permisos del rol.
+**Los defaults cambian según el rol.** `query-defaults` acepta `porRol`, y el rol está disponible porque la autenticación corre antes que los middlewares de ruta (`ctx.state.user.role.type`). La propiedad NO lo está: `ctx.state.ownership` la pone la policy, que corre después.
+
+No es cosmético. En la agenda, recepción quiere la próxima cita primero (`startAt:asc`) y el cliente su historial más reciente (`startAt:desc`). Y poblarle `pet.owner` a un cliente es trabajo tirado: el saneado lo descarta porque no puede leer `customer`.
+
+**Un populate que no aparece suele ser permisos, no el middleware.** El saneado descarta en silencio lo que el rol no puede leer; no hay error ni aviso, el campo simplemente falta. Ya pasó tres veces:
+
+- `pet.owner` no llega a un cliente (no puede leer `customer`) — correcto, por eso no se le pide.
+- `pet-vaccination.vaccine` no llegaba hasta que se concedió `api::clinical.vaccine` al rol `client`.
+- **Ningún rol podía leer `plugin::users-permissions.user`**, así que todo populate de `vet`, `responsible`, `performedBy`, `author` y `verifiedBy` se descartaba para todos: la agenda no decía quién atiende y la consulta no decía qué veterinario la firmó. Ahora `LECTURA_USUARIOS` lo concede a los tres roles de staff, **nunca al cliente** — se lo permitiría listar `/api/users` entero.
+
+Antes de depurar un middleware por un campo que falta, mira los permisos del rol.
 
 **Hay tres dynamic zones, no una.** `consultation.sections` (historia clínica), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad) y `campaign.segment` (6 reglas de segmentación). Las tres necesitan su middleware de populate y ninguna se puede filtrar con `filters`.
 
