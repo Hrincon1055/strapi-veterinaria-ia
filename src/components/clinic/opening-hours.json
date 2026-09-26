@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_clinic_opening_hours",
+  "info": { "displayName": "Horario de atención", "icon": "clock", "description": "Franja de atención de un día. Alimenta el portal y la agenda en línea." },
+  "options": {},
+  "attributes": {
+    "dayOfWeek": { "type": "enumeration", "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"], "required": true },
+    "isClosed": { "type": "boolean", "default": false },
+    "opensAt": { "type": "time" },
+    "closesAt": { "type": "time" },
+    "notes": { "type": "string", "maxLength": 120 }
+  }
+}

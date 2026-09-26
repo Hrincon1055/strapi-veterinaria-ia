@@ -86,6 +86,7 @@ const receptionActions = [
   ...actions(['api::clinical.consultation'], READ),
   'api::clinical.consultation.searchBySection',
   ...LECTURA_USUARIOS,
+  'api::clinic.clinic.find',
 ];
 
 /** Búsqueda dentro de la dynamic zone de la historia clínica. */
@@ -102,6 +103,8 @@ const clinicAdminActions = [
   ...vetActions,
   ...actions(MANAGED_CATALOGS, CRUD),
   ...actions(['api::marketing.campaign', 'api::marketing.campaign-metric', 'api::notification.notification'], CRUD),
+  // La configuración fiscal la cambia solo la administración de la clínica.
+  'api::clinic.clinic.update',
 ];
 
 type RoleSpec = { name: string; description: string; type: string; actions: string[] };
@@ -125,6 +128,7 @@ const ROLES: RoleSpec[] = [
       // hereda los permisos de Public, y sin esto no podría elegir servicio al
       // agendar una cita en línea.
       ...actions(CATALOGS, READ),
+      'api::clinic.clinic.find',
     ],
   },
   {

@@ -26,7 +26,6 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.30.3",
-    "strapi-csv-import-export": "^0.0.6",
     "strapi-plugin-schema-visualizer": "^1.0.5",
     "styled-components": "^6.0.0"
   },

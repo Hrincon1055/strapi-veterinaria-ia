@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_billing_fiscal_responsibilities",
+  "info": { "displayName": "Responsabilidad fiscal", "icon": "shield", "description": "Código de responsabilidad tributaria de la DIAN; va en el XML de la factura electrónica." },
+  "options": {},
+  "attributes": {
+    "code": { "type": "enumeration", "enum": ["o_13", "o_15", "o_23", "o_47", "r_99_pn"], "required": true },
+    "notes": { "type": "string", "maxLength": 150 }
+  }
+}

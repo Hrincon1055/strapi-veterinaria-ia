@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_billing_dian_resolutions",
+  "info": { "displayName": "Resolución DIAN", "icon": "file", "description": "Resolución de facturación: prefijo, rango autorizado y vigencia. Las vencidas se conservan como histórico." },
+  "options": {},
+  "attributes": {
+    "resolutionNumber": { "type": "string", "required": true, "maxLength": 40 },
+    "resolutionDate": { "type": "date", "required": true },
+    "prefix": { "type": "string", "maxLength": 10 },
+    "rangeFrom": { "type": "biginteger", "required": true },
+    "rangeTo": { "type": "biginteger", "required": true },
+    "currentNumber": { "type": "biginteger" },
+    "validFrom": { "type": "date" },
+    "validUntil": { "type": "date" },
+    "technicalKey": { "type": "string", "private": true, "maxLength": 200 },
+    "isActive": { "type": "boolean", "default": false, "required": true }
+  }
+}

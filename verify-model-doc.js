@@ -80,7 +80,9 @@ const contentTypes = (function contar(dir) {
   return n;
 })('src/api');
 
-const totales = doc.match(/\*\*(\d+) content types, (\d+) componentes/);
+// El texto entre ambas cifras puede llevar una aclaración (p. ej. "(uno de
+// ellos single type)"), así que no se exige que sea literalmente una coma.
+const totales = doc.match(/\*\*(\d+) content types[^,]*, (\d+) componentes/);
 if (!totales) mal('no se encontró la línea de totales en el documento');
 else {
   if (Number(totales[1]) !== contentTypes) mal(`el documento dice ${totales[1]} content types y hay ${contentTypes}`);

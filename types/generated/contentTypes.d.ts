@@ -691,6 +691,114 @@ export interface ApiBillingSubscription extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiClinicClinic extends Struct.SingleTypeSchema {
+  collectionName: 'clinic';
+  info: {
+    description: 'Datos de la veterinaria: identidad, obligaciones tributarias y resoluciones de facturaci\u00F3n DIAN.';
+    displayName: 'Cl\u00EDnica';
+    pluralName: 'clinics';
+    singularName: 'clinic';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    billingEmail: Schema.Attribute.Email;
+    ciiuCode: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 10;
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    defaultCurrency: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'COP'>;
+    documentNumber: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    documentType: Schema.Attribute.Enumeration<['nit', 'cc', 'ce']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'nit'>;
+    email: Schema.Attribute.Email;
+    emergencyPhone: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    fiscalAddress: Schema.Attribute.Component<'shared.address', false>;
+    fiscalResponsibilities: Schema.Attribute.Component<
+      'billing.fiscal-responsibility',
+      true
+    >;
+    invoiceFooterNotes: Schema.Attribute.Text;
+    invoicingEnvironment: Schema.Attribute.Enumeration<
+      ['habilitacion', 'produccion']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'habilitacion'>;
+    legalName: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::clinic.clinic'
+    > &
+      Schema.Attribute.Private;
+    logo: Schema.Attribute.Media<'images'>;
+    merchantRegistration: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    openingHours: Schema.Attribute.Component<'clinic.opening-hours', true>;
+    personType: Schema.Attribute.Enumeration<['juridica', 'natural']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'juridica'>;
+    phone: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    publishedAt: Schema.Attribute.DateTime;
+    resolutions: Schema.Attribute.Component<'billing.dian-resolution', true>;
+    slogan: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    taxRegime: Schema.Attribute.Enumeration<
+      ['responsable_iva', 'no_responsable_iva', 'regimen_simple']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'responsable_iva'>;
+    timezone: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }> &
+      Schema.Attribute.DefaultTo<'America/Bogota'>;
+    tradeName: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    verificationDigit: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1;
+      }>;
+    website: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    whatsapp: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+  };
+}
+
 export interface ApiClinicalAllergy extends Struct.CollectionTypeSchema {
   collectionName: 'allergies';
   info: {
@@ -2618,6 +2726,7 @@ declare module '@strapi/strapi' {
       'api::billing.plan': ApiBillingPlan;
       'api::billing.plan-benefit': ApiBillingPlanBenefit;
       'api::billing.subscription': ApiBillingSubscription;
+      'api::clinic.clinic': ApiClinicClinic;
       'api::clinical.allergy': ApiClinicalAllergy;
       'api::clinical.consultation': ApiClinicalConsultation;
       'api::clinical.pet-vaccination': ApiClinicalPetVaccination;

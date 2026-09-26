@@ -1,0 +1,42 @@
+{
+  "kind": "singleType",
+  "collectionName": "clinic",
+  "info": {
+    "singularName": "clinic",
+    "pluralName": "clinics",
+    "displayName": "Clínica",
+    "description": "Datos de la veterinaria: identidad, obligaciones tributarias y resoluciones de facturación DIAN."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "legalName": { "type": "string", "required": true, "maxLength": 200 },
+    "tradeName": { "type": "string", "maxLength": 200 },
+    "logo": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "slogan": { "type": "string", "maxLength": 200 },
+
+    "documentType": { "type": "enumeration", "enum": ["nit", "cc", "ce"], "default": "nit", "required": true },
+    "documentNumber": { "type": "string", "required": true, "maxLength": 20 },
+    "verificationDigit": { "type": "string", "maxLength": 1, "regex": "^[0-9]$" },
+    "personType": { "type": "enumeration", "enum": ["juridica", "natural"], "default": "juridica", "required": true },
+    "taxRegime": { "type": "enumeration", "enum": ["responsable_iva", "no_responsable_iva", "regimen_simple"], "default": "responsable_iva", "required": true },
+    "fiscalResponsibilities": { "type": "component", "repeatable": true, "component": "billing.fiscal-responsibility" },
+    "ciiuCode": { "type": "string", "maxLength": 10 },
+    "merchantRegistration": { "type": "string", "maxLength": 40 },
+
+    "fiscalAddress": { "type": "component", "repeatable": false, "component": "shared.address" },
+    "phone": { "type": "string", "maxLength": 20 },
+    "whatsapp": { "type": "string", "maxLength": 20 },
+    "email": { "type": "email" },
+    "billingEmail": { "type": "email" },
+    "website": { "type": "string", "maxLength": 200 },
+
+    "resolutions": { "type": "component", "repeatable": true, "component": "billing.dian-resolution" },
+    "invoicingEnvironment": { "type": "enumeration", "enum": ["habilitacion", "produccion"], "default": "habilitacion", "required": true },
+    "defaultCurrency": { "type": "string", "default": "COP", "regex": "^[A-Z]{3}$" },
+    "invoiceFooterNotes": { "type": "text" },
+
+    "openingHours": { "type": "component", "repeatable": true, "component": "clinic.opening-hours" },
+    "timezone": { "type": "string", "default": "America/Bogota", "maxLength": 60 },
+    "emergencyPhone": { "type": "string", "maxLength": 20 }
+  }
+}

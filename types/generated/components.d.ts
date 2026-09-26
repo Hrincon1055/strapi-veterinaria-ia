@@ -1,5 +1,88 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface BillingDianResolution extends Struct.ComponentSchema {
+  collectionName: 'components_billing_dian_resolutions';
+  info: {
+    description: 'Resoluci\u00F3n de facturaci\u00F3n: prefijo, rango autorizado y vigencia. Las vencidas se conservan como hist\u00F3rico.';
+    displayName: 'Resoluci\u00F3n DIAN';
+    icon: 'file';
+  };
+  attributes: {
+    currentNumber: Schema.Attribute.BigInteger;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    prefix: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 10;
+      }>;
+    rangeFrom: Schema.Attribute.BigInteger & Schema.Attribute.Required;
+    rangeTo: Schema.Attribute.BigInteger & Schema.Attribute.Required;
+    resolutionDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    resolutionNumber: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    technicalKey: Schema.Attribute.String &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    validFrom: Schema.Attribute.Date;
+    validUntil: Schema.Attribute.Date;
+  };
+}
+
+export interface BillingFiscalResponsibility extends Struct.ComponentSchema {
+  collectionName: 'components_billing_fiscal_responsibilities';
+  info: {
+    description: 'C\u00F3digo de responsabilidad tributaria de la DIAN; va en el XML de la factura electr\u00F3nica.';
+    displayName: 'Responsabilidad fiscal';
+    icon: 'shield';
+  };
+  attributes: {
+    code: Schema.Attribute.Enumeration<
+      ['o_13', 'o_15', 'o_23', 'o_47', 'r_99_pn']
+    > &
+      Schema.Attribute.Required;
+    notes: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+  };
+}
+
+export interface ClinicOpeningHours extends Struct.ComponentSchema {
+  collectionName: 'components_clinic_opening_hours';
+  info: {
+    description: 'Franja de atenci\u00F3n de un d\u00EDa. Alimenta el portal y la agenda en l\u00EDnea.';
+    displayName: 'Horario de atenci\u00F3n';
+    icon: 'clock';
+  };
+  attributes: {
+    closesAt: Schema.Attribute.Time;
+    dayOfWeek: Schema.Attribute.Enumeration<
+      [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ]
+    > &
+      Schema.Attribute.Required;
+    isClosed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    notes: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    opensAt: Schema.Attribute.Time;
+  };
+}
+
 export interface ClinicalAnamnesis extends Struct.ComponentSchema {
   collectionName: 'components_clinical_anamneses';
   info: {
@@ -727,6 +810,9 @@ export interface TravelRabiesTiter extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export namespace Public {
     export interface ComponentSchemas {
+      'billing.dian-resolution': BillingDianResolution;
+      'billing.fiscal-responsibility': BillingFiscalResponsibility;
+      'clinic.opening-hours': ClinicOpeningHours;
       'clinical.anamnesis': ClinicalAnamnesis;
       'clinical.attachment': ClinicalAttachment;
       'clinical.diagnosis': ClinicalDiagnosis;

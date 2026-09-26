@@ -2,6 +2,7 @@ import type { Core } from '@strapi/strapi';
 
 import archived from './archived';
 import billing from './billing';
+import clinic from './clinic';
 import clinical from './clinical';
 import customer from './customer';
 import documents from './documents';
@@ -36,6 +37,7 @@ export default (strapi: Core.Strapi): void => {
   customer(strapi);
   pet(strapi);
   clinical(strapi);
+  clinic(strapi);
   scheduling(strapi);
   billing(strapi);
   travel(strapi);

@@ -54,9 +54,12 @@ src/
     documents/content-types/{signed-document,signed-document-signer,signed-document-event}/schema.json
     marketing/content-types/{campaign,campaign-metric}/schema.json
     notification/content-types/{notification,notification-recipient,notification-delivery}/schema.json
+    clinic/content-types/clinic/schema.json          ← single type
   components/
+    clinic/opening-hours.json
     shared/address.json
     customer/consents.json
+    billing/{dian-resolution,fiscal-responsibility}.json
     clinical/attachment.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
     scheduling/{appointment-service,consultation-service}.json
@@ -68,7 +71,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **31 content types, 27 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **32 content types (uno de ellos single type), 30 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -963,6 +966,307 @@ _No aparece en la zona: se anida dentro de `clinical.treatment-plan`._
 
 ---
 
+## 5.2 Configuración de la clínica (single type)
+
+Único `singleType` del modelo. Reúne lo que la DIAN exige del emisor en una factura electrónica y los datos operativos que consumen el portal y la app.
+
+**Las credenciales NO van aquí.** Las claves de Dataico y el certificado de firma se quedan en el `.env`: este content type se lee por API, sale en la documentación OpenAPI y es exportable a CSV.
+
+### `api::clinic.clinic`
+```json
+{
+  "kind": "singleType",
+  "collectionName": "clinic",
+  "info": {
+    "singularName": "clinic",
+    "pluralName": "clinics",
+    "displayName": "Clínica",
+    "description": "Datos de la veterinaria: identidad, obligaciones tributarias y resoluciones de facturación DIAN."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "legalName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "tradeName": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "slogan": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "documentType": {
+      "type": "enumeration",
+      "enum": [
+        "nit",
+        "cc",
+        "ce"
+      ],
+      "default": "nit",
+      "required": true
+    },
+    "documentNumber": {
+      "type": "string",
+      "required": true,
+      "maxLength": 20
+    },
+    "verificationDigit": {
+      "type": "string",
+      "maxLength": 1,
+      "regex": "^[0-9]$"
+    },
+    "personType": {
+      "type": "enumeration",
+      "enum": [
+        "juridica",
+        "natural"
+      ],
+      "default": "juridica",
+      "required": true
+    },
+    "taxRegime": {
+      "type": "enumeration",
+      "enum": [
+        "responsable_iva",
+        "no_responsable_iva",
+        "regimen_simple"
+      ],
+      "default": "responsable_iva",
+      "required": true
+    },
+    "fiscalResponsibilities": {
+      "type": "component",
+      "repeatable": true,
+      "component": "billing.fiscal-responsibility"
+    },
+    "ciiuCode": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "merchantRegistration": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "fiscalAddress": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "phone": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "whatsapp": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "email": {
+      "type": "email"
+    },
+    "billingEmail": {
+      "type": "email"
+    },
+    "website": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "resolutions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "billing.dian-resolution"
+    },
+    "invoicingEnvironment": {
+      "type": "enumeration",
+      "enum": [
+        "habilitacion",
+        "produccion"
+      ],
+      "default": "habilitacion",
+      "required": true
+    },
+    "defaultCurrency": {
+      "type": "string",
+      "default": "COP",
+      "regex": "^[A-Z]{3}$"
+    },
+    "invoiceFooterNotes": {
+      "type": "text"
+    },
+    "openingHours": {
+      "type": "component",
+      "repeatable": true,
+      "component": "clinic.opening-hours"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "America/Bogota",
+      "maxLength": 60
+    },
+    "emergencyPhone": {
+      "type": "string",
+      "maxLength": 20
+    }
+  }
+}
+```
+
+Decisiones que conviene no revertir:
+
+- **`resolutions` es repetible, no un bloque único.** Una resolución DIAN caduca (típicamente a los dos años) y hay que conservar las vencidas: una factura emitida en 2025 se ampara en la resolución de 2025, no en la vigente hoy. Solo una puede tener `isActive`.
+- **`technicalKey` es `private`**: la clave técnica de la resolución no sale en ninguna respuesta de la API.
+- **`verificationDigit` se valida contra el NIT** con el módulo 11 de la DIAN (`src/validations/clinic.ts`). Un DV mal escrito hace que la DIAN rechace todas las facturas, y el error no aparece hasta que se intenta emitir.
+- **`fiscalResponsibilities` es un componente repetible** porque un contribuyente puede tener varias, y Strapi no tiene enumeración múltiple.
+- **`fiscalAddress` reutiliza `shared.address`** en lugar de repetir los campos.
+
+Reglas en `src/validations/clinic.ts`, todas verificadas: DV coherente con el NIT; una sola resolución activa; rango final mayor que el inicial; consecutivo dentro del rango; vigencia coherente; la resolución activa no puede estar vencida ni con el rango agotado (con aviso por log a menos de 100 números); y los horarios no pueden cerrar antes de abrir ni repetir día.
+
+### `src/components/billing/dian-resolution.json`
+
+Resolución de facturación: prefijo, rango autorizado y vigencia. Las vencidas se conservan como histórico.
+```json
+{
+  "collectionName": "components_billing_dian_resolutions",
+  "info": {
+    "displayName": "Resolución DIAN",
+    "icon": "file",
+    "description": "Resolución de facturación: prefijo, rango autorizado y vigencia. Las vencidas se conservan como histórico."
+  },
+  "options": {},
+  "attributes": {
+    "resolutionNumber": {
+      "type": "string",
+      "required": true,
+      "maxLength": 40
+    },
+    "resolutionDate": {
+      "type": "date",
+      "required": true
+    },
+    "prefix": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "rangeFrom": {
+      "type": "biginteger",
+      "required": true
+    },
+    "rangeTo": {
+      "type": "biginteger",
+      "required": true
+    },
+    "currentNumber": {
+      "type": "biginteger"
+    },
+    "validFrom": {
+      "type": "date"
+    },
+    "validUntil": {
+      "type": "date"
+    },
+    "technicalKey": {
+      "type": "string",
+      "private": true,
+      "maxLength": 200
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    }
+  }
+}
+```
+
+### `src/components/billing/fiscal-responsibility.json`
+
+Código de responsabilidad tributaria de la DIAN; va en el XML de la factura electrónica.
+```json
+{
+  "collectionName": "components_billing_fiscal_responsibilities",
+  "info": {
+    "displayName": "Responsabilidad fiscal",
+    "icon": "shield",
+    "description": "Código de responsabilidad tributaria de la DIAN; va en el XML de la factura electrónica."
+  },
+  "options": {},
+  "attributes": {
+    "code": {
+      "type": "enumeration",
+      "enum": [
+        "o_13",
+        "o_15",
+        "o_23",
+        "o_47",
+        "r_99_pn"
+      ],
+      "required": true
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 150
+    }
+  }
+}
+```
+
+### `src/components/clinic/opening-hours.json`
+
+Franja de atención de un día. Alimenta el portal y la agenda en línea.
+```json
+{
+  "collectionName": "components_clinic_opening_hours",
+  "info": {
+    "displayName": "Horario de atención",
+    "icon": "clock",
+    "description": "Franja de atención de un día. Alimenta el portal y la agenda en línea."
+  },
+  "options": {},
+  "attributes": {
+    "dayOfWeek": {
+      "type": "enumeration",
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "required": true
+    },
+    "isClosed": {
+      "type": "boolean",
+      "default": false
+    },
+    "opensAt": {
+      "type": "time"
+    },
+    "closesAt": {
+      "type": "time"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 120
+    }
+  }
+}
+```
+
+---
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -1854,7 +2158,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 31 content types y 27 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 32 content types y 30 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.
