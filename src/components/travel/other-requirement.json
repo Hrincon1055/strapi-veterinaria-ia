@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_travel_other_requirements",
+  "info": { "displayName": "Otro requisito", "icon": "question", "description": "Escape para exigencias del destino que no encajan en los tipos anteriores." },
+  "options": {},
+  "attributes": {
+    "requirementName": { "type": "string", "required": true, "maxLength": 150 },
+    "notes": { "type": "text" },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

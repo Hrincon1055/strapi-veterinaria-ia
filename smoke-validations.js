@@ -64,7 +64,6 @@ async function limpiar(app) {
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
     ['api::billing.plan-benefit', { name: 'Baño SMOKE' }],
     ['api::billing.plan', { name: 'Plan SMOKE' }],
-    ['api::scheduling.consultation-service', { service: { name: 'Consulta SMOKE' } }],
     ['api::scheduling.service', { name: 'Consulta SMOKE' }],
     ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
     ['api::scheduling.clinic-room', { name: 'Consultorio SMOKE' }],
@@ -163,10 +162,27 @@ async function limpiar(app) {
   const categoria = await d('api::scheduling.service-category').findFirst({});
   const servicio = await d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30, basePrice: 50000 } });
   await rechaza('servicio duplicado en la misma categoría', () => d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30 } }), 'ya existe');
+  // Las líneas de servicio son ahora el componente repetible
+  // `scheduling.consultation-service`: se escriben dentro de la consulta y el
+  // total lo calcula el middleware de la consulta, no uno propio.
   await acepta(
     'totalPrice se calcula e ignora el valor enviado',
-    () => d('api::scheduling.consultation-service').create({ data: { consultation: consulta.documentId, service: servicio.documentId, quantity: 3, unitPrice: 50000, totalPrice: 1 } }),
-    (r) => r.totalPrice === 150000
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: { services: [{ service: servicio.documentId, quantity: 3, unitPrice: 50000, totalPrice: 1 }] },
+        populate: ['services'],
+      }),
+    (r) => r.services?.[0]?.totalPrice === 150000
+  );
+  await rechaza(
+    'línea de servicio sin servicio',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: { services: [{ quantity: 1, unitPrice: 1000 }] },
+      }),
+    'debe indicar un servicio'
   );
 
   console.log('\n--- facturas ---');

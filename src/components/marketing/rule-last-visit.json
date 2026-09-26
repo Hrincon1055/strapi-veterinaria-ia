@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_marketing_rule_last_visits",
+  "info": { "displayName": "Última visita", "icon": "clock", "description": "Filtra por cuándo fue la última consulta de sus mascotas." },
+  "options": {},
+  "attributes": {
+    "operador": { "type": "enumeration", "enum": ["sin_visita_desde", "con_visita_desde"], "default": "sin_visita_desde", "required": true },
+    "fecha": { "type": "date", "required": true }
+  }
+}

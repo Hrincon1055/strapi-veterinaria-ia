@@ -405,23 +405,19 @@ async function crearHistoria(app) {
         reason: v.reason,
         weightKg: v.weightKg,
         sections: v.secciones,
+        // Las líneas de servicio son ahora un componente repetible: se crean
+        // con la consulta, no como documentos aparte. El middleware calcula
+        // `totalPrice`.
+        services: v.servicios.map((s) => ({
+          service: servicios[s.nombre].documentId,
+          quantity: s.cantidad,
+          unitPrice: servicios[s.nombre].basePrice,
+          durationMinutes: servicios[s.nombre].defaultDurationMinutes,
+          performedBy: vet.documentId,
+        })),
         ...(v.nextControlOn ? { nextControlOn: v.nextControlOn } : {}),
       },
     });
-
-    for (const s of v.servicios) {
-      const servicio = servicios[s.nombre];
-      await d('api::scheduling.consultation-service').create({
-        data: {
-          consultation: consulta.documentId,
-          service: servicio.documentId,
-          quantity: s.cantidad,
-          unitPrice: servicio.basePrice,
-          durationMinutes: servicio.defaultDurationMinutes,
-          performedBy: vet.documentId,
-        },
-      });
-    }
 
     for (const vac of v.vacunas ?? []) {
       await d('api::clinical.pet-vaccination').create({
@@ -462,15 +458,6 @@ async function borrarHistoria(app) {
     const consultas = await d('api::clinical.consultation').findMany({
       filters: { pet: { documentId: mascota.documentId } },
     });
-
-    for (const c of consultas) {
-      for (const cs of await d('api::scheduling.consultation-service').findMany({
-        filters: { consultation: { documentId: c.documentId } },
-      })) {
-        await d('api::scheduling.consultation-service').delete({ documentId: cs.documentId });
-        n++;
-      }
-    }
 
     for (const uid of ['api::clinical.pet-vaccination', 'api::clinical.allergy']) {
       for (const r of await d(uid).findMany({ filters: { pet: { documentId: mascota.documentId } } })) {

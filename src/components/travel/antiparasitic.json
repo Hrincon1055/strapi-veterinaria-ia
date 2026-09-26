@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_travel_antiparasitics",
+  "info": { "displayName": "Tratamiento antiparasitario", "icon": "plus", "description": "Desparasitación exigida por el destino, con su ventana de tiempo antes del vuelo." },
+  "options": {},
+  "attributes": {
+    "drug": { "type": "string", "maxLength": 150 },
+    "administeredAt": { "type": "datetime" },
+    "windowHoursBeforeFlight": { "type": "integer", "min": 0, "max": 720 },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

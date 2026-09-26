@@ -43,7 +43,7 @@ const RECEPTION_CRUD = [
 
 const VET_CRUD = [
   'api::clinical.consultation',
-  'api::scheduling.consultation-service',
+  
   'api::clinical.pet-vaccination',
   'api::clinical.allergy',
   'api::documents.signed-document',

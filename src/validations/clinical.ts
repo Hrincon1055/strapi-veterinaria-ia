@@ -7,6 +7,7 @@ import {
   isAfter,
   loadCurrent,
   on,
+  toDocumentId,
   today,
 } from './helpers';
 
@@ -42,6 +43,23 @@ export default (strapi: Core.Strapi): void => {
     // Si no se indica el momento de la consulta, es ahora.
     if (ctx.action === 'create' && !data.consultedAt) {
       data.consultedAt = new Date().toISOString();
+      ctx.params.data = data;
+    }
+
+    // Líneas de servicio. Antes eran un content type con su propio middleware;
+    // al pasar a componente, el cálculo vive aquí: un componente no atraviesa
+    // el Document Service por su cuenta, solo como parte de su padre.
+    if (Array.isArray(data.services)) {
+      for (const linea of data.services) {
+        if (!toDocumentId(linea?.service)) {
+          throw new ValidationError('Cada línea de servicio debe indicar un servicio');
+        }
+        const cantidad = linea.quantity ?? 1;
+        if (linea.unitPrice != null) {
+          // Calculado siempre: se ignora el total que envíe el cliente.
+          linea.totalPrice = cantidad * linea.unitPrice;
+        }
+      }
       ctx.params.data = data;
     }
 

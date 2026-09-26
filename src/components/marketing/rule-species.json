@@ -1,0 +1,8 @@
+{
+  "collectionName": "components_marketing_rule_species",
+  "info": { "displayName": "Tiene mascota de especie", "icon": "paint", "description": "El cliente tiene al menos una mascota de la especie indicada." },
+  "options": {},
+  "attributes": {
+    "species": { "type": "relation", "relation": "manyToOne", "target": "api::pet.species" }
+  }
+}

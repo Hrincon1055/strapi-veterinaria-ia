@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_travel_rabies_titers",
+  "info": { "displayName": "Titulación antirrábica", "icon": "seed", "description": "Titulación de anticuerpos antirrábicos. Muchos destinos exigen un mínimo de 0,5 UI/ml." },
+  "options": {},
+  "attributes": {
+    "laboratory": { "type": "string", "maxLength": 150 },
+    "sampleTakenOn": { "type": "date" },
+    "resultIuMl": { "type": "decimal", "min": 0 },
+    "thresholdIuMl": { "type": "decimal", "min": 0, "default": 0.5 },
+    "validUntil": { "type": "date" },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

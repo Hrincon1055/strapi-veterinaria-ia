@@ -1,0 +1,8 @@
+{
+  "collectionName": "components_marketing_rule_referrals",
+  "info": { "displayName": "Cómo nos conoció", "icon": "discuss", "description": "Origen por el que llegó el cliente." },
+  "options": {},
+  "attributes": {
+    "referralSource": { "type": "enumeration", "enum": ["friend", "social_media", "google", "ad", "walk_in", "other"], "required": true }
+  }
+}

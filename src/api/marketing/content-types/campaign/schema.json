@@ -1,12 +1,48 @@
 {
   "kind": "collectionType",
   "collectionName": "campaigns",
-  "info": { "singularName": "campaign", "pluralName": "campaigns", "displayName": "Campaign" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "campaign",
+    "pluralName": "campaigns",
+    "displayName": "Campaign"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "name": { "type": "string", "required": true, "maxLength": 150 },
-    "segmentCriteria": { "type": "json" },
-    "state": { "type": "enumeration", "enum": ["draft", "scheduled", "running", "finished", "cancelled"], "default": "draft", "required": true },
-    "metrics": { "type": "relation", "relation": "oneToMany", "target": "api::marketing.campaign-metric", "mappedBy": "campaign" }
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 150
+    },
+    "segment": {
+      "type": "dynamiczone",
+      "components": [
+        "marketing.rule-species",
+        "marketing.rule-last-visit",
+        "marketing.rule-subscription",
+        "marketing.rule-vaccination-due",
+        "marketing.rule-city",
+        "marketing.rule-referral"
+      ]
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "scheduled",
+        "running",
+        "finished",
+        "cancelled"
+      ],
+      "default": "draft",
+      "required": true
+    },
+    "metrics": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::marketing.campaign-metric",
+      "mappedBy": "campaign"
+    }
   }
 }

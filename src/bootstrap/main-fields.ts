@@ -31,7 +31,7 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::billing.subscription': 'searchLabel',
   'api::shared.contact': 'searchLabel',
   'api::notification.notification-recipient': 'searchLabel',
-  'api::scheduling.consultation-service': 'searchLabel',
+  
   'api::marketing.campaign-metric': 'searchLabel',
 
   /**

@@ -789,9 +789,9 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
         'clinical.treatment-plan',
       ]
     >;
-    services: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::scheduling.consultation-service'
+    services: Schema.Attribute.Component<
+      'scheduling.consultation-service',
+      true
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1295,7 +1295,16 @@ export interface ApiMarketingCampaign extends Struct.CollectionTypeSchema {
         maxLength: 150;
       }>;
     publishedAt: Schema.Attribute.DateTime;
-    segmentCriteria: Schema.Attribute.JSON;
+    segment: Schema.Attribute.DynamicZone<
+      [
+        'marketing.rule-species',
+        'marketing.rule-last-visit',
+        'marketing.rule-subscription',
+        'marketing.rule-vaccination-due',
+        'marketing.rule-city',
+        'marketing.rule-referral',
+      ]
+    >;
     state: Schema.Attribute.Enumeration<
       ['draft', 'scheduled', 'running', 'finished', 'cancelled']
     > &
@@ -1811,79 +1820,6 @@ export interface ApiSchedulingClinicRoom extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiSchedulingConsultationService
-  extends Struct.CollectionTypeSchema {
-  collectionName: 'consultation_services';
-  info: {
-    displayName: 'Consultation service';
-    pluralName: 'consultation-services';
-    singularName: 'consultation-service';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    consultation: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::clinical.consultation'
-    >;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    durationMinutes: Schema.Attribute.Integer &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::scheduling.consultation-service'
-    > &
-      Schema.Attribute.Private;
-    notes: Schema.Attribute.Text;
-    performedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
-    publishedAt: Schema.Attribute.DateTime;
-    quantity: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 1;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<1>;
-    searchLabel: Schema.Attribute.String &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 255;
-      }>;
-    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
-    totalPrice: Schema.Attribute.Integer &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    unitPrice: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
 export interface ApiSchedulingService extends Struct.CollectionTypeSchema {
   collectionName: 'services';
   info: {
@@ -2135,7 +2071,17 @@ export interface ApiTravelTravelCase extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     pet: Schema.Attribute.Relation<'manyToOne', 'api::pet.pet'>;
     publishedAt: Schema.Attribute.DateTime;
-    requirements: Schema.Attribute.Component<'travel.requirement', true>;
+    requirements: Schema.Attribute.DynamicZone<
+      [
+        'travel.health-certificate',
+        'travel.rabies-titer',
+        'travel.microchip-check',
+        'travel.antiparasitic',
+        'travel.import-permit',
+        'travel.crate',
+        'travel.other-requirement',
+      ]
+    >;
     state: Schema.Attribute.Enumeration<
       [
         'initiated',
@@ -2692,7 +2638,6 @@ declare module '@strapi/strapi' {
       'api::pet.species': ApiPetSpecies;
       'api::scheduling.appointment': ApiSchedulingAppointment;
       'api::scheduling.clinic-room': ApiSchedulingClinicRoom;
-      'api::scheduling.consultation-service': ApiSchedulingConsultationService;
       'api::scheduling.service': ApiSchedulingService;
       'api::scheduling.service-category': ApiSchedulingServiceCategory;
       'api::shared.contact': ApiSharedContact;

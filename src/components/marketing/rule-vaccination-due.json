@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_marketing_rule_vaccination_dues",
+  "info": { "displayName": "Vacuna por vencer", "icon": "bell", "description": "Alguna mascota tiene un refuerzo que vence antes de la fecha indicada." },
+  "options": {},
+  "attributes": {
+    "vencePara": { "type": "date", "required": true },
+    "vaccine": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.vaccine" }
+  }
+}

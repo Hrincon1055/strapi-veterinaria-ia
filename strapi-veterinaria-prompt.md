@@ -48,7 +48,7 @@ src/
     customer/content-types/{customer,customer-note}/schema.json
     pet/content-types/{pet,species,breed}/schema.json
     clinical/content-types/{consultation,vaccine,pet-vaccination,allergy}/schema.json
-    scheduling/content-types/{appointment,service-category,service,clinic-room,consultation-service}/schema.json
+    scheduling/content-types/{appointment,service-category,service,clinic-room}/schema.json
     billing/content-types/{plan,plan-benefit,subscription,benefit-usage,invoice}/schema.json
     travel/content-types/travel-case/schema.json
     documents/content-types/{signed-document,signed-document-signer,signed-document-event}/schema.json
@@ -59,22 +59,23 @@ src/
     customer/consents.json
     clinical/attachment.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
-    scheduling/appointment-service.json
-    travel/requirement.json
+    scheduling/{appointment-service,consultation-service}.json
+    travel/{health-certificate,rabies-titer,microchip-check,antiparasitic,import-permit,crate,other-requirement}.json
+    marketing/{rule-species,rule-last-visit,rule-subscription,rule-vaccination-due,rule-city,rule-referral}.json
     documents/document-file.json
   extensions/users-permissions/content-types/user/schema.json
   index.(ts|js)            ← middlewares de validación (sección 8)
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **32 content types, 14 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **31 content types, 27 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
 1. Componentes.
 2. Catálogos: `country`, `species`, `breed`, `service-category`, `service`, `clinic-room`, `vaccine`, `plan`, `plan-benefit`.
 3. Personas: `profile`, extensión de `user`, `contact`, `verification-code`, `customer`, `customer-note`.
-4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `consultation-service`, `pet-vaccination`, `allergy`.
+4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`.
 5. Facturación: `subscription`, `benefit-usage`, `invoice`.
 6. Viajes, documentos, marketing, notificaciones.
 7. Middlewares de validación, migración de índices, roles y permisos, seed de catálogos.
@@ -173,18 +174,403 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 }
 ```
 
-### `src/components/travel/requirement.json`
+### `src/components/scheduling/consultation-service.json`
+
+Línea de servicio cobrada en una consulta.
+Fue un content type (`api::scheduling.consultation-service`) hasta que se comprobó que nadie lo referenciaba: es una línea de detalle que solo existe dentro de su consulta, igual que `appointment-service` dentro de su cita.
 ```json
 {
-  "collectionName": "components_travel_requirements",
-  "info": { "displayName": "Requirement", "icon": "check" },
+  "collectionName": "components_scheduling_consultation_services",
+  "info": {
+    "displayName": "Servicio prestado",
+    "icon": "priceTag",
+    "description": "Línea de servicio cobrada en una consulta."
+  },
   "options": {},
   "attributes": {
-    "requirementName": { "type": "string", "required": true, "maxLength": 150 },
-    "isCompleted": { "type": "boolean", "default": false },
-    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
-    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
-    "verifiedAt": { "type": "datetime" }
+    "service": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::scheduling.service"
+    },
+    "quantity": {
+      "type": "integer",
+      "required": true,
+      "default": 1,
+      "min": 1
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "min": 0
+    },
+    "unitPrice": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "totalPrice": {
+      "type": "integer",
+      "min": 0
+    },
+    "performedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}
+```
+
+### `src/components/travel/health-certificate.json`
+
+Certificado de exportación emitido por la autoridad sanitaria.
+```json
+{
+  "collectionName": "components_travel_health_certificates",
+  "info": {
+    "displayName": "Certificado zoosanitario",
+    "icon": "shield",
+    "description": "Certificado de exportación emitido por la autoridad sanitaria."
+  },
+  "options": {},
+  "attributes": {
+    "issuingAuthority": {
+      "type": "string",
+      "default": "ICA",
+      "maxLength": 120
+    },
+    "certificateNumber": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "issuedOn": {
+      "type": "date"
+    },
+    "validUntil": {
+      "type": "date"
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/rabies-titer.json`
+
+Titulación de anticuerpos antirrábicos. Muchos destinos exigen un mínimo de 0,5 UI/ml.
+```json
+{
+  "collectionName": "components_travel_rabies_titers",
+  "info": {
+    "displayName": "Titulación antirrábica",
+    "icon": "seed",
+    "description": "Titulación de anticuerpos antirrábicos. Muchos destinos exigen un mínimo de 0,5 UI/ml."
+  },
+  "options": {},
+  "attributes": {
+    "laboratory": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "sampleTakenOn": {
+      "type": "date"
+    },
+    "resultIuMl": {
+      "type": "decimal",
+      "min": 0
+    },
+    "thresholdIuMl": {
+      "type": "decimal",
+      "min": 0,
+      "default": 0.5
+    },
+    "validUntil": {
+      "type": "date"
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/microchip-check.json`
+
+Lectura del microchip y comprobación de la norma ISO.
+```json
+{
+  "collectionName": "components_travel_microchip_checks",
+  "info": {
+    "displayName": "Verificación de microchip",
+    "icon": "hashtag",
+    "description": "Lectura del microchip y comprobación de la norma ISO."
+  },
+  "options": {},
+  "attributes": {
+    "microchipNumber": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "implantedOn": {
+      "type": "date"
+    },
+    "isoCompliant": {
+      "type": "boolean",
+      "default": true
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/antiparasitic.json`
+
+Desparasitación exigida por el destino, con su ventana de tiempo antes del vuelo.
+```json
+{
+  "collectionName": "components_travel_antiparasitics",
+  "info": {
+    "displayName": "Tratamiento antiparasitario",
+    "icon": "plus",
+    "description": "Desparasitación exigida por el destino, con su ventana de tiempo antes del vuelo."
+  },
+  "options": {},
+  "attributes": {
+    "drug": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "administeredAt": {
+      "type": "datetime"
+    },
+    "windowHoursBeforeFlight": {
+      "type": "integer",
+      "min": 0,
+      "max": 720
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/import-permit.json`
+
+Autorización del país de destino.
+```json
+{
+  "collectionName": "components_travel_import_permits",
+  "info": {
+    "displayName": "Permiso de importación",
+    "icon": "gate",
+    "description": "Autorización del país de destino."
+  },
+  "options": {},
+  "attributes": {
+    "permitNumber": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "authority": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "expiresOn": {
+      "type": "date"
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/crate.json`
+
+Contenedor de viaje y su conformidad con la norma IATA.
+```json
+{
+  "collectionName": "components_travel_crates",
+  "info": {
+    "displayName": "Guacal de transporte",
+    "icon": "archive",
+    "description": "Contenedor de viaje y su conformidad con la norma IATA."
+  },
+  "options": {},
+  "attributes": {
+    "lengthCm": {
+      "type": "integer",
+      "min": 1
+    },
+    "widthCm": {
+      "type": "integer",
+      "min": 1
+    },
+    "heightCm": {
+      "type": "integer",
+      "min": 1
+    },
+    "iataCompliant": {
+      "type": "boolean",
+      "default": false
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
+  }
+}
+```
+
+### `src/components/travel/other-requirement.json`
+
+Escape para exigencias del destino que no encajan en los tipos anteriores.
+```json
+{
+  "collectionName": "components_travel_other_requirements",
+  "info": {
+    "displayName": "Otro requisito",
+    "icon": "question",
+    "description": "Escape para exigencias del destino que no encajan en los tipos anteriores."
+  },
+  "options": {},
+  "attributes": {
+    "requirementName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 150
+    },
+    "notes": {
+      "type": "text"
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "document": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "verifiedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "verifiedAt": {
+      "type": "datetime"
+    }
   }
 }
 ```
@@ -809,7 +1195,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "weightKg": { "type": "decimal", "min": 0 },
     "nextControlOn": { "type": "date" },
     "attachments": { "type": "component", "repeatable": true, "component": "clinical.attachment" },
-    "services": { "type": "relation", "relation": "oneToMany", "target": "api::scheduling.consultation-service", "mappedBy": "consultation" },
+    "services": { "type": "component", "repeatable": true, "component": "scheduling.consultation-service" },
     "archivedAt": { "type": "datetime" }
   }
 }
@@ -968,26 +1354,6 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 }
 ```
 
-#### `api::scheduling.consultation-service`
-```json
-{
-  "kind": "collectionType",
-  "collectionName": "consultation_services",
-  "info": { "singularName": "consultation-service", "pluralName": "consultation-services", "displayName": "Consultation service" },
-  "options": { "draftAndPublish": false },
-  "attributes": {
-    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation", "inversedBy": "services" },
-    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
-    "quantity": { "type": "integer", "required": true, "default": 1, "min": 1 },
-    "durationMinutes": { "type": "integer", "min": 0 },
-    "unitPrice": { "type": "integer", "required": true, "min": 0 },
-    "totalPrice": { "type": "integer", "min": 0 },
-    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
-    "notes": { "type": "text" }
-  }
-}
-```
-
 ### 7.7 Billing
 
 #### `api::billing.plan`
@@ -1104,7 +1470,18 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
     "airline": { "type": "string", "maxLength": 100 },
     "travelOn": { "type": "date", "required": true },
     "state": { "type": "enumeration", "enum": ["initiated", "docs_collected", "vet_check_passed", "ready_to_fly", "completed", "cancelled"], "default": "initiated", "required": true },
-    "requirements": { "type": "component", "repeatable": true, "component": "travel.requirement" }
+    "requirements": {
+      "type": "dynamiczone",
+      "components": [
+        "travel.health-certificate",
+        "travel.rabies-titer",
+        "travel.microchip-check",
+        "travel.antiparasitic",
+        "travel.import-permit",
+        "travel.crate",
+        "travel.other-requirement"
+      ]
+    }
   }
 }
 ```
@@ -1203,7 +1580,17 @@ Registro de auditoría: solo `create`. Ningún rol tiene `update` ni `delete`.
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "maxLength": 150 },
-    "segmentCriteria": { "type": "json" },
+    "segment": {
+      "type": "dynamiczone",
+      "components": [
+        "marketing.rule-species",
+        "marketing.rule-last-visit",
+        "marketing.rule-subscription",
+        "marketing.rule-vaccination-due",
+        "marketing.rule-city",
+        "marketing.rule-referral"
+      ]
+    },
     "state": { "type": "enumeration", "enum": ["draft", "scheduled", "running", "finished", "cancelled"], "default": "draft", "required": true },
     "metrics": { "type": "relation", "relation": "oneToMany", "target": "api::marketing.campaign-metric", "mappedBy": "campaign" }
   }
@@ -1349,7 +1736,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::clinical.allergy` | `pet` |
 | `api::scheduling.appointment` | `pet`, `responsible` |
 | `api::scheduling.service` | `category` |
-| `api::scheduling.consultation-service` | `consultation`, `service` |
+| componente `scheduling.consultation-service` | `service` (la pertenencia a la consulta es estructural) |
 | `api::billing.plan-benefit` | `plan` |
 | `api::billing.subscription` | `customer`, `pet`, `plan` |
 | `api::billing.benefit-usage` | `subscription`, `benefit` |
@@ -1392,7 +1779,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el usuario autenticado al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
-| `api::scheduling.consultation-service` | `totalPrice = quantity × unitPrice` (calculado, ignora el valor enviado) |
+| componente `scheduling.consultation-service` | `totalPrice = quantity × unitPrice` (calculado en el middleware de `consultation`, ignora el valor enviado) |
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
 | `api::billing.invoice` | exactamente uno de `subscription` o `consultation`; si `state` ≠ `draft`, rechazar cualquier `update` salvo cambios de `state`, `dianState`, `pdfUrl`, `xmlUrl` |
@@ -1467,7 +1854,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 32 content types y 14 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 31 content types y 27 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

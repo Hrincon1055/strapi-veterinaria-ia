@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_marketing_rule_subscriptions",
+  "info": { "displayName": "Suscripción", "icon": "priceTag", "description": "Filtra por si tiene suscripción y en qué estado." },
+  "options": {},
+  "attributes": {
+    "estado": { "type": "enumeration", "enum": ["active", "pending_payment", "suspended", "cancelled", "expired", "sin_suscripcion"], "default": "active", "required": true },
+    "plan": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan" }
+  }
+}

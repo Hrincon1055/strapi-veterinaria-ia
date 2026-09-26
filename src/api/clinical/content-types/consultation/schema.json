@@ -58,10 +58,9 @@
       "component": "clinical.attachment"
     },
     "services": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::scheduling.consultation-service",
-      "mappedBy": "consultation"
+      "type": "component",
+      "repeatable": true,
+      "component": "scheduling.consultation-service"
     },
     "archivedAt": {
       "type": "datetime"

@@ -183,6 +183,7 @@ function resumenSeccion(s) {
     populate: {
       vet: true,
       appointment: { populate: ['room'] },
+      services: { populate: ['service'] },
       sections: {
         on: {
           'clinical.anamnesis': true,
@@ -203,10 +204,8 @@ function resumenSeccion(s) {
   let granTotal = 0;
 
   for (const c of consultas) {
-    const servicios = await d('api::scheduling.consultation-service').findMany({
-      filters: { consultation: { documentId: c.documentId } },
-      populate: ['service'],
-    });
+    // Ya no hay que pedirlas aparte: vienen en el populate de la consulta.
+    const servicios = c.services ?? [];
 
     const total = servicios.reduce((s, x) => s + (x.totalPrice ?? 0), 0);
     granTotal += total;

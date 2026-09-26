@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_travel_crates",
+  "info": { "displayName": "Guacal de transporte", "icon": "archive", "description": "Contenedor de viaje y su conformidad con la norma IATA." },
+  "options": {},
+  "attributes": {
+    "lengthCm": { "type": "integer", "min": 1 },
+    "widthCm": { "type": "integer", "min": 1 },
+    "heightCm": { "type": "integer", "min": 1 },
+    "iataCompliant": { "type": "boolean", "default": false },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

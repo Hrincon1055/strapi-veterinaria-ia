@@ -303,6 +303,103 @@ export interface DocumentsDocumentFile extends Struct.ComponentSchema {
   };
 }
 
+export interface MarketingRuleCity extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_cities';
+  info: {
+    description: 'Ciudad de la direcci\u00F3n del cliente.';
+    displayName: 'Ciudad';
+    icon: 'pinMap';
+  };
+  attributes: {
+    city: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+  };
+}
+
+export interface MarketingRuleLastVisit extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_last_visits';
+  info: {
+    description: 'Filtra por cu\u00E1ndo fue la \u00FAltima consulta de sus mascotas.';
+    displayName: '\u00DAltima visita';
+    icon: 'clock';
+  };
+  attributes: {
+    fecha: Schema.Attribute.Date & Schema.Attribute.Required;
+    operador: Schema.Attribute.Enumeration<
+      ['sin_visita_desde', 'con_visita_desde']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'sin_visita_desde'>;
+  };
+}
+
+export interface MarketingRuleReferral extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_referrals';
+  info: {
+    description: 'Origen por el que lleg\u00F3 el cliente.';
+    displayName: 'C\u00F3mo nos conoci\u00F3';
+    icon: 'discuss';
+  };
+  attributes: {
+    referralSource: Schema.Attribute.Enumeration<
+      ['friend', 'social_media', 'google', 'ad', 'walk_in', 'other']
+    > &
+      Schema.Attribute.Required;
+  };
+}
+
+export interface MarketingRuleSpecies extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_species';
+  info: {
+    description: 'El cliente tiene al menos una mascota de la especie indicada.';
+    displayName: 'Tiene mascota de especie';
+    icon: 'paint';
+  };
+  attributes: {
+    species: Schema.Attribute.Relation<'manyToOne', 'api::pet.species'>;
+  };
+}
+
+export interface MarketingRuleSubscription extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_subscriptions';
+  info: {
+    description: 'Filtra por si tiene suscripci\u00F3n y en qu\u00E9 estado.';
+    displayName: 'Suscripci\u00F3n';
+    icon: 'priceTag';
+  };
+  attributes: {
+    estado: Schema.Attribute.Enumeration<
+      [
+        'active',
+        'pending_payment',
+        'suspended',
+        'cancelled',
+        'expired',
+        'sin_suscripcion',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    plan: Schema.Attribute.Relation<'manyToOne', 'api::billing.plan'>;
+  };
+}
+
+export interface MarketingRuleVaccinationDue extends Struct.ComponentSchema {
+  collectionName: 'components_marketing_rule_vaccination_dues';
+  info: {
+    description: 'Alguna mascota tiene un refuerzo que vence antes de la fecha indicada.';
+    displayName: 'Vacuna por vencer';
+    icon: 'bell';
+  };
+  attributes: {
+    vaccine: Schema.Attribute.Relation<'manyToOne', 'api::clinical.vaccine'>;
+    vencePara: Schema.Attribute.Date & Schema.Attribute.Required;
+  };
+}
+
 export interface SchedulingAppointmentService extends Struct.ComponentSchema {
   collectionName: 'components_scheduling_appointment_services';
   info: {
@@ -325,6 +422,54 @@ export interface SchedulingAppointmentService extends Struct.ComponentSchema {
         number
       >;
     service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
+  };
+}
+
+export interface SchedulingConsultationService extends Struct.ComponentSchema {
+  collectionName: 'components_scheduling_consultation_services';
+  info: {
+    description: 'L\u00EDnea de servicio cobrada en una consulta.';
+    displayName: 'Servicio prestado';
+    icon: 'priceTag';
+  };
+  attributes: {
+    durationMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    notes: Schema.Attribute.Text;
+    performedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    quantity: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
+    totalPrice: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    unitPrice: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
   };
 }
 
@@ -365,20 +510,212 @@ export interface SharedAddress extends Struct.ComponentSchema {
   };
 }
 
-export interface TravelRequirement extends Struct.ComponentSchema {
-  collectionName: 'components_travel_requirements';
+export interface TravelAntiparasitic extends Struct.ComponentSchema {
+  collectionName: 'components_travel_antiparasitics';
   info: {
-    displayName: 'Requirement';
-    icon: 'check';
+    description: 'Desparasitaci\u00F3n exigida por el destino, con su ventana de tiempo antes del vuelo.';
+    displayName: 'Tratamiento antiparasitario';
+    icon: 'plus';
+  };
+  attributes: {
+    administeredAt: Schema.Attribute.DateTime;
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    drug: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    windowHoursBeforeFlight: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 720;
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
+export interface TravelCrate extends Struct.ComponentSchema {
+  collectionName: 'components_travel_crates';
+  info: {
+    description: 'Contenedor de viaje y su conformidad con la norma IATA.';
+    displayName: 'Guacal de transporte';
+    icon: 'archive';
+  };
+  attributes: {
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    heightCm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    iataCompliant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    lengthCm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    widthCm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+  };
+}
+
+export interface TravelHealthCertificate extends Struct.ComponentSchema {
+  collectionName: 'components_travel_health_certificates';
+  info: {
+    description: 'Certificado de exportaci\u00F3n emitido por la autoridad sanitaria.';
+    displayName: 'Certificado zoosanitario';
+    icon: 'shield';
+  };
+  attributes: {
+    certificateNumber: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    issuedOn: Schema.Attribute.Date;
+    issuingAuthority: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }> &
+      Schema.Attribute.DefaultTo<'ICA'>;
+    validUntil: Schema.Attribute.Date;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface TravelImportPermit extends Struct.ComponentSchema {
+  collectionName: 'components_travel_import_permits';
+  info: {
+    description: 'Autorizaci\u00F3n del pa\u00EDs de destino.';
+    displayName: 'Permiso de importaci\u00F3n';
+    icon: 'gate';
+  };
+  attributes: {
+    authority: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    expiresOn: Schema.Attribute.Date;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    permitNumber: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface TravelMicrochipCheck extends Struct.ComponentSchema {
+  collectionName: 'components_travel_microchip_checks';
+  info: {
+    description: 'Lectura del microchip y comprobaci\u00F3n de la norma ISO.';
+    displayName: 'Verificaci\u00F3n de microchip';
+    icon: 'hashtag';
+  };
+  attributes: {
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    implantedOn: Schema.Attribute.Date;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isoCompliant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    microchipNumber: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface TravelOtherRequirement extends Struct.ComponentSchema {
+  collectionName: 'components_travel_other_requirements';
+  info: {
+    description: 'Escape para exigencias del destino que no encajan en los tipos anteriores.';
+    displayName: 'Otro requisito';
+    icon: 'question';
   };
   attributes: {
     document: Schema.Attribute.Media<'images' | 'files'>;
     isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    notes: Schema.Attribute.Text;
     requirementName: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 150;
       }>;
+    verifiedAt: Schema.Attribute.DateTime;
+    verifiedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface TravelRabiesTiter extends Struct.ComponentSchema {
+  collectionName: 'components_travel_rabies_titers';
+  info: {
+    description: 'Titulaci\u00F3n de anticuerpos antirr\u00E1bicos. Muchos destinos exigen un m\u00EDnimo de 0,5 UI/ml.';
+    displayName: 'Titulaci\u00F3n antirr\u00E1bica';
+    icon: 'seed';
+  };
+  attributes: {
+    document: Schema.Attribute.Media<'images' | 'files'>;
+    isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    laboratory: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    resultIuMl: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    sampleTakenOn: Schema.Attribute.Date;
+    thresholdIuMl: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0.5>;
+    validUntil: Schema.Attribute.Date;
     verifiedAt: Schema.Attribute.DateTime;
     verifiedBy: Schema.Attribute.Relation<
       'manyToOne',
@@ -401,9 +738,22 @@ declare module '@strapi/strapi' {
       'clinical.treatment-plan': ClinicalTreatmentPlan;
       'customer.consents': CustomerConsents;
       'documents.document-file': DocumentsDocumentFile;
+      'marketing.rule-city': MarketingRuleCity;
+      'marketing.rule-last-visit': MarketingRuleLastVisit;
+      'marketing.rule-referral': MarketingRuleReferral;
+      'marketing.rule-species': MarketingRuleSpecies;
+      'marketing.rule-subscription': MarketingRuleSubscription;
+      'marketing.rule-vaccination-due': MarketingRuleVaccinationDue;
       'scheduling.appointment-service': SchedulingAppointmentService;
+      'scheduling.consultation-service': SchedulingConsultationService;
       'shared.address': SharedAddress;
-      'travel.requirement': TravelRequirement;
+      'travel.antiparasitic': TravelAntiparasitic;
+      'travel.crate': TravelCrate;
+      'travel.health-certificate': TravelHealthCertificate;
+      'travel.import-permit': TravelImportPermit;
+      'travel.microchip-check': TravelMicrochipCheck;
+      'travel.other-requirement': TravelOtherRequirement;
+      'travel.rabies-titer': TravelRabiesTiter;
     }
   }
 }

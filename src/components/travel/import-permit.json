@@ -1,9 +1,11 @@
 {
-  "collectionName": "components_travel_requirements",
-  "info": { "displayName": "Requirement", "icon": "check" },
+  "collectionName": "components_travel_import_permits",
+  "info": { "displayName": "Permiso de importación", "icon": "gate", "description": "Autorización del país de destino." },
   "options": {},
   "attributes": {
-    "requirementName": { "type": "string", "required": true, "maxLength": 150 },
+    "permitNumber": { "type": "string", "maxLength": 60 },
+    "authority": { "type": "string", "maxLength": 150 },
+    "expiresOn": { "type": "date" },
     "isCompleted": { "type": "boolean", "default": false },
     "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
     "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },

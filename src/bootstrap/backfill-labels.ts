@@ -21,7 +21,7 @@ const ORDEN = [
   'api::pet.pet',
   'api::clinical.consultation',
   'api::billing.subscription',
-  'api::scheduling.consultation-service',
+  
   'api::notification.notification-recipient',
   'api::marketing.campaign-metric',
 ];

@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_travel_microchip_checks",
+  "info": { "displayName": "Verificación de microchip", "icon": "hashtag", "description": "Lectura del microchip y comprobación de la norma ISO." },
+  "options": {},
+  "attributes": {
+    "microchipNumber": { "type": "string", "maxLength": 20 },
+    "implantedOn": { "type": "date" },
+    "isoCompliant": { "type": "boolean", "default": true },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

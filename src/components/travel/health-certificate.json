@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_travel_health_certificates",
+  "info": { "displayName": "Certificado zoosanitario", "icon": "shield", "description": "Certificado de exportación emitido por la autoridad sanitaria." },
+  "options": {},
+  "attributes": {
+    "issuingAuthority": { "type": "string", "default": "ICA", "maxLength": 120 },
+    "certificateNumber": { "type": "string", "maxLength": 60 },
+    "issuedOn": { "type": "date" },
+    "validUntil": { "type": "date" },
+    "isCompleted": { "type": "boolean", "default": false },
+    "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedAt": { "type": "datetime" }
+  }
+}

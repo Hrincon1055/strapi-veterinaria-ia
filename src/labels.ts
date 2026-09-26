@@ -93,10 +93,6 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
     build: (e) => unir([nombrePersona(e.recipient), e.notification?.title]),
   },
 
-  'api::scheduling.consultation-service': {
-    populate: ['service'],
-    build: (e) => unir([e.service?.name, e.quantity > 1 ? `×${e.quantity}` : null]),
-  },
 
   'api::marketing.campaign-metric': {
     populate: ['campaign'],

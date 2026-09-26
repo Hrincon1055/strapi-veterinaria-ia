@@ -1,0 +1,8 @@
+{
+  "collectionName": "components_marketing_rule_cities",
+  "info": { "displayName": "Ciudad", "icon": "pinMap", "description": "Ciudad de la dirección del cliente." },
+  "options": {},
+  "attributes": {
+    "city": { "type": "string", "required": true, "maxLength": 100 }
+  }
+}

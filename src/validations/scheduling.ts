@@ -139,21 +139,4 @@ export default (strapi: Core.Strapi): void => {
     return next();
   });
 
-  // ---- api::scheduling.consultation-service -------------------------------
-
-  on(strapi, 'api::scheduling.consultation-service', ['create', 'update'], async (ctx, next) => {
-    const data = ctx.params.data ?? {};
-    const current = await loadCurrent(strapi, ctx);
-
-    const quantity = effective<number>(data, current, 'quantity') ?? 1;
-    const unitPrice = effective<number>(data, current, 'unitPrice');
-
-    // El total siempre se calcula: se ignora el valor que envíe el cliente.
-    if (unitPrice != null) {
-      data.totalPrice = quantity * unitPrice;
-      ctx.params.data = data;
-    }
-
-    return next();
-  });
 };

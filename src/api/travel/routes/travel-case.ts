@@ -2,15 +2,39 @@ import { factories } from '@strapi/strapi';
 
 /**
  * La policy global `is-owner` restringe estas rutas a los datos del cliente
- * autenticado. Solo actúa sobre usuarios con rol `client`; el staff pasa sin
- * filtro porque su alcance lo define el permiso del rol.
+ * autenticado; el staff pasa sin filtro.
+ *
+ * `populate-requirements` rellena la dynamic zone de requisitos y
+ * `query-defaults` traduce `?pet=…&desde=…&hasta=…` sobre la fecha de viaje.
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
+const lectura = {
+  ...ownerOnly,
+  middlewares: [
+    'global::date-range',
+    'api::travel.populate-requirements',
+    {
+      name: 'global::query-defaults',
+      config: {
+        sort: 'travelOn:desc',
+        populate: { destinationCountry: true, pet: true },
+        atajos: {
+          pet: { campo: 'pet', relacionPor: 'documentId' },
+          destino: { campo: 'destinationCountry', relacionPor: 'isoCode' },
+          estado: { campo: 'state' },
+          desde: { campo: 'travelOn', operador: '$gte' },
+          hasta: { campo: 'travelOn', operador: '$lte' },
+        },
+      },
+    },
+  ],
+};
+
 export default factories.createCoreRouter('api::travel.travel-case', {
   config: {
-    find: ownerOnly,
-    findOne: ownerOnly,
+    find: lectura,
+    findOne: lectura,
     update: ownerOnly,
     delete: ownerOnly,
   },
