@@ -671,6 +671,10 @@ export interface ApiBillingSubscription extends Struct.CollectionTypeSchema {
     plan: Schema.Attribute.Relation<'manyToOne', 'api::billing.plan'>;
     publishedAt: Schema.Attribute.DateTime;
     renewalOn: Schema.Attribute.Date;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     startOn: Schema.Attribute.Date & Schema.Attribute.Required;
     state: Schema.Attribute.Enumeration<
       ['pending_payment', 'active', 'suspended', 'cancelled', 'expired']
@@ -772,6 +776,10 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     pet: Schema.Attribute.Relation<'manyToOne', 'api::pet.pet'>;
     publishedAt: Schema.Attribute.DateTime;
     reason: Schema.Attribute.Text;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     services: Schema.Attribute.Relation<
       'oneToMany',
       'api::scheduling.consultation-service'
@@ -922,6 +930,10 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
     referralSource: Schema.Attribute.Enumeration<
       ['friend', 'social_media', 'google', 'ad', 'walk_in', 'other']
     >;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1231,6 +1243,10 @@ export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
       }>;
     photo: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1346,6 +1362,10 @@ export interface ApiMarketingCampaignMetric
       > &
       Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1518,6 +1538,10 @@ export interface ApiNotificationNotificationRecipient
     publishedAt: Schema.Attribute.DateTime;
     readAt: Schema.Attribute.DateTime;
     recipient: Schema.Attribute.Relation<'manyToOne', 'api::identity.profile'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1548,6 +1572,10 @@ export interface ApiPetBreed extends Struct.CollectionTypeSchema {
         maxLength: 80;
       }>;
     publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     species: Schema.Attribute.Relation<'manyToOne', 'api::pet.species'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1597,6 +1625,10 @@ export interface ApiPetPet extends Struct.CollectionTypeSchema {
     owner: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     photos: Schema.Attribute.Media<'images', true>;
     publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     sex: Schema.Attribute.Enumeration<['male', 'female', 'unknown']> &
       Schema.Attribute.DefaultTo<'unknown'>;
     species: Schema.Attribute.Relation<'manyToOne', 'api::pet.species'>;
@@ -1818,6 +1850,10 @@ export interface ApiSchedulingConsultationService
         number
       > &
       Schema.Attribute.DefaultTo<1>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
     totalPrice: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
@@ -1962,6 +1998,10 @@ export interface ApiSharedContact extends Struct.CollectionTypeSchema {
     notes: Schema.Attribute.Text;
     profile: Schema.Attribute.Relation<'manyToOne', 'api::identity.profile'>;
     publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

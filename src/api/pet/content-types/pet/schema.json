@@ -1,24 +1,104 @@
 {
   "kind": "collectionType",
   "collectionName": "pets",
-  "info": { "singularName": "pet", "pluralName": "pets", "displayName": "Pet" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "pet",
+    "pluralName": "pets",
+    "displayName": "Pet"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "owner": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "pets" },
-    "name": { "type": "string", "required": true, "maxLength": 80 },
-    "species": { "type": "relation", "relation": "manyToOne", "target": "api::pet.species" },
-    "breed": { "type": "relation", "relation": "manyToOne", "target": "api::pet.breed" },
-    "color": { "type": "string", "maxLength": 60 },
-    "sex": { "type": "enumeration", "enum": ["male", "female", "unknown"], "default": "unknown" },
-    "birthDate": { "type": "date" },
-    "weightKg": { "type": "decimal", "min": 0 },
-    "microchip": { "type": "string", "unique": true, "maxLength": 20 },
-    "sterilizationState": { "type": "enumeration", "enum": ["intact", "sterilized", "unknown"], "default": "unknown" },
-    "sterilizedOn": { "type": "date" },
-    "photos": { "type": "media", "multiple": true, "allowedTypes": ["images"] },
-    "consultations": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.consultation", "mappedBy": "pet" },
-    "vaccinations": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.pet-vaccination", "mappedBy": "pet" },
-    "allergies": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.allergy", "mappedBy": "pet" },
-    "archivedAt": { "type": "datetime" }
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer",
+      "inversedBy": "pets"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "species": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pet.species"
+    },
+    "breed": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pet.breed"
+    },
+    "color": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "sex": {
+      "type": "enumeration",
+      "enum": [
+        "male",
+        "female",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "birthDate": {
+      "type": "date"
+    },
+    "weightKg": {
+      "type": "decimal",
+      "min": 0
+    },
+    "microchip": {
+      "type": "string",
+      "unique": true,
+      "maxLength": 20
+    },
+    "sterilizationState": {
+      "type": "enumeration",
+      "enum": [
+        "intact",
+        "sterilized",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "sterilizedOn": {
+      "type": "date"
+    },
+    "photos": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "consultations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::clinical.consultation",
+      "mappedBy": "pet"
+    },
+    "vaccinations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::clinical.pet-vaccination",
+      "mappedBy": "pet"
+    },
+    "allergies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::clinical.allergy",
+      "mappedBy": "pet"
+    },
+    "archivedAt": {
+      "type": "datetime"
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

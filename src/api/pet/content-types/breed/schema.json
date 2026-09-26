@@ -1,11 +1,33 @@
 {
   "kind": "collectionType",
   "collectionName": "breeds",
-  "info": { "singularName": "breed", "pluralName": "breeds", "displayName": "Breed" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "breed",
+    "pluralName": "breeds",
+    "displayName": "Breed"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "species": { "type": "relation", "relation": "manyToOne", "target": "api::pet.species", "inversedBy": "breeds" },
-    "name": { "type": "string", "required": true, "maxLength": 80 },
-    "isActive": { "type": "boolean", "default": true }
+    "species": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pet.species",
+      "inversedBy": "breeds"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

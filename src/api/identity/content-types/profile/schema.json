@@ -1,22 +1,98 @@
 {
   "kind": "collectionType",
   "collectionName": "profiles",
-  "info": { "singularName": "profile", "pluralName": "profiles", "displayName": "Profile" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "profile",
+    "pluralName": "profiles",
+    "displayName": "Profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "firstName": { "type": "string", "required": true, "maxLength": 100 },
-    "lastName": { "type": "string", "required": true, "maxLength": 100 },
-    "documentType": { "type": "enumeration", "enum": ["cc", "ce", "ti", "passport", "nit", "ppt"], "required": true },
-    "documentNumber": { "type": "string", "required": true, "maxLength": 30 },
-    "occupation": { "type": "string", "maxLength": 100 },
-    "birthDate": { "type": "date" },
-    "gender": { "type": "enumeration", "enum": ["male", "female", "other"] },
-    "country": { "type": "relation", "relation": "manyToOne", "target": "api::shared.country" },
-    "photo": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
-    "addresses": { "type": "component", "repeatable": true, "component": "shared.address" },
-    "contacts": { "type": "relation", "relation": "oneToMany", "target": "api::shared.contact", "mappedBy": "profile" },
-    "user": { "type": "relation", "relation": "oneToOne", "target": "plugin::users-permissions.user", "mappedBy": "profile" },
-    "customer": { "type": "relation", "relation": "oneToOne", "target": "api::customer.customer", "mappedBy": "profile" },
-    "archivedAt": { "type": "datetime" }
+    "firstName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "lastName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "documentType": {
+      "type": "enumeration",
+      "enum": [
+        "cc",
+        "ce",
+        "ti",
+        "passport",
+        "nit",
+        "ppt"
+      ],
+      "required": true
+    },
+    "documentNumber": {
+      "type": "string",
+      "required": true,
+      "maxLength": 30
+    },
+    "occupation": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "birthDate": {
+      "type": "date"
+    },
+    "gender": {
+      "type": "enumeration",
+      "enum": [
+        "male",
+        "female",
+        "other"
+      ]
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::shared.country"
+    },
+    "photo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "addresses": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.address"
+    },
+    "contacts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::shared.contact",
+      "mappedBy": "profile"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "profile"
+    },
+    "customer": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::customer.customer",
+      "mappedBy": "profile"
+    },
+    "archivedAt": {
+      "type": "datetime"
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

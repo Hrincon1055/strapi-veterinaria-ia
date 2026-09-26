@@ -6,6 +6,7 @@ import clinical from './clinical';
 import customer from './customer';
 import documents from './documents';
 import identity from './identity';
+import labels from './labels';
 import notification from './notification';
 import ownership from './ownership';
 import pet from './pet';
@@ -27,6 +28,7 @@ import travel from './travel';
 export default (strapi: Core.Strapi): void => {
   archived(strapi);
   ownership(strapi);
+  labels(strapi);
   requiredRelations(strapi);
 
   shared(strapi);

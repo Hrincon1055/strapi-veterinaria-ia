@@ -1,5 +1,6 @@
 import { errors } from '@strapi/utils';
 import type { Core } from '@strapi/strapi';
+import { includeArchived } from './archived';
 
 export const { ValidationError } = errors;
 
@@ -17,6 +18,7 @@ export type Middleware = (ctx: DocumentContext, next: () => Promise<any>) => Pro
 
 export const WRITE_ACTIONS = ['create', 'update'];
 export const READ_ACTIONS = ['findMany', 'findFirst', 'findOne'];
+
 
 export const isWrite = (ctx: DocumentContext) => WRITE_ACTIONS.includes(ctx.action);
 
@@ -65,7 +67,12 @@ export async function loadCurrent(
   return strapi.documents(ctx.uid as any).findOne({
     documentId: ctx.params.documentId,
     populate: populate as any,
-  });
+    // El filtro de archivados se aplica también a `findOne`, así que sin esto
+    // una lectura interna de un documento archivado devolvería null y la
+    // validación creería que se está creando. Mencionar `archivedAt` hace que
+    // ese middleware no toque la consulta.
+    filters: includeArchived(ctx.uid) as any,
+  } as any);
 }
 
 /** Valor efectivo de un campo escalar tras aplicar los datos entrantes. */

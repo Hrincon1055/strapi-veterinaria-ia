@@ -16,6 +16,19 @@ export const ARCHIVABLE_UIDS = [
 
 const READ_ACTIONS = ['findMany', 'findFirst', 'findOne'];
 
+/**
+ * Filtro que no descarta nada pero menciona `archivedAt`, para que el filtro
+ * de arriba deje pasar la consulta intacta: las lecturas internas sí tienen
+ * que ver los documentos archivados.
+ *
+ * Solo se aplica a los content types que tienen el campo; en los demás Strapi
+ * rechazaría la consulta con "Invalid key archivedAt".
+ */
+export const includeArchived = (uid: string): Record<string, any> =>
+  ARCHIVABLE_UIDS.includes(uid)
+    ? { $or: [{ archivedAt: { $null: true } }, { archivedAt: { $null: false } }] }
+    : {};
+
 /** Busca `archivedAt` en cualquier nivel del árbol de filtros, incluidos $and/$or. */
 function mentionsArchivedAt(filters: unknown): boolean {
   if (!filters || typeof filters !== 'object') return false;

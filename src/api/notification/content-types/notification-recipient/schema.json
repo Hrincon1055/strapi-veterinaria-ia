@@ -1,13 +1,41 @@
 {
   "kind": "collectionType",
   "collectionName": "notification_recipients",
-  "info": { "singularName": "notification-recipient", "pluralName": "notification-recipients", "displayName": "Notification recipient" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "notification-recipient",
+    "pluralName": "notification-recipients",
+    "displayName": "Notification recipient"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "notification": { "type": "relation", "relation": "manyToOne", "target": "api::notification.notification", "inversedBy": "recipients" },
-    "recipient": { "type": "relation", "relation": "manyToOne", "target": "api::identity.profile" },
-    "readAt": { "type": "datetime" },
-    "archivedAt": { "type": "datetime" },
-    "deliveries": { "type": "relation", "relation": "oneToMany", "target": "api::notification.notification-delivery", "mappedBy": "recipient" }
+    "notification": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::notification.notification",
+      "inversedBy": "recipients"
+    },
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::identity.profile"
+    },
+    "readAt": {
+      "type": "datetime"
+    },
+    "archivedAt": {
+      "type": "datetime"
+    },
+    "deliveries": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::notification.notification-delivery",
+      "mappedBy": "recipient"
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

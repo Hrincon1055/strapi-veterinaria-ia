@@ -1,14 +1,49 @@
 {
   "kind": "collectionType",
   "collectionName": "campaign_metrics",
-  "info": { "singularName": "campaign-metric", "pluralName": "campaign-metrics", "displayName": "Campaign metric" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "campaign-metric",
+    "pluralName": "campaign-metrics",
+    "displayName": "Campaign metric"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "campaign": { "type": "relation", "relation": "manyToOne", "target": "api::marketing.campaign", "inversedBy": "metrics" },
-    "emailsSent": { "type": "integer", "default": 0, "min": 0 },
-    "opens": { "type": "integer", "default": 0, "min": 0 },
-    "clicks": { "type": "integer", "default": 0, "min": 0 },
-    "conversions": { "type": "integer", "default": 0, "min": 0 },
-    "attributedSales": { "type": "integer", "default": 0, "min": 0 }
+    "campaign": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketing.campaign",
+      "inversedBy": "metrics"
+    },
+    "emailsSent": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "opens": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "clicks": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "conversions": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "attributedSales": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

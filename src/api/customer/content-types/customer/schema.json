@@ -1,15 +1,60 @@
 {
   "kind": "collectionType",
   "collectionName": "customers",
-  "info": { "singularName": "customer", "pluralName": "customers", "displayName": "Customer" },
-  "options": { "draftAndPublish": false },
+  "info": {
+    "singularName": "customer",
+    "pluralName": "customers",
+    "displayName": "Customer"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
   "attributes": {
-    "profile": { "type": "relation", "relation": "oneToOne", "target": "api::identity.profile", "inversedBy": "customer" },
-    "referralSource": { "type": "enumeration", "enum": ["friend", "social_media", "google", "ad", "walk_in", "other"] },
-    "referralNotes": { "type": "string", "maxLength": 255 },
-    "consents": { "type": "component", "repeatable": false, "component": "customer.consents", "required": true },
-    "pets": { "type": "relation", "relation": "oneToMany", "target": "api::pet.pet", "mappedBy": "owner" },
-    "notes": { "type": "relation", "relation": "oneToMany", "target": "api::customer.customer-note", "mappedBy": "customer" },
-    "archivedAt": { "type": "datetime" }
+    "profile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::identity.profile",
+      "inversedBy": "customer"
+    },
+    "referralSource": {
+      "type": "enumeration",
+      "enum": [
+        "friend",
+        "social_media",
+        "google",
+        "ad",
+        "walk_in",
+        "other"
+      ]
+    },
+    "referralNotes": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "consents": {
+      "type": "component",
+      "repeatable": false,
+      "component": "customer.consents",
+      "required": true
+    },
+    "pets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::pet.pet",
+      "mappedBy": "owner"
+    },
+    "notes": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::customer.customer-note",
+      "mappedBy": "customer"
+    },
+    "archivedAt": {
+      "type": "datetime"
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }
