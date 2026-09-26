@@ -102,6 +102,9 @@ const ROLES: RoleSpec[] = [
       // El cliente busca en su propia historia: la policy is-owner la acota.
       'api::clinical.consultation.searchBySection',
       ...actions(['api::identity.profile', 'api::shared.contact', 'api::notification.notification-recipient'], ['update']),
+      // El catálogo de vacunas: sin él, populate[vaccine] del carné se
+      // descarta en el saneado y el cliente ve dosis sin nombre.
+      ...actions(['api::clinical.vaccine'], READ),
       // DECISIÓN: el cliente también lee los catálogos. La tabla del modelo
       // solo se los da a Public, pero en Strapi un usuario autenticado no
       // hereda los permisos de Public, y sin esto no podría elegir servicio al

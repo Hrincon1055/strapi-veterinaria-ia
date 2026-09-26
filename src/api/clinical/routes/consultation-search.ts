@@ -25,6 +25,7 @@ export default {
       handler: 'api::clinical.consultation.searchBySection',
       config: {
         policies: ['global::is-owner'],
+        middlewares: ['global::date-range'],
       },
     },
   ],

@@ -5,19 +5,36 @@ import { factories } from '@strapi/strapi';
  * autenticado. Solo actúa sobre usuarios con rol `client`; el staff pasa sin
  * filtro porque su alcance lo define el permiso del rol.
  *
- * `populate-sections` rellena la dynamic zone de la historia clínica para que
- * el cliente no tenga que enumerar los siete componentes en cada petición.
+ * Los dos middlewares hacen que la app no tenga que escribir la consulta larga:
+ * `populate-sections` rellena la dynamic zone y `query-defaults` traduce
+ * `?pet=…&desde=…&hasta=…` a filtros y ordena por fecha descendente.
  */
 const ownerOnly = { policies: ['global::is-owner'] };
-const conSecciones = {
+
+const lectura = {
   ...ownerOnly,
-  middlewares: ['api::clinical.populate-sections'],
+  middlewares: [
+    // Valida el rango antes de que query-defaults lo traduzca a filtros.
+    'global::date-range',
+    'api::clinical.populate-sections',
+    {
+      name: 'global::query-defaults',
+      config: {
+        sort: 'consultedAt:desc',
+        atajos: {
+          pet: { campo: 'pet', relacionPor: 'documentId' },
+          desde: { campo: 'consultedAt', operador: '$gte' },
+          hasta: { campo: 'consultedAt', operador: '$lte' },
+        },
+      },
+    },
+  ],
 };
 
 export default factories.createCoreRouter('api::clinical.consultation', {
   config: {
-    find: conSecciones,
-    findOne: conSecciones,
+    find: lectura,
+    findOne: lectura,
     update: ownerOnly,
     delete: ownerOnly,
   },

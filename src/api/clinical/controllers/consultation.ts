@@ -17,9 +17,11 @@ export default factories.createCoreController('api::clinical.consultation', ({ s
       throw new ValidationError('Faltan los parámetros "section" y "q"');
     }
 
+    // `ctx.state.rango` lo deja el middleware global::date-range, que ya
+    // validó el formato y que el rango no esté invertido.
     const resultados = await strapi
       .service('api::clinical.consultation')
-      .buscarPorSeccion(String(section), String(q), Number(limit) || 50);
+      .buscarPorSeccion(String(section), String(q), Number(limit) || 50, ctx.state?.rango ?? {});
 
     // El saneado de salida aplica los permisos del rol que pregunta: sin él
     // se devolverían campos que ese rol no puede leer.

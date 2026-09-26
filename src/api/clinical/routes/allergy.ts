@@ -1,16 +1,37 @@
 import { factories } from '@strapi/strapi';
 
 /**
- * La policy global `is-owner` restringe estas rutas a los datos del cliente
- * autenticado. Solo actúa sobre usuarios con rol `client`; el staff pasa sin
- * filtro porque su alcance lo define el permiso del rol.
+ * Las alergias se consultan casi siempre como "las activas de esta mascota",
+ * que es lo primero que un veterinario mira antes de recetar.
+ *
+ *   antes:  ?filters[pet][documentId][$eq]=xxx&filters[isActive][$eq]=true
+ *   ahora:  ?pet=xxx&activa=true
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
+const lectura = {
+  ...ownerOnly,
+  middlewares: [
+    // Valida el rango antes de que query-defaults lo traduzca a filtros.
+    'global::date-range',
+    {
+      name: 'global::query-defaults',
+      config: {
+        sort: 'diagnosedOn:desc',
+        atajos: {
+          pet: { campo: 'pet', relacionPor: 'documentId' },
+          activa: { campo: 'isActive' },
+          gravedad: { campo: 'severity' },
+        },
+      },
+    },
+  ],
+};
+
 export default factories.createCoreRouter('api::clinical.allergy', {
   config: {
-    find: ownerOnly,
-    findOne: ownerOnly,
+    find: lectura,
+    findOne: lectura,
     update: ownerOnly,
     delete: ownerOnly,
   },

@@ -35,7 +35,12 @@ export default factories.createCoreService('api::clinical.consultation', ({ stra
    * `clinical.treatment-plan`, así que hay que subir dos saltos de
    * `*_cmps` para llegar a la consulta.
    */
-  async buscarPorSeccion(componente: string, texto: string, limite = 50) {
+  async buscarPorSeccion(
+    componente: string,
+    texto: string,
+    limite = 50,
+    rango: { desde?: string | null; hasta?: string | null } = {}
+  ) {
     const buscable = BUSCABLES[componente];
     if (!buscable) {
       // ValidationError y no Error: un componente inexistente es culpa de
@@ -88,8 +93,18 @@ export default factories.createCoreService('api::clinical.consultation', ({ stra
     const documentIds = internas.map((c: any) => c.documentId);
     if (documentIds.length === 0) return [];
 
+    // El rango se aplica aquí y no en el SQL de arriba: `consulted_at` está en
+    // la consulta, no en el componente, y así pasa por el mismo camino que el
+    // resto de lecturas (filtro de archivados y propiedad incluidos).
+    const porFecha: Record<string, any> = {};
+    if (rango.desde) porFecha.$gte = rango.desde;
+    if (rango.hasta) porFecha.$lte = rango.hasta;
+
     return strapi.documents('api::clinical.consultation').findMany({
-      filters: { documentId: { $in: documentIds } } as any,
+      filters: {
+        documentId: { $in: documentIds },
+        ...(Object.keys(porFecha).length > 0 ? { consultedAt: porFecha } : {}),
+      } as any,
       populate: { pet: true, sections: { on: { [componente]: true } } } as any,
       sort: 'consultedAt:desc' as any,
     });
