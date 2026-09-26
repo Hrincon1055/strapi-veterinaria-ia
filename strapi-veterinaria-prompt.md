@@ -58,6 +58,7 @@ src/
     shared/address.json
     customer/consents.json
     clinical/attachment.json
+    clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
     scheduling/appointment-service.json
     travel/requirement.json
     documents/document-file.json
@@ -66,7 +67,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **32 content types, 6 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **32 content types, 14 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -124,12 +125,36 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 ```json
 {
   "collectionName": "components_clinical_attachments",
-  "info": { "displayName": "Attachment", "icon": "paperclip" },
+  "info": {
+    "displayName": "Attachment",
+    "icon": "attachment"
+  },
   "options": {},
   "attributes": {
-    "file": { "type": "media", "multiple": false, "required": true, "allowedTypes": ["images", "files"] },
-    "attachmentKind": { "type": "enumeration", "enum": ["lab_result", "x_ray", "ultrasound", "photo", "other"], "default": "other" },
-    "description": { "type": "string", "maxLength": 255 }
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "attachmentKind": {
+      "type": "enumeration",
+      "enum": [
+        "lab_result",
+        "x_ray",
+        "ultrasound",
+        "photo",
+        "other"
+      ],
+      "default": "other"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }
 ```
@@ -177,6 +202,378 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
   }
 }
 ```
+
+---
+
+## 5.1 Secciones clínicas (dynamic zone de `consultation.sections`)
+
+Siete componentes componen la historia clínica, más `clinical.medication`, que no va suelto en la zona sino anidado y repetible dentro de `clinical.treatment-plan`.
+
+El orden de la zona lo decide quien escribe la consulta; el orden de abajo es el clínico habitual. Una visita de estética usa tres secciones y una cirugía las siete: esa es justamente la razón de la zona frente a campos fijos.
+
+### `src/components/clinical/anamnesis.json`
+
+Entrevista clínica: antecedentes, síntomas y evolución referidos por quien trae al paciente.
+```json
+{
+  "collectionName": "components_clinical_anamneses",
+  "info": {
+    "displayName": "Anamnesis",
+    "icon": "discuss",
+    "description": "Entrevista clínica: antecedentes, síntomas y evolución referidos por quien trae al paciente."
+  },
+  "options": {},
+  "attributes": {
+    "history": {
+      "type": "blocks",
+      "required": true
+    },
+    "evolutionDays": {
+      "type": "integer",
+      "min": 0
+    },
+    "reportedBy": {
+      "type": "enumeration",
+      "enum": [
+        "owner",
+        "caretaker",
+        "referring_vet",
+        "other"
+      ],
+      "default": "owner"
+    }
+  }
+}
+```
+
+### `src/components/clinical/physical-exam.json`
+
+Constantes y hallazgos de la exploración.
+```json
+{
+  "collectionName": "components_clinical_physical_exams",
+  "info": {
+    "displayName": "Exploración física",
+    "icon": "doctor",
+    "description": "Constantes y hallazgos de la exploración."
+  },
+  "options": {},
+  "attributes": {
+    "temperatureC": {
+      "type": "decimal",
+      "min": 30,
+      "max": 45
+    },
+    "heartRateBpm": {
+      "type": "integer",
+      "min": 0,
+      "max": 400
+    },
+    "respiratoryRateRpm": {
+      "type": "integer",
+      "min": 0,
+      "max": 200
+    },
+    "mucousMembranes": {
+      "type": "enumeration",
+      "enum": [
+        "normal",
+        "pale",
+        "congested",
+        "icteric",
+        "cyanotic"
+      ]
+    },
+    "capillaryRefillSeconds": {
+      "type": "decimal",
+      "min": 0,
+      "max": 10
+    },
+    "bodyConditionScore": {
+      "type": "integer",
+      "min": 1,
+      "max": 9
+    },
+    "hydrationState": {
+      "type": "enumeration",
+      "enum": [
+        "normal",
+        "mild",
+        "moderate",
+        "severe"
+      ]
+    },
+    "findings": {
+      "type": "blocks"
+    }
+  }
+}
+```
+
+### `src/components/clinical/lab-result.json`
+
+Resultado de una prueba de laboratorio.
+```json
+{
+  "collectionName": "components_clinical_lab_results",
+  "info": {
+    "displayName": "Laboratorio",
+    "icon": "chartCircle",
+    "description": "Resultado de una prueba de laboratorio."
+  },
+  "options": {},
+  "attributes": {
+    "panel": {
+      "type": "enumeration",
+      "enum": [
+        "hemogram",
+        "biochemistry",
+        "urinalysis",
+        "coprology",
+        "cytology",
+        "serology",
+        "other"
+      ],
+      "required": true
+    },
+    "sampleTakenOn": {
+      "type": "date"
+    },
+    "laboratory": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "isAbnormal": {
+      "type": "boolean",
+      "default": false
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "report": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
+    }
+  }
+}
+```
+
+### `src/components/clinical/imaging.json`
+
+Estudio de imagen y sus hallazgos.
+```json
+{
+  "collectionName": "components_clinical_imagings",
+  "info": {
+    "displayName": "Imagen diagnóstica",
+    "icon": "picture",
+    "description": "Estudio de imagen y sus hallazgos."
+  },
+  "options": {},
+  "attributes": {
+    "modality": {
+      "type": "enumeration",
+      "enum": [
+        "xray",
+        "ultrasound",
+        "ct",
+        "mri",
+        "endoscopy",
+        "other"
+      ],
+      "required": true
+    },
+    "bodyRegion": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}
+```
+
+### `src/components/clinical/diagnosis.json`
+
+Conclusión clínica del veterinario.
+```json
+{
+  "collectionName": "components_clinical_diagnoses",
+  "info": {
+    "displayName": "Diagnóstico",
+    "icon": "lightbulb",
+    "description": "Conclusión clínica del veterinario."
+  },
+  "options": {},
+  "attributes": {
+    "diagnosisKind": {
+      "type": "enumeration",
+      "enum": [
+        "presumptive",
+        "definitive",
+        "differential",
+        "ruled_out"
+      ],
+      "default": "presumptive",
+      "required": true
+    },
+    "condition": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "isPrimary": {
+      "type": "boolean",
+      "default": false
+    },
+    "details": {
+      "type": "blocks"
+    }
+  }
+}
+```
+
+### `src/components/clinical/procedure.json`
+
+Procedimiento o cirugía realizada durante la consulta.
+```json
+{
+  "collectionName": "components_clinical_procedures",
+  "info": {
+    "displayName": "Procedimiento",
+    "icon": "scissors",
+    "description": "Procedimiento o cirugía realizada durante la consulta."
+  },
+  "options": {},
+  "attributes": {
+    "procedureName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "anesthesia": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "local",
+        "sedation",
+        "general"
+      ],
+      "default": "none"
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "min": 0
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "complications": {
+      "type": "text"
+    }
+  }
+}
+```
+
+### `src/components/clinical/treatment-plan.json`
+
+Indicaciones, medicación y recomendaciones.
+```json
+{
+  "collectionName": "components_clinical_treatment_plans",
+  "info": {
+    "displayName": "Plan de tratamiento",
+    "icon": "bulletList",
+    "description": "Indicaciones, medicación y recomendaciones."
+  },
+  "options": {},
+  "attributes": {
+    "indications": {
+      "type": "blocks",
+      "required": true
+    },
+    "medications": {
+      "type": "component",
+      "repeatable": true,
+      "component": "clinical.medication"
+    },
+    "recommendations": {
+      "type": "blocks"
+    },
+    "followUpOn": {
+      "type": "date"
+    }
+  }
+}
+```
+
+### `src/components/clinical/medication.json`
+
+Fármaco prescrito dentro de un plan de tratamiento.
+```json
+{
+  "collectionName": "components_clinical_medications",
+  "info": {
+    "displayName": "Medicación",
+    "icon": "plus",
+    "description": "Fármaco prescrito dentro de un plan de tratamiento."
+  },
+  "options": {},
+  "attributes": {
+    "drug": {
+      "type": "string",
+      "required": true,
+      "maxLength": 150
+    },
+    "dose": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "route": {
+      "type": "enumeration",
+      "enum": [
+        "oral",
+        "sc",
+        "im",
+        "iv",
+        "topical",
+        "otic",
+        "ophthalmic",
+        "other"
+      ],
+      "default": "oral"
+    },
+    "frequencyHours": {
+      "type": "integer",
+      "min": 1,
+      "max": 168
+    },
+    "durationDays": {
+      "type": "integer",
+      "min": 1
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 255
+    }
+  }
+}
+```
+  
+_No aparece en la zona: se anida dentro de `clinical.treatment-plan`._
 
 ---
 
@@ -397,9 +794,18 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "appointment": { "type": "relation", "relation": "oneToOne", "target": "api::scheduling.appointment", "inversedBy": "consultation" },
     "consultedAt": { "type": "datetime" },
     "reason": { "type": "text" },
-    "anamnesis": { "type": "blocks" },
-    "diagnosis": { "type": "blocks" },
-    "treatmentNotes": { "type": "blocks" },
+    "sections": {
+      "type": "dynamiczone",
+      "components": [
+        "clinical.anamnesis",
+        "clinical.physical-exam",
+        "clinical.lab-result",
+        "clinical.imaging",
+        "clinical.diagnosis",
+        "clinical.procedure",
+        "clinical.treatment-plan"
+      ]
+    },
     "weightKg": { "type": "decimal", "min": 0 },
     "nextControlOn": { "type": "date" },
     "attachments": { "type": "component", "repeatable": true, "component": "clinical.attachment" },
@@ -408,7 +814,14 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
   }
 }
 ```
-Descripciones para el admin: `anamnesis` = entrevista clínica (antecedentes, síntomas, evolución); `diagnosis` = conclusión clínica del veterinario; `treatmentNotes` = plan de tratamiento, medicación y recomendaciones; `nextControlOn` = fecha sugerida del próximo control (no es una cita).
+`nextControlOn` = fecha sugerida del próximo control (no es una cita).
+
+**El contenido clínico va en la dynamic zone `sections`** (sección 5.1), no en campos fijos: cada visita compone las secciones que necesita. Una consulta de estética lleva tres; una cirugía lleva las siete. Sustituye a los antiguos `anamnesis`, `diagnosis` y `treatmentNotes`, que eran tres `blocks` obligados a existir aunque la visita no los usara.
+
+Dos consecuencias operativas de esa decisión:
+
+- **La zona no se puebla con `populate=*`.** Hay que enumerar cada componente bajo `on`, y los que llevan media o componentes anidados necesitan su propio `populate`. Si se omite, la respuesta trae `sections: []` y la consulta parece vacía. Por eso las rutas `find` y `findOne` llevan el middleware `api::clinical.populate-sections`, que lo inyecta.
+- **Los filtros de Strapi no atraviesan la zona**: `filters[sections][condition]` no existe. La búsqueda dentro de la historia clínica es un endpoint propio, `GET /api/consultations/search?section=<componente>&q=<texto>`, resuelto con el query engine sobre `consultations_cmps` y la tabla del componente.
 
 #### `api::clinical.vaccine`
 ```json
@@ -1054,7 +1467,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 32 content types y 6 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 32 content types y 14 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

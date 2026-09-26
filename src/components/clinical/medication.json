@@ -1,0 +1,47 @@
+{
+  "collectionName": "components_clinical_medications",
+  "info": {
+    "displayName": "Medicación",
+    "icon": "plus",
+    "description": "Fármaco prescrito dentro de un plan de tratamiento."
+  },
+  "options": {},
+  "attributes": {
+    "drug": {
+      "type": "string",
+      "required": true,
+      "maxLength": 150
+    },
+    "dose": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "route": {
+      "type": "enumeration",
+      "enum": [
+        "oral",
+        "sc",
+        "im",
+        "iv",
+        "topical",
+        "otic",
+        "ophthalmic",
+        "other"
+      ],
+      "default": "oral"
+    },
+    "frequencyHours": {
+      "type": "integer",
+      "min": 1,
+      "max": 168
+    },
+    "durationDays": {
+      "type": "integer",
+      "min": 1
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 255
+    }
+  }
+}

@@ -70,9 +70,18 @@ const receptionActions = [
   ...actions(RECEPTION_CRUD, CRUD),
   ...actions(MANAGED_CATALOGS, READ),
   ...actions(['api::clinical.consultation'], READ),
+  'api::clinical.consultation.searchBySection',
 ];
 
-const vetActions = [...receptionActions, ...actions(VET_CRUD, CRUD), 'api::documents.signed-document-event.create'];
+/** Búsqueda dentro de la dynamic zone de la historia clínica. */
+const BUSQUEDA_CLINICA = 'api::clinical.consultation.searchBySection';
+
+const vetActions = [
+  ...receptionActions,
+  ...actions(VET_CRUD, CRUD),
+  'api::documents.signed-document-event.create',
+  BUSQUEDA_CLINICA,
+];
 
 const clinicAdminActions = [
   ...vetActions,
@@ -90,6 +99,8 @@ const ROLES: RoleSpec[] = [
     actions: [
       ...actions(CLIENT_READ, READ),
       'api::scheduling.appointment.create',
+      // El cliente busca en su propia historia: la policy is-owner la acota.
+      'api::clinical.consultation.searchBySection',
       ...actions(['api::identity.profile', 'api::shared.contact', 'api::notification.notification-recipient'], ['update']),
       // DECISIÓN: el cliente también lee los catálogos. La tabla del modelo
       // solo se los da a Public, pero en Strapi un usuario autenticado no

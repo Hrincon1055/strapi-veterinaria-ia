@@ -1,10 +1,34 @@
 {
   "collectionName": "components_clinical_attachments",
-  "info": { "displayName": "Attachment", "icon": "paperclip" },
+  "info": {
+    "displayName": "Attachment",
+    "icon": "attachment"
+  },
   "options": {},
   "attributes": {
-    "file": { "type": "media", "multiple": false, "required": true, "allowedTypes": ["images", "files"] },
-    "attachmentKind": { "type": "enumeration", "enum": ["lab_result", "x_ray", "ultrasound", "photo", "other"], "default": "other" },
-    "description": { "type": "string", "maxLength": 255 }
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "attachmentKind": {
+      "type": "enumeration",
+      "enum": [
+        "lab_result",
+        "x_ray",
+        "ultrasound",
+        "photo",
+        "other"
+      ],
+      "default": "other"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 255
+    }
   }
 }

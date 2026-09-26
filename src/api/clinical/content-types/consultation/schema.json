@@ -33,14 +33,17 @@
     "reason": {
       "type": "text"
     },
-    "anamnesis": {
-      "type": "blocks"
-    },
-    "diagnosis": {
-      "type": "blocks"
-    },
-    "treatmentNotes": {
-      "type": "blocks"
+    "sections": {
+      "type": "dynamiczone",
+      "components": [
+        "clinical.anamnesis",
+        "clinical.physical-exam",
+        "clinical.lab-result",
+        "clinical.imaging",
+        "clinical.diagnosis",
+        "clinical.procedure",
+        "clinical.treatment-plan"
+      ]
     },
     "weightKg": {
       "type": "decimal",

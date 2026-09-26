@@ -1,0 +1,34 @@
+{
+  "collectionName": "components_clinical_diagnoses",
+  "info": {
+    "displayName": "Diagnóstico",
+    "icon": "lightbulb",
+    "description": "Conclusión clínica del veterinario."
+  },
+  "options": {},
+  "attributes": {
+    "diagnosisKind": {
+      "type": "enumeration",
+      "enum": [
+        "presumptive",
+        "definitive",
+        "differential",
+        "ruled_out"
+      ],
+      "default": "presumptive",
+      "required": true
+    },
+    "condition": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "isPrimary": {
+      "type": "boolean",
+      "default": false
+    },
+    "details": {
+      "type": "blocks"
+    }
+  }
+}

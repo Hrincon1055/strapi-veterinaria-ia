@@ -1,10 +1,33 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface ClinicalAnamnesis extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_anamneses';
+  info: {
+    description: 'Entrevista cl\u00EDnica: antecedentes, s\u00EDntomas y evoluci\u00F3n referidos por quien trae al paciente.';
+    displayName: 'Anamnesis';
+    icon: 'discuss';
+  };
+  attributes: {
+    evolutionDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    history: Schema.Attribute.Blocks & Schema.Attribute.Required;
+    reportedBy: Schema.Attribute.Enumeration<
+      ['owner', 'caretaker', 'referring_vet', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'owner'>;
+  };
+}
+
 export interface ClinicalAttachment extends Struct.ComponentSchema {
   collectionName: 'components_clinical_attachments';
   info: {
     displayName: 'Attachment';
-    icon: 'paperclip';
+    icon: 'attachment';
   };
   attributes: {
     attachmentKind: Schema.Attribute.Enumeration<
@@ -17,6 +40,226 @@ export interface ClinicalAttachment extends Struct.ComponentSchema {
       }>;
     file: Schema.Attribute.Media<'images' | 'files'> &
       Schema.Attribute.Required;
+  };
+}
+
+export interface ClinicalDiagnosis extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_diagnoses';
+  info: {
+    description: 'Conclusi\u00F3n cl\u00EDnica del veterinario.';
+    displayName: 'Diagn\u00F3stico';
+    icon: 'lightbulb';
+  };
+  attributes: {
+    condition: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    details: Schema.Attribute.Blocks;
+    diagnosisKind: Schema.Attribute.Enumeration<
+      ['presumptive', 'definitive', 'differential', 'ruled_out']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'presumptive'>;
+    isPrimary: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+  };
+}
+
+export interface ClinicalImaging extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_imagings';
+  info: {
+    description: 'Estudio de imagen y sus hallazgos.';
+    displayName: 'Imagen diagn\u00F3stica';
+    icon: 'picture';
+  };
+  attributes: {
+    bodyRegion: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    findings: Schema.Attribute.Blocks;
+    images: Schema.Attribute.Media<'images' | 'files', true>;
+    modality: Schema.Attribute.Enumeration<
+      ['xray', 'ultrasound', 'ct', 'mri', 'endoscopy', 'other']
+    > &
+      Schema.Attribute.Required;
+  };
+}
+
+export interface ClinicalLabResult extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_lab_results';
+  info: {
+    description: 'Resultado de una prueba de laboratorio.';
+    displayName: 'Laboratorio';
+    icon: 'chartCircle';
+  };
+  attributes: {
+    findings: Schema.Attribute.Blocks;
+    isAbnormal: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    laboratory: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    panel: Schema.Attribute.Enumeration<
+      [
+        'hemogram',
+        'biochemistry',
+        'urinalysis',
+        'coprology',
+        'cytology',
+        'serology',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    report: Schema.Attribute.Media<'files' | 'images'>;
+    sampleTakenOn: Schema.Attribute.Date;
+  };
+}
+
+export interface ClinicalMedication extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_medications';
+  info: {
+    description: 'F\u00E1rmaco prescrito dentro de un plan de tratamiento.';
+    displayName: 'Medicaci\u00F3n';
+    icon: 'plus';
+  };
+  attributes: {
+    dose: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    drug: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    durationDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    frequencyHours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 168;
+          min: 1;
+        },
+        number
+      >;
+    notes: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    route: Schema.Attribute.Enumeration<
+      ['oral', 'sc', 'im', 'iv', 'topical', 'otic', 'ophthalmic', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'oral'>;
+  };
+}
+
+export interface ClinicalPhysicalExam extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_physical_exams';
+  info: {
+    description: 'Constantes y hallazgos de la exploraci\u00F3n.';
+    displayName: 'Exploraci\u00F3n f\u00EDsica';
+    icon: 'doctor';
+  };
+  attributes: {
+    bodyConditionScore: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 9;
+          min: 1;
+        },
+        number
+      >;
+    capillaryRefillSeconds: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      >;
+    findings: Schema.Attribute.Blocks;
+    heartRateBpm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 400;
+          min: 0;
+        },
+        number
+      >;
+    hydrationState: Schema.Attribute.Enumeration<
+      ['normal', 'mild', 'moderate', 'severe']
+    >;
+    mucousMembranes: Schema.Attribute.Enumeration<
+      ['normal', 'pale', 'congested', 'icteric', 'cyanotic']
+    >;
+    respiratoryRateRpm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 200;
+          min: 0;
+        },
+        number
+      >;
+    temperatureC: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 45;
+          min: 30;
+        },
+        number
+      >;
+  };
+}
+
+export interface ClinicalProcedure extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_procedures';
+  info: {
+    description: 'Procedimiento o cirug\u00EDa realizada durante la consulta.';
+    displayName: 'Procedimiento';
+    icon: 'scissors';
+  };
+  attributes: {
+    anesthesia: Schema.Attribute.Enumeration<
+      ['none', 'local', 'sedation', 'general']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
+    complications: Schema.Attribute.Text;
+    durationMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    findings: Schema.Attribute.Blocks;
+    procedureName: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+  };
+}
+
+export interface ClinicalTreatmentPlan extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_treatment_plans';
+  info: {
+    description: 'Indicaciones, medicaci\u00F3n y recomendaciones.';
+    displayName: 'Plan de tratamiento';
+    icon: 'bulletList';
+  };
+  attributes: {
+    followUpOn: Schema.Attribute.Date;
+    indications: Schema.Attribute.Blocks & Schema.Attribute.Required;
+    medications: Schema.Attribute.Component<'clinical.medication', true>;
+    recommendations: Schema.Attribute.Blocks;
   };
 }
 
@@ -147,7 +390,15 @@ export interface TravelRequirement extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export namespace Public {
     export interface ComponentSchemas {
+      'clinical.anamnesis': ClinicalAnamnesis;
       'clinical.attachment': ClinicalAttachment;
+      'clinical.diagnosis': ClinicalDiagnosis;
+      'clinical.imaging': ClinicalImaging;
+      'clinical.lab-result': ClinicalLabResult;
+      'clinical.medication': ClinicalMedication;
+      'clinical.physical-exam': ClinicalPhysicalExam;
+      'clinical.procedure': ClinicalProcedure;
+      'clinical.treatment-plan': ClinicalTreatmentPlan;
       'customer.consents': CustomerConsents;
       'documents.document-file': DocumentsDocumentFile;
       'scheduling.appointment-service': SchedulingAppointmentService;

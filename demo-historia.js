@@ -45,6 +45,74 @@ function envolver(t, ancho, sangria) {
 
 const seccion = (titulo) => `\n${titulo}\n${'─'.repeat(74)}`;
 
+/** Título legible de cada componente de la dynamic zone. */
+const TITULOS = {
+  'clinical.anamnesis': 'Anamnesis',
+  'clinical.physical-exam': 'Exploración física',
+  'clinical.lab-result': 'Laboratorio',
+  'clinical.imaging': 'Imagen diagnóstica',
+  'clinical.diagnosis': 'Diagnóstico',
+  'clinical.procedure': 'Procedimiento',
+  'clinical.treatment-plan': 'Plan de tratamiento',
+};
+
+/** Campos `blocks` que hay que volcar como párrafos, por componente. */
+const BLOQUES = {
+  'clinical.anamnesis': ['history'],
+  'clinical.physical-exam': ['findings'],
+  'clinical.lab-result': ['findings'],
+  'clinical.imaging': ['findings'],
+  'clinical.diagnosis': ['details'],
+  'clinical.procedure': ['findings'],
+  'clinical.treatment-plan': ['indications', 'recommendations'],
+};
+
+/** Los datos estructurados de cada sección, antes de su texto libre. */
+function resumenSeccion(s) {
+  const l = [];
+  switch (s.__component) {
+    case 'clinical.anamnesis':
+      if (s.evolutionDays != null) l.push(`Evolución: ${s.evolutionDays} día(s) · refiere: ${s.reportedBy}`);
+      break;
+    case 'clinical.physical-exam': {
+      const v = [
+        s.temperatureC != null && `T ${s.temperatureC} °C`,
+        s.heartRateBpm != null && `FC ${s.heartRateBpm} lpm`,
+        s.respiratoryRateRpm != null && `FR ${s.respiratoryRateRpm} rpm`,
+        s.mucousMembranes && `mucosas ${s.mucousMembranes}`,
+        s.capillaryRefillSeconds != null && `TRC ${s.capillaryRefillSeconds}s`,
+        s.bodyConditionScore != null && `CC ${s.bodyConditionScore}/9`,
+        s.hydrationState && `hidratación ${s.hydrationState}`,
+      ].filter(Boolean);
+      if (v.length) l.push(v.join(' · '));
+      break;
+    }
+    case 'clinical.lab-result':
+      l.push(`${s.panel}${s.laboratory ? ' · ' + s.laboratory : ''}${s.isAbnormal ? ' · ALTERADO' : ''}`);
+      break;
+    case 'clinical.imaging':
+      l.push(`${s.modality}${s.bodyRegion ? ' · ' + s.bodyRegion : ''}`);
+      break;
+    case 'clinical.diagnosis':
+      l.push(`${s.condition}  [${s.diagnosisKind}${s.isPrimary ? ' · principal' : ''}]`);
+      break;
+    case 'clinical.procedure':
+      l.push(`${s.procedureName} · anestesia ${s.anesthesia}${s.durationMinutes ? ' · ' + s.durationMinutes + ' min' : ''}`);
+      if (s.complications) l.push(`Complicaciones: ${s.complications}`);
+      break;
+    case 'clinical.treatment-plan':
+      for (const m of s.medications ?? []) {
+        const pauta = [m.dose, m.route, m.frequencyHours && `c/${m.frequencyHours}h`, m.durationDays && `${m.durationDays} días`]
+          .filter(Boolean)
+          .join(' · ');
+        l.push(`Rx  ${m.drug}${pauta ? ' — ' + pauta : ''}${m.notes ? ' (' + m.notes + ')' : ''}`);
+      }
+      if (s.followUpOn) l.push(`Control: ${fecha(s.followUpOn)}`);
+      break;
+  }
+  return l;
+}
+
 (async () => {
   const app = await createStrapi({ appDir: process.cwd(), distDir: 'dist' }).load();
   const d = (uid) => app.documents(uid);
@@ -111,7 +179,22 @@ const seccion = (titulo) => `\n${titulo}\n${'─'.repeat(74)}`;
   // --- línea de tiempo de consultas ---
   const consultas = await d('api::clinical.consultation').findMany({
     filters: { pet: { documentId: mascota.documentId } },
-    populate: { vet: true, appointment: { populate: ['room'] } },
+    // La zona hay que enumerarla componente a componente: no la alcanza un '*'.
+    populate: {
+      vet: true,
+      appointment: { populate: ['room'] },
+      sections: {
+        on: {
+          'clinical.anamnesis': true,
+          'clinical.physical-exam': true,
+          'clinical.diagnosis': true,
+          'clinical.procedure': true,
+          'clinical.lab-result': { populate: ['report'] },
+          'clinical.imaging': { populate: ['images'] },
+          'clinical.treatment-plan': { populate: ['medications'] },
+        },
+      },
+    },
     sort: 'consultedAt:desc',
   });
 
@@ -136,15 +219,15 @@ const seccion = (titulo) => `\n${titulo}\n${'─'.repeat(74)}`;
     console.log(`    Peso        ${c.weightKg ?? '—'} kg`);
     if (c.nextControlOn) console.log(`    Control     ${fecha(c.nextControlOn)}`);
 
-    for (const [titulo, campo] of [
-      ['Anamnesis', c.anamnesis],
-      ['Diagnóstico', c.diagnosis],
-      ['Tratamiento', c.treatmentNotes],
-    ]) {
-      const parrafos = texto(campo);
-      if (parrafos.length === 0) continue;
-      console.log(`\n    ${titulo}`);
-      for (const p of parrafos) console.log(envolver(p, 66, '      '));
+    // La historia ya no son tres campos fijos: se recorre la dynamic zone en
+    // el orden en que el veterinario compuso la consulta.
+    for (const s of c.sections ?? []) {
+      const tipo = TITULOS[s.__component] ?? s.__component.replace('clinical.', '');
+      console.log(`\n    ${tipo}`);
+      for (const linea of resumenSeccion(s)) console.log('      ' + linea);
+      for (const campo of BLOQUES[s.__component] ?? []) {
+        for (const p of texto(s[campo])) console.log(envolver(p, 66, '      '));
+      }
     }
 
     if (servicios.length > 0) {

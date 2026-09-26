@@ -1,0 +1,38 @@
+{
+  "collectionName": "components_clinical_imagings",
+  "info": {
+    "displayName": "Imagen diagnóstica",
+    "icon": "picture",
+    "description": "Estudio de imagen y sus hallazgos."
+  },
+  "options": {},
+  "attributes": {
+    "modality": {
+      "type": "enumeration",
+      "enum": [
+        "xray",
+        "ultrasound",
+        "ct",
+        "mri",
+        "endoscopy",
+        "other"
+      ],
+      "required": true
+    },
+    "bodyRegion": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_clinical_treatment_plans",
+  "info": {
+    "displayName": "Plan de tratamiento",
+    "icon": "bulletList",
+    "description": "Indicaciones, medicación y recomendaciones."
+  },
+  "options": {},
+  "attributes": {
+    "indications": {
+      "type": "blocks",
+      "required": true
+    },
+    "medications": {
+      "type": "component",
+      "repeatable": true,
+      "component": "clinical.medication"
+    },
+    "recommendations": {
+      "type": "blocks"
+    },
+    "followUpOn": {
+      "type": "date"
+    }
+  }
+}

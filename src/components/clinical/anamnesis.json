@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_clinical_anamneses",
+  "info": {
+    "displayName": "Anamnesis",
+    "icon": "discuss",
+    "description": "Entrevista clínica: antecedentes, síntomas y evolución referidos por quien trae al paciente."
+  },
+  "options": {},
+  "attributes": {
+    "history": {
+      "type": "blocks",
+      "required": true
+    },
+    "evolutionDays": {
+      "type": "integer",
+      "min": 0
+    },
+    "reportedBy": {
+      "type": "enumeration",
+      "enum": [
+        "owner",
+        "caretaker",
+        "referring_vet",
+        "other"
+      ],
+      "default": "owner"
+    }
+  }
+}

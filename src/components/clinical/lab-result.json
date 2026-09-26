@@ -1,0 +1,46 @@
+{
+  "collectionName": "components_clinical_lab_results",
+  "info": {
+    "displayName": "Laboratorio",
+    "icon": "chartCircle",
+    "description": "Resultado de una prueba de laboratorio."
+  },
+  "options": {},
+  "attributes": {
+    "panel": {
+      "type": "enumeration",
+      "enum": [
+        "hemogram",
+        "biochemistry",
+        "urinalysis",
+        "coprology",
+        "cytology",
+        "serology",
+        "other"
+      ],
+      "required": true
+    },
+    "sampleTakenOn": {
+      "type": "date"
+    },
+    "laboratory": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "isAbnormal": {
+      "type": "boolean",
+      "default": false
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "report": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
+    }
+  }
+}

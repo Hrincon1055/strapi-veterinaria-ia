@@ -1,0 +1,36 @@
+{
+  "collectionName": "components_clinical_procedures",
+  "info": {
+    "displayName": "Procedimiento",
+    "icon": "scissors",
+    "description": "Procedimiento o cirugía realizada durante la consulta."
+  },
+  "options": {},
+  "attributes": {
+    "procedureName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "anesthesia": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "local",
+        "sedation",
+        "general"
+      ],
+      "default": "none"
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "min": 0
+    },
+    "findings": {
+      "type": "blocks"
+    },
+    "complications": {
+      "type": "text"
+    }
+  }
+}

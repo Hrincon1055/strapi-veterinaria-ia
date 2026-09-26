@@ -13,7 +13,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "x-generation-date": "2026-09-26T19:44:43.869Z"
+    "x-generation-date": "2026-09-26T21:33:13.144Z"
   },
   "servers": [
     {
@@ -20934,9 +20934,46 @@
                               "reason": {
                                 "type": "string"
                               },
-                              "anamnesis": {},
-                              "diagnosis": {},
-                              "treatmentNotes": {},
+                              "sections": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                  }
+                                }
+                              },
                               "weightKg": {
                                 "type": "number",
                                 "format": "float"
@@ -22961,6 +22998,678 @@
           },
           "price": {
             "type": "integer"
+          }
+        }
+      },
+      "ClinicalAnamnesisComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.anamnesis"
+            ]
+          },
+          "history": {},
+          "evolutionDays": {
+            "type": "integer"
+          },
+          "reportedBy": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "caretaker",
+              "referring_vet",
+              "other"
+            ]
+          }
+        }
+      },
+      "ClinicalPhysicalExamComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.physical-exam"
+            ]
+          },
+          "temperatureC": {
+            "type": "number",
+            "format": "float"
+          },
+          "heartRateBpm": {
+            "type": "integer"
+          },
+          "respiratoryRateRpm": {
+            "type": "integer"
+          },
+          "mucousMembranes": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "pale",
+              "congested",
+              "icteric",
+              "cyanotic"
+            ]
+          },
+          "capillaryRefillSeconds": {
+            "type": "number",
+            "format": "float"
+          },
+          "bodyConditionScore": {
+            "type": "integer"
+          },
+          "hydrationState": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "mild",
+              "moderate",
+              "severe"
+            ]
+          },
+          "findings": {}
+        }
+      },
+      "ClinicalLabResultComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.lab-result"
+            ]
+          },
+          "panel": {
+            "type": "string",
+            "enum": [
+              "hemogram",
+              "biochemistry",
+              "urinalysis",
+              "coprology",
+              "cytology",
+              "serology",
+              "other"
+            ]
+          },
+          "sampleTakenOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "laboratory": {
+            "type": "string"
+          },
+          "isAbnormal": {
+            "type": "boolean"
+          },
+          "findings": {},
+          "report": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "documentId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "alternativeText": {
+                "type": "string"
+              },
+              "caption": {
+                "type": "string"
+              },
+              "focalPoint": {},
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "formats": {},
+              "hash": {
+                "type": "string"
+              },
+              "ext": {
+                "type": "string"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "size": {
+                "type": "number",
+                "format": "float"
+              },
+              "url": {
+                "type": "string"
+              },
+              "previewUrl": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "provider_metadata": {},
+              "related": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "documentId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "folder": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  },
+                  "documentId": {
+                    "type": "string"
+                  }
+                }
+              },
+              "folderPath": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "publishedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  },
+                  "documentId": {
+                    "type": "string"
+                  }
+                }
+              },
+              "updatedBy": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  },
+                  "documentId": {
+                    "type": "string"
+                  }
+                }
+              },
+              "locale": {
+                "type": "string"
+              },
+              "localizations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "documentId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ClinicalImagingComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.imaging"
+            ]
+          },
+          "modality": {
+            "type": "string",
+            "enum": [
+              "xray",
+              "ultrasound",
+              "ct",
+              "mri",
+              "endoscopy",
+              "other"
+            ]
+          },
+          "bodyRegion": {
+            "type": "string"
+          },
+          "findings": {},
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "documentId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alternativeText": {
+                  "type": "string"
+                },
+                "caption": {
+                  "type": "string"
+                },
+                "focalPoint": {},
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                },
+                "formats": {},
+                "hash": {
+                  "type": "string"
+                },
+                "ext": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "number",
+                  "format": "float"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "previewUrl": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "provider_metadata": {},
+                "related": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      "documentId": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "folder": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "documentId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "folderPath": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "publishedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "createdBy": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "documentId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "updatedBy": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "documentId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "localizations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      "documentId": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ClinicalDiagnosisComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.diagnosis"
+            ]
+          },
+          "diagnosisKind": {
+            "type": "string",
+            "enum": [
+              "presumptive",
+              "definitive",
+              "differential",
+              "ruled_out"
+            ]
+          },
+          "condition": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "details": {}
+        }
+      },
+      "ClinicalProcedureComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.procedure"
+            ]
+          },
+          "procedureName": {
+            "type": "string"
+          },
+          "anesthesia": {
+            "type": "string",
+            "enum": [
+              "none",
+              "local",
+              "sedation",
+              "general"
+            ]
+          },
+          "durationMinutes": {
+            "type": "integer"
+          },
+          "findings": {},
+          "complications": {
+            "type": "string"
+          }
+        }
+      },
+      "ClinicalMedicationComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "drug": {
+            "type": "string"
+          },
+          "dose": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "oral",
+              "sc",
+              "im",
+              "iv",
+              "topical",
+              "otic",
+              "ophthalmic",
+              "other"
+            ]
+          },
+          "frequencyHours": {
+            "type": "integer"
+          },
+          "durationDays": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "ClinicalTreatmentPlanComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.treatment-plan"
+            ]
+          },
+          "indications": {},
+          "medications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicalMedicationComponent"
+            }
+          },
+          "recommendations": {},
+          "followUpOn": {
+            "type": "string",
+            "format": "date"
           }
         }
       },
@@ -26109,9 +26818,46 @@
                           "reason": {
                             "type": "string"
                           },
-                          "anamnesis": {},
-                          "diagnosis": {},
-                          "treatmentNotes": {},
+                          "sections": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                              }
+                            }
+                          },
                           "weightKg": {
                             "type": "number",
                             "format": "float"
@@ -33629,9 +34375,46 @@
                           "reason": {
                             "type": "string"
                           },
-                          "anamnesis": {},
-                          "diagnosis": {},
-                          "treatmentNotes": {},
+                          "sections": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                              }
+                            }
+                          },
                           "weightKg": {
                             "type": "number",
                             "format": "float"
@@ -38546,9 +39329,46 @@
                     "reason": {
                       "type": "string"
                     },
-                    "anamnesis": {},
-                    "diagnosis": {},
-                    "treatmentNotes": {},
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      }
+                    },
                     "weightKg": {
                       "type": "number",
                       "format": "float"
@@ -39574,9 +40394,46 @@
               "reason": {
                 "type": "string"
               },
-              "anamnesis": {},
-              "diagnosis": {},
-              "treatmentNotes": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                    }
+                  ]
+                },
+                "discriminator": {
+                  "propertyName": "__component",
+                  "mapping": {
+                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                  }
+                }
+              },
               "weightKg": {
                 "type": "number",
                 "format": "float"
@@ -42695,9 +43552,46 @@
                     "reason": {
                       "type": "string"
                     },
-                    "anamnesis": {},
-                    "diagnosis": {},
-                    "treatmentNotes": {},
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      }
+                    },
                     "weightKg": {
                       "type": "number",
                       "format": "float"
@@ -43557,9 +44451,46 @@
           "reason": {
             "type": "string"
           },
-          "anamnesis": {},
-          "diagnosis": {},
-          "treatmentNotes": {},
+          "sections": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalImagingComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                }
+              ]
+            },
+            "discriminator": {
+              "propertyName": "__component",
+              "mapping": {
+                "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+              }
+            }
+          },
           "weightKg": {
             "type": "number",
             "format": "float"
@@ -46850,9 +47781,46 @@
                     "reason": {
                       "type": "string"
                     },
-                    "anamnesis": {},
-                    "diagnosis": {},
-                    "treatmentNotes": {},
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      }
+                    },
                     "weightKg": {
                       "type": "number",
                       "format": "float"
@@ -51863,9 +52831,46 @@
                               "reason": {
                                 "type": "string"
                               },
-                              "anamnesis": {},
-                              "diagnosis": {},
-                              "treatmentNotes": {},
+                              "sections": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                  }
+                                }
+                              },
                               "weightKg": {
                                 "type": "number",
                                 "format": "float"
@@ -56045,9 +57050,46 @@
                           "reason": {
                             "type": "string"
                           },
-                          "anamnesis": {},
-                          "diagnosis": {},
-                          "treatmentNotes": {},
+                          "sections": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                              }
+                            }
+                          },
                           "weightKg": {
                             "type": "number",
                             "format": "float"
@@ -61007,9 +62049,46 @@
               "reason": {
                 "type": "string"
               },
-              "anamnesis": {},
-              "diagnosis": {},
-              "treatmentNotes": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                    }
+                  ]
+                },
+                "discriminator": {
+                  "propertyName": "__component",
+                  "mapping": {
+                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                  }
+                }
+              },
               "weightKg": {
                 "type": "number",
                 "format": "float"
@@ -66204,9 +67283,46 @@
                   "reason": {
                     "type": "string"
                   },
-                  "anamnesis": {},
-                  "diagnosis": {},
-                  "treatmentNotes": {},
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalImagingComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      ]
+                    },
+                    "discriminator": {
+                      "propertyName": "__component",
+                      "mapping": {
+                        "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                        "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                        "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                        "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                        "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                        "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                        "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                      }
+                    }
+                  },
                   "weightKg": {
                     "type": "number",
                     "format": "float"
@@ -71099,9 +72215,46 @@
                   "reason": {
                     "type": "string"
                   },
-                  "anamnesis": {},
-                  "diagnosis": {},
-                  "treatmentNotes": {},
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalImagingComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      ]
+                    },
+                    "discriminator": {
+                      "propertyName": "__component",
+                      "mapping": {
+                        "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                        "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                        "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                        "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                        "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                        "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                        "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                      }
+                    }
+                  },
                   "weightKg": {
                     "type": "number",
                     "format": "float"
@@ -75459,9 +76612,46 @@
                                     "reason": {
                                       "type": "string"
                                     },
-                                    "anamnesis": {},
-                                    "diagnosis": {},
-                                    "treatmentNotes": {},
+                                    "sections": {
+                                      "type": "array",
+                                      "items": {
+                                        "anyOf": [
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                          }
+                                        ]
+                                      },
+                                      "discriminator": {
+                                        "propertyName": "__component",
+                                        "mapping": {
+                                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                        }
+                                      }
+                                    },
                                     "weightKg": {
                                       "type": "number",
                                       "format": "float"
@@ -82028,9 +83218,46 @@
                                     "reason": {
                                       "type": "string"
                                     },
-                                    "anamnesis": {},
-                                    "diagnosis": {},
-                                    "treatmentNotes": {},
+                                    "sections": {
+                                      "type": "array",
+                                      "items": {
+                                        "anyOf": [
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                          }
+                                        ]
+                                      },
+                                      "discriminator": {
+                                        "propertyName": "__component",
+                                        "mapping": {
+                                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                        }
+                                      }
+                                    },
                                     "weightKg": {
                                       "type": "number",
                                       "format": "float"
@@ -86534,9 +87761,46 @@
                                   "reason": {
                                     "type": "string"
                                   },
-                                  "anamnesis": {},
-                                  "diagnosis": {},
-                                  "treatmentNotes": {},
+                                  "sections": {
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                        }
+                                      ]
+                                    },
+                                    "discriminator": {
+                                      "propertyName": "__component",
+                                      "mapping": {
+                                        "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                        "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                        "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                        "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                        "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                        "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                        "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                      }
+                                    }
+                                  },
                                   "weightKg": {
                                     "type": "number",
                                     "format": "float"
@@ -90982,9 +92246,46 @@
                                         "reason": {
                                           "type": "string"
                                         },
-                                        "anamnesis": {},
-                                        "diagnosis": {},
-                                        "treatmentNotes": {},
+                                        "sections": {
+                                          "type": "array",
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                              }
+                                            ]
+                                          },
+                                          "discriminator": {
+                                            "propertyName": "__component",
+                                            "mapping": {
+                                              "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                              "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                              "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                              "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                              "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                              "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                              "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                            }
+                                          }
+                                        },
                                         "weightKg": {
                                           "type": "number",
                                           "format": "float"
@@ -96653,9 +97954,46 @@
                           "reason": {
                             "type": "string"
                           },
-                          "anamnesis": {},
-                          "diagnosis": {},
-                          "treatmentNotes": {},
+                          "sections": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                              }
+                            }
+                          },
                           "weightKg": {
                             "type": "number",
                             "format": "float"
@@ -102390,9 +103728,46 @@
                     "reason": {
                       "type": "string"
                     },
-                    "anamnesis": {},
-                    "diagnosis": {},
-                    "treatmentNotes": {},
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      }
+                    },
                     "weightKg": {
                       "type": "number",
                       "format": "float"
@@ -108087,9 +109462,46 @@
               "reason": {
                 "type": "string"
               },
-              "anamnesis": {},
-              "diagnosis": {},
-              "treatmentNotes": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                    }
+                  ]
+                },
+                "discriminator": {
+                  "propertyName": "__component",
+                  "mapping": {
+                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                  }
+                }
+              },
               "weightKg": {
                 "type": "number",
                 "format": "float"
@@ -113522,9 +114934,46 @@
                               "reason": {
                                 "type": "string"
                               },
-                              "anamnesis": {},
-                              "diagnosis": {},
-                              "treatmentNotes": {},
+                              "sections": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                    "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                    "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                    "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                    "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                    "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                    "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                  }
+                                }
+                              },
                               "weightKg": {
                                 "type": "number",
                                 "format": "float"
@@ -118416,9 +119865,46 @@
                                   "reason": {
                                     "type": "string"
                                   },
-                                  "anamnesis": {},
-                                  "diagnosis": {},
-                                  "treatmentNotes": {},
+                                  "sections": {
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalImagingComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                        }
+                                      ]
+                                    },
+                                    "discriminator": {
+                                      "propertyName": "__component",
+                                      "mapping": {
+                                        "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                                        "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                                        "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                                        "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                                        "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                                        "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                                        "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                                      }
+                                    }
+                                  },
                                   "weightKg": {
                                     "type": "number",
                                     "format": "float"
@@ -122996,9 +124482,46 @@
                     "reason": {
                       "type": "string"
                     },
-                    "anamnesis": {},
-                    "diagnosis": {},
-                    "treatmentNotes": {},
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalAnamnesisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalPhysicalExamComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalLabResultComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalImagingComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalDiagnosisComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProcedureComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.anamnesis": "#/components/schemas/ClinicalAnamnesisComponent",
+                          "clinical.physical-exam": "#/components/schemas/ClinicalPhysicalExamComponent",
+                          "clinical.lab-result": "#/components/schemas/ClinicalLabResultComponent",
+                          "clinical.imaging": "#/components/schemas/ClinicalImagingComponent",
+                          "clinical.diagnosis": "#/components/schemas/ClinicalDiagnosisComponent",
+                          "clinical.procedure": "#/components/schemas/ClinicalProcedureComponent",
+                          "clinical.treatment-plan": "#/components/schemas/ClinicalTreatmentPlanComponent"
+                        }
+                      }
+                    },
                     "weightKg": {
                       "type": "number",
                       "format": "float"

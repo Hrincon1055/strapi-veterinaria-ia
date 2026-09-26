@@ -754,7 +754,6 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    anamnesis: Schema.Attribute.Blocks;
     appointment: Schema.Attribute.Relation<
       'oneToOne',
       'api::scheduling.appointment'
@@ -765,7 +764,6 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    diagnosis: Schema.Attribute.Blocks;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -780,11 +778,21 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
+    sections: Schema.Attribute.DynamicZone<
+      [
+        'clinical.anamnesis',
+        'clinical.physical-exam',
+        'clinical.lab-result',
+        'clinical.imaging',
+        'clinical.diagnosis',
+        'clinical.procedure',
+        'clinical.treatment-plan',
+      ]
+    >;
     services: Schema.Attribute.Relation<
       'oneToMany',
       'api::scheduling.consultation-service'
     >;
-    treatmentNotes: Schema.Attribute.Blocks;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

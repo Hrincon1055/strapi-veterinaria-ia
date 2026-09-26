@@ -1,0 +1,58 @@
+{
+  "collectionName": "components_clinical_physical_exams",
+  "info": {
+    "displayName": "Exploración física",
+    "icon": "doctor",
+    "description": "Constantes y hallazgos de la exploración."
+  },
+  "options": {},
+  "attributes": {
+    "temperatureC": {
+      "type": "decimal",
+      "min": 30,
+      "max": 45
+    },
+    "heartRateBpm": {
+      "type": "integer",
+      "min": 0,
+      "max": 400
+    },
+    "respiratoryRateRpm": {
+      "type": "integer",
+      "min": 0,
+      "max": 200
+    },
+    "mucousMembranes": {
+      "type": "enumeration",
+      "enum": [
+        "normal",
+        "pale",
+        "congested",
+        "icteric",
+        "cyanotic"
+      ]
+    },
+    "capillaryRefillSeconds": {
+      "type": "decimal",
+      "min": 0,
+      "max": 10
+    },
+    "bodyConditionScore": {
+      "type": "integer",
+      "min": 1,
+      "max": 9
+    },
+    "hydrationState": {
+      "type": "enumeration",
+      "enum": [
+        "normal",
+        "mild",
+        "moderate",
+        "severe"
+      ]
+    },
+    "findings": {
+      "type": "blocks"
+    }
+  }
+}
