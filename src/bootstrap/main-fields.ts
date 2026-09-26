@@ -34,6 +34,21 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::scheduling.consultation-service': 'searchLabel',
   'api::marketing.campaign-metric': 'searchLabel',
 
+  /**
+   * El usuario se identifica por su correo, no por el `username`.
+   *
+   * Afecta a las 10 relaciones que apuntan a `user` (profile.user,
+   * consultation.vet, appointment.responsible, customer-note.author…), no solo
+   * a `profile.user`: tener el mismo usuario con dos etiquetas distintas según
+   * el formulario sería peor que el problema original.
+   *
+   * Ojo: en Strapi 5 `unique: true` se valida en la capa de aplicación y no
+   * hay índice único sobre `email` en `up_users`. La unicidad la sostienen el
+   * ajuste `unique_email` del plugin y la comprobación de
+   * `src/api/identity/services/portal.ts`.
+   */
+  'plugin::users-permissions.user': 'email',
+
   // Reapuntados a un campo que ya existía: no hizo falta tocar el esquema.
   'api::notification.notification': 'title',
   'api::customer.customer-note': 'body',

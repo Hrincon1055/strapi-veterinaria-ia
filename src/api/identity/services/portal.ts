@@ -81,6 +81,41 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     return strapi.plugin('users-permissions').service('jwt').issue({ id: userId });
   },
 
+  /**
+   * ¿Están libres ese usuario y ese correo?
+   *
+   * Replica la comprobación cruzada del registro nativo (`auth.js`): en
+   * users-permissions se puede iniciar sesión indistintamente con el correo o
+   * con el nombre de usuario, así que un correo nuevo no puede chocar tampoco
+   * con el `username` de otra cuenta, ni al revés.
+   *
+   * Hace falta hacerlo aquí porque `unique: true` en Strapi 5 se valida en la
+   * capa de aplicación, no con una restricción de base de datos: no hay índice
+   * único sobre `email` ni sobre `username` en `up_users`.
+   */
+  async identidadEnUso(username: string, email: string): Promise<boolean> {
+    const correo = email.toLowerCase();
+    const conflictos = await strapi.db.query('plugin::users-permissions.user').count({
+      where: {
+        $or: [
+          { email: correo },
+          { username: correo },
+          { username },
+          { email: username },
+        ],
+      },
+    });
+    return conflictos > 0;
+  },
+
+  async exigirIdentidadLibre(username: string, email: string): Promise<void> {
+    if (await this.identidadEnUso(username, email)) {
+      throw new ApplicationError('Ese correo o nombre de usuario ya está en uso', {
+        code: 'IDENTITY_TAKEN',
+      });
+    }
+  },
+
   /** Busca la ficha por documento de identidad. */
   async buscarPerfil(documentType: string, documentNumber: string) {
     return strapi.documents('api::identity.profile').findFirst({
@@ -116,6 +151,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       );
     }
 
+    // El correo se guarda en minúsculas, igual que hace el registro nativo:
+    // el login compara así, y con mayúsculas la cuenta quedaría inaccesible.
+    const correo = datos.email.toLowerCase();
+    const usuario = datos.username ?? correo;
+    await this.exigirIdentidadLibre(usuario, correo);
+
     const rol = await this.rolCliente();
 
     return strapi.db.transaction(async () => {
@@ -132,7 +173,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         data: {
           profile: perfil.documentId,
           contactType: 'email',
-          value: datos.email,
+          value: correo,
           isPrimary: true,
         } as any,
       });
@@ -159,9 +200,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         } as any,
       });
 
-      const usuario = await strapi.plugin('users-permissions').service('user').add({
-        username: datos.username ?? datos.email,
-        email: datos.email,
+      const cuenta = await strapi.plugin('users-permissions').service('user').add({
+        username: usuario,
+        email: correo,
         password: datos.password,
         provider: 'local',
         confirmed: true,
@@ -170,7 +211,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         profile: perfil.documentId,
       });
 
-      return { usuario, perfil };
+      return { usuario: cuenta, perfil };
     });
   },
 
@@ -270,13 +311,30 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         data: { verifiedAt: new Date().toISOString() } as any,
       });
 
-      const correo = (perfil as any).contacts.find((c: any) => c.contactType.startsWith('email'));
+      const usuario = datos.username ?? `${datos.documentType}${datos.documentNumber}`;
 
-      const usuario = await strapi.plugin('users-permissions').service('user').add({
-        username: datos.username ?? `${datos.documentType}${datos.documentNumber}`,
-        // Sin correo en la ficha se usa uno derivado del documento: el esquema
-        // nativo exige email, y el cliente de mostrador puede no tener.
-        email: correo?.value ?? `${datos.documentNumber}@sin-correo.local`,
+      // El esquema nativo exige un correo y el cliente de mostrador puede no
+      // tener ninguno, así que se deriva uno del documento.
+      const derivado = `${datos.documentType}${datos.documentNumber}@sin-correo.local`;
+      const enFicha = (perfil as any).contacts.find((c: any) =>
+        c.contactType.startsWith('email')
+      )?.value?.toLowerCase();
+
+      // Aquí la persona SÍ es dueña de la ficha: que su correo ya esté en uso
+      // (una pareja que comparte buzón, por ejemplo) no puede dejarla fuera.
+      // Se cae al correo derivado, que es único, y podrá cambiarlo luego.
+      const correo =
+        enFicha && !(await this.identidadEnUso(usuario, enFicha)) ? enFicha : derivado;
+
+      if (await this.identidadEnUso(usuario, correo)) {
+        throw new ApplicationError('Ese nombre de usuario ya está en uso, elige otro', {
+          code: 'USERNAME_TAKEN',
+        });
+      }
+
+      const cuenta = await strapi.plugin('users-permissions').service('user').add({
+        username: usuario,
+        email: correo,
         password: datos.password,
         provider: 'local',
         confirmed: true,
@@ -285,7 +343,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         profile: perfil.documentId,
       });
 
-      return { usuario, perfil };
+      return { usuario: cuenta, perfil };
     });
   },
 });
