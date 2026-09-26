@@ -14,6 +14,7 @@
  */
 
 const { createStrapi } = require('@strapi/strapi');
+const { crearHistoria, borrarHistoria } = require('./demo-clinica');
 
 const PASSWORD = 'Demo12345';
 
@@ -298,8 +299,10 @@ const DEL_FLUJO = {
 
 async function borrar(app) {
   const d = (uid) => app.documents(uid);
+
+  // Primero la historia clínica: cuelga de las mascotas que se borran abajo.
+  let n = await borrarHistoria(app);
   const documentos = [...CLIENTES.map((c) => c.perfil.documentNumber), ...DEL_FLUJO.documentos];
-  let n = 0;
 
   for (const documentNumber of documentos) {
     const perfil = await d('api::identity.profile').findFirst({ filters: { documentNumber } });
@@ -361,6 +364,7 @@ async function borrar(app) {
   }
 
   const resumen = await crear(app);
+  const historia = await crearHistoria(app);
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
   for (const { perfil, cliente, usuario, mascotas } of resumen) {
@@ -373,6 +377,10 @@ async function borrar(app) {
     }
     console.log('');
   }
+
+  console.log(`Historia clínica de ${historia.mascota}: ${historia.visitas} visitas nuevas`);
+  console.log(`Veterinaria: ${historia.vet} / Clinica12345`);
+  console.log(`\nVer la historia:  node demo-historia.js ${historia.mascota}\n`);
 
   await app.destroy();
   process.exit(0);
