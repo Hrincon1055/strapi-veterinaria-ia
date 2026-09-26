@@ -78,6 +78,22 @@ No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente 
 
 **tsconfig** uses `module`/`moduleResolution: Node16` (changed from the scaffold's CommonJS/Node default), so relative imports in server code need explicit extensions where ESM resolution applies.
 
+## Plugins
+
+Five plugins beyond the defaults, all Strapi 5 compatible, configured in `config/plugins.ts`:
+
+| Plugin | Where it shows up | Configuration |
+| --- | --- | --- |
+| `documentation` | `/documentation` | OpenAPI, regenerated each boot from the content types. Bump `info.version` to cut a new version instead of overwriting. |
+| `color-picker` | Service form | Applied to `service.colorHex` as a custom field; the stored type is still `string`, so no data migration. |
+| `strapi-csv-import-export` | Admin menu | `authorizedExports`/`authorizedImports` list **catalogs only**. The plugin filters by collection, not by role, so enabling a table with personal data would give any admin a one-click export of the whole patient base. |
+| `strapi-calendar` | Admin menu | Collection and date fields are chosen in Settings → Calendar (stored in the plugin store, not in `plugins.ts`). Use `appointment` / `startAt` / `endAt`. **See the security note below.** |
+| `schema-visualizer` | Admin menu | None. |
+
+**`@offset-dev/strapi-calendar` ships all six of its routes with `auth: false`.** Unauthenticated, `GET /strapi-calendar/collections` dumps the schema of every content type, `POST /strapi-calendar/settings` repoints the calendar at any collection, and `GET /strapi-calendar/` then returns that collection's rows — chained, that is an anonymous read of patient data. `src/middlewares/protect-calendar.ts` (registered in `config/middlewares.ts`, right after `strapi::errors`) requires a valid admin JWT on `/strapi-calendar/*`. The plugin's own admin UI uses `getFetchClient`, which sends that token, so the panel still works. Verified: all six routes return 401 anonymously and 200 with an admin token. **Do not remove that middleware while this plugin is installed.** The other two third-party plugins use `type: admin` routes and are already gated (401 anonymously).
+
+`/documentation` is public by design. To close it in production, turn on Restricted Access in Settings → Documentation; the flag lives in the plugin store, not in `config/plugins.ts`.
+
 ## Environment
 
 Copy `.env.example` to `.env` and fill the secrets (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY`). `.env` and `.tmp/` are gitignored; the local sqlite database is disposable.

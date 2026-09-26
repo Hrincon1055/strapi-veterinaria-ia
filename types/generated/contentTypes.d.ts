@@ -1898,7 +1898,8 @@ export interface ApiSchedulingService extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::scheduling.service-category'
     >;
-    colorHex: Schema.Attribute.String;
+    colorHex: Schema.Attribute.String &
+      Schema.Attribute.CustomField<'plugin::color-picker.color'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

@@ -15,14 +15,19 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
+    "@offset-dev/strapi-calendar": "^1.0.0",
     "@strapi/database": "5.55.1",
     "@strapi/plugin-cloud": "5.55.1",
+    "@strapi/plugin-color-picker": "^5.55.1",
+    "@strapi/plugin-documentation": "^5.55.1",
     "@strapi/plugin-users-permissions": "5.55.1",
     "@strapi/strapi": "5.55.1",
     "better-sqlite3": "12.8.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.30.3",
+    "strapi-csv-import-export": "^0.0.6",
+    "strapi-plugin-schema-visualizer": "^1.0.5",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
