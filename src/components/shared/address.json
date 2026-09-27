@@ -1,6 +1,6 @@
 {
   "collectionName": "components_shared_addresses",
-  "info": { "displayName": "Address", "icon": "pinMap" },
+  "info": { "displayName": "Dirección", "icon": "pinMap" },
   "options": {},
   "attributes": {
     "addressType": { "type": "enumeration", "enum": ["home", "work"], "default": "home", "required": true },

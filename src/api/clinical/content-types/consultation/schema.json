@@ -4,7 +4,7 @@
   "info": {
     "singularName": "consultation",
     "pluralName": "consultations",
-    "displayName": "Consultation"
+    "displayName": "Consulta"
   },
   "options": {
     "draftAndPublish": false

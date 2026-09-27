@@ -1,6 +1,6 @@
 {
   "collectionName": "components_customer_consents",
-  "info": { "displayName": "Consents", "icon": "shield" },
+  "info": { "displayName": "Consentimientos", "icon": "shield" },
   "options": {},
   "attributes": {
     "marketing": { "type": "boolean", "default": false, "required": true },

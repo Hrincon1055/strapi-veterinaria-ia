@@ -446,7 +446,7 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
 export interface ApiBillingBenefitUsage extends Struct.CollectionTypeSchema {
   collectionName: 'benefit_usages';
   info: {
-    displayName: 'Benefit usage';
+    displayName: 'Uso de beneficio';
     pluralName: 'benefit-usages';
     singularName: 'benefit-usage';
   };
@@ -490,7 +490,7 @@ export interface ApiBillingBenefitUsage extends Struct.CollectionTypeSchema {
 export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
   collectionName: 'invoices';
   info: {
-    displayName: 'Invoice';
+    displayName: 'Factura';
     pluralName: 'invoices';
     singularName: 'invoice';
   };
@@ -599,7 +599,7 @@ export interface ApiBillingPlan extends Struct.CollectionTypeSchema {
 export interface ApiBillingPlanBenefit extends Struct.CollectionTypeSchema {
   collectionName: 'plan_benefits';
   info: {
-    displayName: 'Plan benefit';
+    displayName: 'Beneficio del plan';
     pluralName: 'plan-benefits';
     singularName: 'plan-benefit';
   };
@@ -647,7 +647,7 @@ export interface ApiBillingPlanBenefit extends Struct.CollectionTypeSchema {
 export interface ApiBillingSubscription extends Struct.CollectionTypeSchema {
   collectionName: 'subscriptions';
   info: {
-    displayName: 'Subscription';
+    displayName: 'Suscripci\u00F3n';
     pluralName: 'subscriptions';
     singularName: 'subscription';
   };
@@ -802,7 +802,7 @@ export interface ApiClinicClinic extends Struct.SingleTypeSchema {
 export interface ApiClinicalAllergy extends Struct.CollectionTypeSchema {
   collectionName: 'allergies';
   info: {
-    displayName: 'Allergy';
+    displayName: 'Alergia';
     pluralName: 'allergies';
     singularName: 'allergy';
   };
@@ -854,7 +854,7 @@ export interface ApiClinicalAllergy extends Struct.CollectionTypeSchema {
 export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
   collectionName: 'consultations';
   info: {
-    displayName: 'Consultation';
+    displayName: 'Consulta';
     pluralName: 'consultations';
     singularName: 'consultation';
   };
@@ -921,7 +921,7 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
 export interface ApiClinicalPetVaccination extends Struct.CollectionTypeSchema {
   collectionName: 'pet_vaccinations';
   info: {
-    displayName: 'Pet vaccination';
+    displayName: 'Vacunaci\u00F3n';
     pluralName: 'pet-vaccinations';
     singularName: 'pet-vaccination';
   };
@@ -973,7 +973,7 @@ export interface ApiClinicalPetVaccination extends Struct.CollectionTypeSchema {
 export interface ApiClinicalVaccine extends Struct.CollectionTypeSchema {
   collectionName: 'vaccines';
   info: {
-    displayName: 'Vaccine';
+    displayName: 'Vacuna';
     pluralName: 'vaccines';
     singularName: 'vaccine';
   };
@@ -1012,7 +1012,7 @@ export interface ApiClinicalVaccine extends Struct.CollectionTypeSchema {
 export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
   collectionName: 'customers';
   info: {
-    displayName: 'Customer';
+    displayName: 'Cliente';
     pluralName: 'customers';
     singularName: 'customer';
   };
@@ -1059,7 +1059,7 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
 export interface ApiCustomerCustomerNote extends Struct.CollectionTypeSchema {
   collectionName: 'customer_notes';
   info: {
-    displayName: 'Customer note';
+    displayName: 'Nota de cliente';
     pluralName: 'customer-notes';
     singularName: 'customer-note';
   };
@@ -1094,7 +1094,7 @@ export interface ApiDocumentsSignedDocument
   extends Struct.CollectionTypeSchema {
   collectionName: 'signed_documents';
   info: {
-    displayName: 'Signed document';
+    displayName: 'Documento firmado';
     pluralName: 'signed-documents';
     singularName: 'signed-document';
   };
@@ -1195,7 +1195,7 @@ export interface ApiDocumentsSignedDocumentEvent
   extends Struct.CollectionTypeSchema {
   collectionName: 'signed_document_events';
   info: {
-    displayName: 'Signed document event';
+    displayName: 'Evento de documento firmado';
     pluralName: 'signed-document-events';
     singularName: 'signed-document-event';
   };
@@ -1251,7 +1251,7 @@ export interface ApiDocumentsSignedDocumentSigner
   extends Struct.CollectionTypeSchema {
   collectionName: 'signed_document_signers';
   info: {
-    displayName: 'Signed document signer';
+    displayName: 'Firmante de documento';
     pluralName: 'signed-document-signers';
     singularName: 'signed-document-signer';
   };
@@ -1310,7 +1310,7 @@ export interface ApiDocumentsSignedDocumentSigner
 export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
   collectionName: 'profiles';
   info: {
-    displayName: 'Profile';
+    displayName: 'Perfil';
     pluralName: 'profiles';
     singularName: 'profile';
   };
@@ -1377,7 +1377,7 @@ export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
 export interface ApiMarketingCampaign extends Struct.CollectionTypeSchema {
   collectionName: 'campaigns';
   info: {
-    displayName: 'Campaign';
+    displayName: 'Campa\u00F1a';
     pluralName: 'campaigns';
     singularName: 'campaign';
   };
@@ -1429,7 +1429,7 @@ export interface ApiMarketingCampaignMetric
   extends Struct.CollectionTypeSchema {
   collectionName: 'campaign_metrics';
   info: {
-    displayName: 'Campaign metric';
+    displayName: 'M\u00E9trica de campa\u00F1a';
     pluralName: 'campaign-metrics';
     singularName: 'campaign-metric';
   };
@@ -1502,7 +1502,7 @@ export interface ApiNotificationNotification
   extends Struct.CollectionTypeSchema {
   collectionName: 'notifications';
   info: {
-    displayName: 'Notification';
+    displayName: 'Notificaci\u00F3n';
     pluralName: 'notifications';
     singularName: 'notification';
   };
@@ -1551,7 +1551,7 @@ export interface ApiNotificationNotificationDelivery
   extends Struct.CollectionTypeSchema {
   collectionName: 'notification_deliveries';
   info: {
-    displayName: 'Notification delivery';
+    displayName: 'Env\u00EDo de notificaci\u00F3n';
     pluralName: 'notification-deliveries';
     singularName: 'notification-delivery';
   };
@@ -1635,7 +1635,7 @@ export interface ApiNotificationNotificationRecipient
   extends Struct.CollectionTypeSchema {
   collectionName: 'notification_recipients';
   info: {
-    displayName: 'Notification recipient';
+    displayName: 'Destinatario de notificaci\u00F3n';
     pluralName: 'notification-recipients';
     singularName: 'notification-recipient';
   };
@@ -1677,7 +1677,7 @@ export interface ApiNotificationNotificationRecipient
 export interface ApiPetBreed extends Struct.CollectionTypeSchema {
   collectionName: 'breeds';
   info: {
-    displayName: 'Breed';
+    displayName: 'Raza';
     pluralName: 'breeds';
     singularName: 'breed';
   };
@@ -1712,7 +1712,7 @@ export interface ApiPetBreed extends Struct.CollectionTypeSchema {
 export interface ApiPetPet extends Struct.CollectionTypeSchema {
   collectionName: 'pets';
   info: {
-    displayName: 'Pet';
+    displayName: 'Mascota';
     pluralName: 'pets';
     singularName: 'pet';
   };
@@ -1783,7 +1783,7 @@ export interface ApiPetPet extends Struct.CollectionTypeSchema {
 export interface ApiPetSpecies extends Struct.CollectionTypeSchema {
   collectionName: 'species';
   info: {
-    displayName: 'Species';
+    displayName: 'Especie';
     pluralName: 'species-list';
     singularName: 'species';
   };
@@ -1815,7 +1815,7 @@ export interface ApiPetSpecies extends Struct.CollectionTypeSchema {
 export interface ApiSchedulingAppointment extends Struct.CollectionTypeSchema {
   collectionName: 'appointments';
   info: {
-    displayName: 'Appointment';
+    displayName: 'Cita';
     pluralName: 'appointments';
     singularName: 'appointment';
   };
@@ -1893,7 +1893,7 @@ export interface ApiSchedulingAppointment extends Struct.CollectionTypeSchema {
 export interface ApiSchedulingClinicRoom extends Struct.CollectionTypeSchema {
   collectionName: 'clinic_rooms';
   info: {
-    displayName: 'Clinic room';
+    displayName: 'Consultorio';
     pluralName: 'clinic-rooms';
     singularName: 'clinic-room';
   };
@@ -1984,7 +1984,7 @@ export interface ApiSchedulingScheduleException
 export interface ApiSchedulingService extends Struct.CollectionTypeSchema {
   collectionName: 'services';
   info: {
-    displayName: 'Service';
+    displayName: 'Servicio';
     pluralName: 'services';
     singularName: 'service';
   };
@@ -2042,7 +2042,7 @@ export interface ApiSchedulingServiceCategory
   extends Struct.CollectionTypeSchema {
   collectionName: 'service_categories';
   info: {
-    displayName: 'Service category';
+    displayName: 'Categor\u00EDa de servicio';
     pluralName: 'service-categories';
     singularName: 'service-category';
   };
@@ -2133,7 +2133,7 @@ export interface ApiSchedulingStaffSchedule
 export interface ApiSharedContact extends Struct.CollectionTypeSchema {
   collectionName: 'contacts';
   info: {
-    displayName: 'Contact';
+    displayName: 'Contacto';
     pluralName: 'contacts';
     singularName: 'contact';
   };
@@ -2178,7 +2178,7 @@ export interface ApiSharedContact extends Struct.CollectionTypeSchema {
 export interface ApiSharedCountry extends Struct.CollectionTypeSchema {
   collectionName: 'countries';
   info: {
-    displayName: 'Country';
+    displayName: 'Pa\u00EDs';
     pluralName: 'countries';
     singularName: 'country';
   };
@@ -2218,7 +2218,7 @@ export interface ApiSharedCountry extends Struct.CollectionTypeSchema {
 export interface ApiSharedVerificationCode extends Struct.CollectionTypeSchema {
   collectionName: 'verification_codes';
   info: {
-    displayName: 'Verification code';
+    displayName: 'C\u00F3digo de verificaci\u00F3n';
     pluralName: 'verification-codes';
     singularName: 'verification-code';
   };
@@ -2260,7 +2260,7 @@ export interface ApiSharedVerificationCode extends Struct.CollectionTypeSchema {
 export interface ApiTravelTravelCase extends Struct.CollectionTypeSchema {
   collectionName: 'travel_cases';
   info: {
-    displayName: 'Travel case';
+    displayName: 'Tr\u00E1mite de viaje';
     pluralName: 'travel-cases';
     singularName: 'travel-case';
   };
@@ -2766,7 +2766,7 @@ export interface PluginUsersPermissionsUser
   collectionName: 'up_users';
   info: {
     description: '';
-    displayName: 'User';
+    displayName: 'Usuario';
     name: 'user';
     pluralName: 'users';
     singularName: 'user';

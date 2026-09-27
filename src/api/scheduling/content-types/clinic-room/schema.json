@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "clinic_rooms",
-  "info": { "singularName": "clinic-room", "pluralName": "clinic-rooms", "displayName": "Clinic room" },
+  "info": { "singularName": "clinic-room", "pluralName": "clinic-rooms", "displayName": "Consultorio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },

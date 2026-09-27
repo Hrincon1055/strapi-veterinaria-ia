@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "signed_document_signers",
-  "info": { "singularName": "signed-document-signer", "pluralName": "signed-document-signers", "displayName": "Signed document signer" },
+  "info": { "singularName": "signed-document-signer", "pluralName": "signed-document-signers", "displayName": "Firmante de documento" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "signedDocument": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document", "inversedBy": "signers" },

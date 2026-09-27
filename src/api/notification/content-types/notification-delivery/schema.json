@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "notification_deliveries",
-  "info": { "singularName": "notification-delivery", "pluralName": "notification-deliveries", "displayName": "Notification delivery" },
+  "info": { "singularName": "notification-delivery", "pluralName": "notification-deliveries", "displayName": "Envío de notificación" },
   "options": { "draftAndPublish": false },
   "pluginOptions": { "content-manager": { "visible": false } },
   "attributes": {

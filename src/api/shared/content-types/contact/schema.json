@@ -4,7 +4,7 @@
   "info": {
     "singularName": "contact",
     "pluralName": "contacts",
-    "displayName": "Contact"
+    "displayName": "Contacto"
   },
   "options": {
     "draftAndPublish": false

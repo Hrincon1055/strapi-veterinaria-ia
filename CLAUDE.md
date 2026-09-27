@@ -78,6 +78,14 @@ Como Strapi no tiene campos calculados, la solución es una columna real. `src/l
 
 No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente escritura. Y no lo ocultes del panel: un campo oculto deja de ser `isListable` y Strapi volvería a `documentId`.
 
+**El panel está en español en tres capas distintas**, y cada una vive en un sitio:
+
+- **La interfaz de Strapi** (menús, botones): `src/admin/app.tsx` con `locales: ['es']`. Solo lo habilita; cada administrador lo elige en su perfil y queda en su navegador.
+- **El nombre de cada entidad**: `info.displayName` del schema.json. Solo es texto de panel — el uid, las tablas y la API salen de `singularName`/`pluralName`, que siguen en inglés. Al cambiarlo hay que cambiar también el bloque del documento de modelo (`verify-model-doc.js` lo detecta en los componentes).
+- **La etiqueta de cada campo**: `src/bootstrap/etiquetas-es.json`, aplicado en `bootstrap()` por `field-labels.ts` al mismo almacén que `main-fields.ts`. Solo reemplaza etiquetas que sigan siendo la de fábrica (igual al nombre del campo), así que un cambio hecho en "Configurar la vista" sobrevive — y corregir una traducción ya aplicada exige cambiarla también en el panel. Un campo nuevo sin entrada en el JSON sale en el log como `[field-labels] campos sin traducción`.
+
+Los **valores de las enumeraciones** (`scheduled`, `no_show`, `absence`…) siguen en inglés en los desplegables: Strapi 5 no tiene etiqueta por valor de enum, y cambiar los valores rompería la API y el documento de modelo.
+
 **La historia clínica es una dynamic zone, no tres campos.** `consultation.sections` sustituye a los antiguos `anamnesis`/`diagnosis`/`treatmentNotes`: el veterinario compone cada consulta con las secciones que necesita, de `src/components/clinical/` — anamnesis, physical-exam, lab-result, imaging, diagnosis, procedure y treatment-plan (que anida `clinical.medication` repetible). Esto **se aparta del documento de modelo** (sección 7.5), que define los tres campos; hay que actualizarlo.
 
 Dos consecuencias que hay que conocer antes de tocar nada aquí:

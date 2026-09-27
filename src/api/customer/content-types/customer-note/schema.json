@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "customer_notes",
-  "info": { "singularName": "customer-note", "pluralName": "customer-notes", "displayName": "Customer note" },
+  "info": { "singularName": "customer-note", "pluralName": "customer-notes", "displayName": "Nota de cliente" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "notes" },

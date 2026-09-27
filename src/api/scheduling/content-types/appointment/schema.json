@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "appointments",
-  "info": { "singularName": "appointment", "pluralName": "appointments", "displayName": "Appointment" },
+  "info": { "singularName": "appointment", "pluralName": "appointments", "displayName": "Cita" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },

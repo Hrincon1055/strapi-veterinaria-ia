@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "invoices",
-  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Invoice" },
+  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Factura" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },

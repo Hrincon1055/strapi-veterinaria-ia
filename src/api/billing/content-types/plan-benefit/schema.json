@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "plan_benefits",
-  "info": { "singularName": "plan-benefit", "pluralName": "plan-benefits", "displayName": "Plan benefit" },
+  "info": { "singularName": "plan-benefit", "pluralName": "plan-benefits", "displayName": "Beneficio del plan" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "plan": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan", "inversedBy": "benefits" },

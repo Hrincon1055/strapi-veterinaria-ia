@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "species",
-  "info": { "singularName": "species", "pluralName": "species-list", "displayName": "Species" },
+  "info": { "singularName": "species", "pluralName": "species-list", "displayName": "Especie" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 60 },

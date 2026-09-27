@@ -1,6 +1,6 @@
 {
   "collectionName": "components_documents_document_files",
-  "info": { "displayName": "Document file", "icon": "file" },
+  "info": { "displayName": "Archivo del documento", "icon": "file" },
   "options": {},
   "attributes": {
     "fileKind": { "type": "enumeration", "enum": ["draft_pdf", "final_signed_pdf", "attachment"], "required": true },

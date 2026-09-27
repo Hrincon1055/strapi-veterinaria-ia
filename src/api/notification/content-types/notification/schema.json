@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "notifications",
-  "info": { "singularName": "notification", "pluralName": "notifications", "displayName": "Notification" },
+  "info": { "singularName": "notification", "pluralName": "notifications", "displayName": "Notificación" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "eventType": { "type": "string", "required": true, "maxLength": 100 },

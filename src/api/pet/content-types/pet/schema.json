@@ -4,7 +4,7 @@
   "info": {
     "singularName": "pet",
     "pluralName": "pets",
-    "displayName": "Pet"
+    "displayName": "Mascota"
   },
   "options": {
     "draftAndPublish": false

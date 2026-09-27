@@ -109,7 +109,7 @@ export interface ClinicalAnamnesis extends Struct.ComponentSchema {
 export interface ClinicalAttachment extends Struct.ComponentSchema {
   collectionName: 'components_clinical_attachments';
   info: {
-    displayName: 'Attachment';
+    displayName: 'Adjunto';
     icon: 'attachment';
   };
   attributes: {
@@ -349,7 +349,7 @@ export interface ClinicalTreatmentPlan extends Struct.ComponentSchema {
 export interface CustomerConsents extends Struct.ComponentSchema {
   collectionName: 'components_customer_consents';
   info: {
-    displayName: 'Consents';
+    displayName: 'Consentimientos';
     icon: 'shield';
   };
   attributes: {
@@ -372,7 +372,7 @@ export interface CustomerConsents extends Struct.ComponentSchema {
 export interface DocumentsDocumentFile extends Struct.ComponentSchema {
   collectionName: 'components_documents_document_files';
   info: {
-    displayName: 'Document file';
+    displayName: 'Archivo del documento';
     icon: 'file';
   };
   attributes: {
@@ -486,7 +486,7 @@ export interface MarketingRuleVaccinationDue extends Struct.ComponentSchema {
 export interface SchedulingAppointmentService extends Struct.ComponentSchema {
   collectionName: 'components_scheduling_appointment_services';
   info: {
-    displayName: 'Appointment service';
+    displayName: 'Servicio de la cita';
     icon: 'clock';
   };
   attributes: {
@@ -593,7 +593,7 @@ export interface SchedulingWorkShift extends Struct.ComponentSchema {
 export interface SharedAddress extends Struct.ComponentSchema {
   collectionName: 'components_shared_addresses';
   info: {
-    displayName: 'Address';
+    displayName: 'Direcci\u00F3n';
     icon: 'pinMap';
   };
   attributes: {

@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import registerValidations from './validations';
 import backfillLabels from './bootstrap/backfill-labels';
 import ensureIndexes from './bootstrap/indexes';
+import setFieldLabels from './bootstrap/field-labels';
 import setMainFields from './bootstrap/main-fields';
 import seedCatalogs from './bootstrap/seed';
 import setupRoles from './bootstrap/roles';
@@ -29,5 +30,6 @@ export default {
     await seedCatalogs(strapi);
     await backfillLabels(strapi);
     await setMainFields(strapi);
+    await setFieldLabels(strapi);
   },
 };

@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "allergies",
-  "info": { "singularName": "allergy", "pluralName": "allergies", "displayName": "Allergy" },
+  "info": { "singularName": "allergy", "pluralName": "allergies", "displayName": "Alergia" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "allergies" },

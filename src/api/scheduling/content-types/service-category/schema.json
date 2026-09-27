@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "service_categories",
-  "info": { "singularName": "service-category", "pluralName": "service-categories", "displayName": "Service category" },
+  "info": { "singularName": "service-category", "pluralName": "service-categories", "displayName": "Categoría de servicio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 100 },

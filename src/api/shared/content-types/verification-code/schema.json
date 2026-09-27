@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "verification_codes",
-  "info": { "singularName": "verification-code", "pluralName": "verification-codes", "displayName": "Verification code" },
+  "info": { "singularName": "verification-code", "pluralName": "verification-codes", "displayName": "Código de verificación" },
   "options": { "draftAndPublish": false },
   "pluginOptions": { "content-manager": { "visible": false } },
   "attributes": {

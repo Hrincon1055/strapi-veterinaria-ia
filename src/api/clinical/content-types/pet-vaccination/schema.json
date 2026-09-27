@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "pet_vaccinations",
-  "info": { "singularName": "pet-vaccination", "pluralName": "pet-vaccinations", "displayName": "Pet vaccination" },
+  "info": { "singularName": "pet-vaccination", "pluralName": "pet-vaccinations", "displayName": "Vacunación" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "vaccinations" },

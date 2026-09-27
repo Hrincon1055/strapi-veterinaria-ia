@@ -94,7 +94,7 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 ```json
 {
   "collectionName": "components_shared_addresses",
-  "info": { "displayName": "Address", "icon": "pinMap" },
+  "info": { "displayName": "Dirección", "icon": "pinMap" },
   "options": {},
   "attributes": {
     "addressType": { "type": "enumeration", "enum": ["home", "work"], "default": "home", "required": true },
@@ -113,7 +113,7 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 ```json
 {
   "collectionName": "components_customer_consents",
-  "info": { "displayName": "Consents", "icon": "shield" },
+  "info": { "displayName": "Consentimientos", "icon": "shield" },
   "options": {},
   "attributes": {
     "marketing": { "type": "boolean", "default": false, "required": true },
@@ -130,7 +130,7 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 {
   "collectionName": "components_clinical_attachments",
   "info": {
-    "displayName": "Attachment",
+    "displayName": "Adjunto",
     "icon": "attachment"
   },
   "options": {},
@@ -167,7 +167,7 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 ```json
 {
   "collectionName": "components_scheduling_appointment_services",
-  "info": { "displayName": "Appointment service", "icon": "clock" },
+  "info": { "displayName": "Servicio de la cita", "icon": "clock" },
   "options": {},
   "attributes": {
     "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
@@ -582,7 +582,7 @@ Escape para exigencias del destino que no encajan en los tipos anteriores.
 ```json
 {
   "collectionName": "components_documents_document_files",
-  "info": { "displayName": "Document file", "icon": "file" },
+  "info": { "displayName": "Archivo del documento", "icon": "file" },
   "options": {},
   "attributes": {
     "fileKind": { "type": "enumeration", "enum": ["draft_pdf", "final_signed_pdf", "attachment"], "required": true },
@@ -1293,7 +1293,7 @@ Correspondencias con el modelo original: `users.password` → `password` nativo;
 {
   "kind": "collectionType",
   "collectionName": "countries",
-  "info": { "singularName": "country", "pluralName": "countries", "displayName": "Country" },
+  "info": { "singularName": "country", "pluralName": "countries", "displayName": "País" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "maxLength": 100 },
@@ -1309,7 +1309,7 @@ Correspondencias con el modelo original: `users.password` → `password` nativo;
 {
   "kind": "collectionType",
   "collectionName": "contacts",
-  "info": { "singularName": "contact", "pluralName": "contacts", "displayName": "Contact" },
+  "info": { "singularName": "contact", "pluralName": "contacts", "displayName": "Contacto" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "profile": { "type": "relation", "relation": "manyToOne", "target": "api::identity.profile", "inversedBy": "contacts" },
@@ -1328,7 +1328,7 @@ Correspondencias con el modelo original: `users.password` → `password` nativo;
 {
   "kind": "collectionType",
   "collectionName": "verification_codes",
-  "info": { "singularName": "verification-code", "pluralName": "verification-codes", "displayName": "Verification code" },
+  "info": { "singularName": "verification-code", "pluralName": "verification-codes", "displayName": "Código de verificación" },
   "options": { "draftAndPublish": false },
   "pluginOptions": { "content-manager": { "visible": false } },
   "attributes": {
@@ -1349,7 +1349,7 @@ Solo verifica contactos del perfil. La verificación del email de login y el res
 {
   "kind": "collectionType",
   "collectionName": "profiles",
-  "info": { "singularName": "profile", "pluralName": "profiles", "displayName": "Profile" },
+  "info": { "singularName": "profile", "pluralName": "profiles", "displayName": "Perfil" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "firstName": { "type": "string", "required": true, "maxLength": 100 },
@@ -1391,7 +1391,7 @@ de staff que además entran al panel.
 {
   "kind": "collectionType",
   "collectionName": "customers",
-  "info": { "singularName": "customer", "pluralName": "customers", "displayName": "Customer" },
+  "info": { "singularName": "customer", "pluralName": "customers", "displayName": "Cliente" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "profile": { "type": "relation", "relation": "oneToOne", "target": "api::identity.profile", "inversedBy": "customer" },
@@ -1411,7 +1411,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 {
   "kind": "collectionType",
   "collectionName": "customer_notes",
-  "info": { "singularName": "customer-note", "pluralName": "customer-notes", "displayName": "Customer note" },
+  "info": { "singularName": "customer-note", "pluralName": "customer-notes", "displayName": "Nota de cliente" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "notes" },
@@ -1429,7 +1429,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 {
   "kind": "collectionType",
   "collectionName": "pets",
-  "info": { "singularName": "pet", "pluralName": "pets", "displayName": "Pet" },
+  "info": { "singularName": "pet", "pluralName": "pets", "displayName": "Mascota" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "owner": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "pets" },
@@ -1457,7 +1457,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 {
   "kind": "collectionType",
   "collectionName": "species",
-  "info": { "singularName": "species", "pluralName": "species-list", "displayName": "Species" },
+  "info": { "singularName": "species", "pluralName": "species-list", "displayName": "Especie" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 60 },
@@ -1472,7 +1472,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 {
   "kind": "collectionType",
   "collectionName": "breeds",
-  "info": { "singularName": "breed", "pluralName": "breeds", "displayName": "Breed" },
+  "info": { "singularName": "breed", "pluralName": "breeds", "displayName": "Raza" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "species": { "type": "relation", "relation": "manyToOne", "target": "api::pet.species", "inversedBy": "breeds" },
@@ -1489,7 +1489,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 {
   "kind": "collectionType",
   "collectionName": "consultations",
-  "info": { "singularName": "consultation", "pluralName": "consultations", "displayName": "Consultation" },
+  "info": { "singularName": "consultation", "pluralName": "consultations", "displayName": "Consulta" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "consultations" },
@@ -1531,7 +1531,7 @@ Dos consecuencias operativas de esa decisión:
 {
   "kind": "collectionType",
   "collectionName": "vaccines",
-  "info": { "singularName": "vaccine", "pluralName": "vaccines", "displayName": "Vaccine" },
+  "info": { "singularName": "vaccine", "pluralName": "vaccines", "displayName": "Vacuna" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "maxLength": 120 },
@@ -1548,7 +1548,7 @@ Dos consecuencias operativas de esa decisión:
 {
   "kind": "collectionType",
   "collectionName": "pet_vaccinations",
-  "info": { "singularName": "pet-vaccination", "pluralName": "pet-vaccinations", "displayName": "Pet vaccination" },
+  "info": { "singularName": "pet-vaccination", "pluralName": "pet-vaccinations", "displayName": "Vacunación" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "vaccinations" },
@@ -1570,7 +1570,7 @@ Dos consecuencias operativas de esa decisión:
 {
   "kind": "collectionType",
   "collectionName": "allergies",
-  "info": { "singularName": "allergy", "pluralName": "allergies", "displayName": "Allergy" },
+  "info": { "singularName": "allergy", "pluralName": "allergies", "displayName": "Alergia" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "allergies" },
@@ -1595,7 +1595,7 @@ Dos consecuencias operativas de esa decisión:
 {
   "kind": "collectionType",
   "collectionName": "appointments",
-  "info": { "singularName": "appointment", "pluralName": "appointments", "displayName": "Appointment" },
+  "info": { "singularName": "appointment", "pluralName": "appointments", "displayName": "Cita" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
@@ -1625,7 +1625,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "service_categories",
-  "info": { "singularName": "service-category", "pluralName": "service-categories", "displayName": "Service category" },
+  "info": { "singularName": "service-category", "pluralName": "service-categories", "displayName": "Categoría de servicio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 100 },
@@ -1641,7 +1641,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "services",
-  "info": { "singularName": "service", "pluralName": "services", "displayName": "Service" },
+  "info": { "singularName": "service", "pluralName": "services", "displayName": "Servicio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "category": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service-category", "inversedBy": "services" },
@@ -1661,7 +1661,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "clinic_rooms",
-  "info": { "singularName": "clinic-room", "pluralName": "clinic-rooms", "displayName": "Clinic room" },
+  "info": { "singularName": "clinic-room", "pluralName": "clinic-rooms", "displayName": "Consultorio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
@@ -1697,7 +1697,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "plan_benefits",
-  "info": { "singularName": "plan-benefit", "pluralName": "plan-benefits", "displayName": "Plan benefit" },
+  "info": { "singularName": "plan-benefit", "pluralName": "plan-benefits", "displayName": "Beneficio del plan" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "plan": { "type": "relation", "relation": "manyToOne", "target": "api::billing.plan", "inversedBy": "benefits" },
@@ -1715,7 +1715,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "subscriptions",
-  "info": { "singularName": "subscription", "pluralName": "subscriptions", "displayName": "Subscription" },
+  "info": { "singularName": "subscription", "pluralName": "subscriptions", "displayName": "Suscripción" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
@@ -1736,7 +1736,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "benefit_usages",
-  "info": { "singularName": "benefit-usage", "pluralName": "benefit-usages", "displayName": "Benefit usage" },
+  "info": { "singularName": "benefit-usage", "pluralName": "benefit-usages", "displayName": "Uso de beneficio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription", "inversedBy": "usages" },
@@ -1753,7 +1753,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "invoices",
-  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Invoice" },
+  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Factura" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
@@ -1779,7 +1779,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "travel_cases",
-  "info": { "singularName": "travel-case", "pluralName": "travel-cases", "displayName": "Travel case" },
+  "info": { "singularName": "travel-case", "pluralName": "travel-cases", "displayName": "Trámite de viaje" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
@@ -1810,7 +1810,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "signed_documents",
-  "info": { "singularName": "signed-document", "pluralName": "signed-documents", "displayName": "Signed document" },
+  "info": { "singularName": "signed-document", "pluralName": "signed-documents", "displayName": "Documento firmado" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
@@ -1842,7 +1842,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "signed_document_signers",
-  "info": { "singularName": "signed-document-signer", "pluralName": "signed-document-signers", "displayName": "Signed document signer" },
+  "info": { "singularName": "signed-document-signer", "pluralName": "signed-document-signers", "displayName": "Firmante de documento" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "signedDocument": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document", "inversedBy": "signers" },
@@ -1870,7 +1870,7 @@ El firmante apunta a `profile` porque tanto staff como clientes tienen perfil.
 {
   "kind": "collectionType",
   "collectionName": "signed_document_events",
-  "info": { "singularName": "signed-document-event", "pluralName": "signed-document-events", "displayName": "Signed document event" },
+  "info": { "singularName": "signed-document-event", "pluralName": "signed-document-events", "displayName": "Evento de documento firmado" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "signedDocument": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document", "inversedBy": "events" },
@@ -1893,7 +1893,7 @@ Registro de auditoría: solo `create`. Ningún rol tiene `update` ni `delete`.
 {
   "kind": "collectionType",
   "collectionName": "campaigns",
-  "info": { "singularName": "campaign", "pluralName": "campaigns", "displayName": "Campaign" },
+  "info": { "singularName": "campaign", "pluralName": "campaigns", "displayName": "Campaña" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "maxLength": 150 },
@@ -1919,7 +1919,7 @@ Registro de auditoría: solo `create`. Ningún rol tiene `update` ni `delete`.
 {
   "kind": "collectionType",
   "collectionName": "campaign_metrics",
-  "info": { "singularName": "campaign-metric", "pluralName": "campaign-metrics", "displayName": "Campaign metric" },
+  "info": { "singularName": "campaign-metric", "pluralName": "campaign-metrics", "displayName": "Métrica de campaña" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "campaign": { "type": "relation", "relation": "manyToOne", "target": "api::marketing.campaign", "inversedBy": "metrics" },
@@ -1940,7 +1940,7 @@ Cada fila es una foto de métricas; su momento es el `createdAt` nativo.
 {
   "kind": "collectionType",
   "collectionName": "notifications",
-  "info": { "singularName": "notification", "pluralName": "notifications", "displayName": "Notification" },
+  "info": { "singularName": "notification", "pluralName": "notifications", "displayName": "Notificación" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "eventType": { "type": "string", "required": true, "maxLength": 100 },
@@ -1961,7 +1961,7 @@ Cada fila es una foto de métricas; su momento es el `createdAt` nativo.
 {
   "kind": "collectionType",
   "collectionName": "notification_recipients",
-  "info": { "singularName": "notification-recipient", "pluralName": "notification-recipients", "displayName": "Notification recipient" },
+  "info": { "singularName": "notification-recipient", "pluralName": "notification-recipients", "displayName": "Destinatario de notificación" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "notification": { "type": "relation", "relation": "manyToOne", "target": "api::notification.notification", "inversedBy": "recipients" },
@@ -1978,7 +1978,7 @@ Cada fila es una foto de métricas; su momento es el `createdAt` nativo.
 {
   "kind": "collectionType",
   "collectionName": "notification_deliveries",
-  "info": { "singularName": "notification-delivery", "pluralName": "notification-deliveries", "displayName": "Notification delivery" },
+  "info": { "singularName": "notification-delivery", "pluralName": "notification-deliveries", "displayName": "Envío de notificación" },
   "options": { "draftAndPublish": false },
   "pluginOptions": { "content-manager": { "visible": false } },
   "attributes": {

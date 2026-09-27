@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "signed_documents",
-  "info": { "singularName": "signed-document", "pluralName": "signed-documents", "displayName": "Signed document" },
+  "info": { "singularName": "signed-document", "pluralName": "signed-documents", "displayName": "Documento firmado" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },

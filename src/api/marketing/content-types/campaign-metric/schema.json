@@ -4,7 +4,7 @@
   "info": {
     "singularName": "campaign-metric",
     "pluralName": "campaign-metrics",
-    "displayName": "Campaign metric"
+    "displayName": "Métrica de campaña"
   },
   "options": {
     "draftAndPublish": false

@@ -1,0 +1,468 @@
+{
+  "comunes": {
+    "id": "ID",
+    "documentId": "ID de documento",
+    "createdAt": "Creado el",
+    "updatedAt": "Actualizado el",
+    "publishedAt": "Publicado el",
+    "createdBy": "Creado por",
+    "updatedBy": "Actualizado por",
+    "locale": "Idioma",
+
+    "name": "Nombre",
+    "title": "Título",
+    "description": "Descripción",
+    "notes": "Notas",
+    "isActive": "Activo",
+    "isPrimary": "Principal",
+    "isRequired": "Obligatorio",
+    "state": "Estado",
+    "archivedAt": "Archivado el",
+    "searchLabel": "Etiqueta de búsqueda",
+    "metadata": "Metadatos",
+    "currency": "Moneda",
+    "amount": "Monto",
+    "price": "Precio",
+    "quantity": "Cantidad",
+    "value": "Valor",
+    "file": "Archivo",
+    "files": "Archivos",
+    "photo": "Foto",
+    "photos": "Fotos",
+
+    "pet": "Mascota",
+    "pets": "Mascotas",
+    "customer": "Cliente",
+    "profile": "Perfil",
+    "consultation": "Consulta",
+    "consultations": "Consultas",
+    "vet": "Veterinario",
+    "species": "Especie",
+    "breed": "Raza",
+    "breeds": "Razas",
+    "vaccine": "Vacuna",
+    "plan": "Plan",
+    "subscription": "Suscripción",
+    "service": "Servicio",
+    "services": "Servicios",
+    "room": "Consultorio",
+    "staff": "Profesional",
+    "country": "País",
+    "city": "Ciudad",
+    "phone": "Teléfono",
+    "email": "Correo electrónico",
+    "birthDate": "Fecha de nacimiento",
+    "documentType": "Tipo de documento",
+    "documentNumber": "Número de documento",
+    "weightKg": "Peso (kg)",
+    "reason": "Motivo",
+    "referralSource": "Cómo nos conoció",
+    "eventType": "Tipo de evento",
+    "signer": "Firmante",
+    "signedDocument": "Documento firmado",
+    "recipient": "Destinatario",
+    "performedBy": "Realizado por",
+    "expiresAt": "Vence el",
+    "usedAt": "Usado el",
+    "sentAt": "Enviado el",
+    "completedAt": "Completado el",
+    "verifiedAt": "Verificado el",
+    "verifiedBy": "Verificado por",
+    "validFrom": "Vigente desde",
+    "validUntil": "Vigente hasta",
+    "dayOfWeek": "Día de la semana",
+    "slotMinutes": "Minutos por paciente",
+    "durationMinutes": "Duración (min)",
+    "findings": "Hallazgos",
+    "laboratory": "Laboratorio",
+    "sampleTakenOn": "Toma de muestra",
+    "drug": "Medicamento",
+    "isCompleted": "Completado",
+    "document": "Documento soporte"
+  },
+
+  "tipos": {
+    "api::billing.benefit-usage": {
+      "benefit": "Beneficio"
+    },
+    "api::billing.invoice": {
+      "dataicoInvoiceId": "N.º de factura (Dataico)",
+      "dianState": "Estado DIAN",
+      "pdfUrl": "URL del PDF",
+      "xmlUrl": "URL del XML"
+    },
+    "api::billing.plan": {
+      "priceMonthly": "Precio mensual",
+      "priceYearly": "Precio anual",
+      "benefits": "Beneficios"
+    },
+    "api::billing.plan-benefit": {
+      "quantityPerYear": "Cantidad por año",
+      "copayAmount": "Copago"
+    },
+    "api::billing.subscription": {
+      "startOn": "Inicio",
+      "endOn": "Fin",
+      "renewalOn": "Renovación",
+      "paymentMethodToken": "Token del medio de pago",
+      "usages": "Usos de beneficios"
+    },
+    "api::clinic.clinic": {
+      "legalName": "Razón social",
+      "tradeName": "Nombre comercial",
+      "logo": "Logo",
+      "slogan": "Eslogan",
+      "verificationDigit": "Dígito de verificación",
+      "personType": "Tipo de persona",
+      "taxRegime": "Régimen tributario",
+      "fiscalResponsibilities": "Responsabilidades fiscales",
+      "ciiuCode": "Código CIIU",
+      "merchantRegistration": "Matrícula mercantil",
+      "fiscalAddress": "Dirección fiscal",
+      "whatsapp": "WhatsApp",
+      "billingEmail": "Correo de facturación",
+      "website": "Sitio web",
+      "resolutions": "Resoluciones DIAN",
+      "invoicingEnvironment": "Ambiente de facturación",
+      "defaultCurrency": "Moneda por defecto",
+      "invoiceFooterNotes": "Notas al pie de la factura",
+      "openingHours": "Horario de atención",
+      "timezone": "Zona horaria",
+      "emergencyPhone": "Teléfono de urgencias"
+    },
+    "api::clinical.allergy": {
+      "allergen": "Alérgeno",
+      "category": "Categoría",
+      "reaction": "Reacción",
+      "severity": "Gravedad",
+      "diagnosedOn": "Diagnosticada el",
+      "isActive": "Vigente",
+      "resolvedOn": "Resuelta el"
+    },
+    "api::clinical.consultation": {
+      "appointment": "Cita",
+      "consultedAt": "Fecha de la consulta",
+      "reason": "Motivo de consulta",
+      "sections": "Historia clínica",
+      "nextControlOn": "Próximo control",
+      "attachments": "Adjuntos",
+      "services": "Servicios prestados"
+    },
+    "api::clinical.pet-vaccination": {
+      "doseNumber": "Número de dosis",
+      "appliedOn": "Aplicada el",
+      "nextDueOn": "Próxima dosis",
+      "batchNumber": "Lote",
+      "batchExpiresOn": "Vencimiento del lote"
+    },
+    "api::clinical.vaccine": {
+      "species": "Especies",
+      "manufacturer": "Fabricante",
+      "isMandatory": "Obligatoria",
+      "isActive": "Activa"
+    },
+    "api::customer.customer": {
+      "referralNotes": "Detalle de cómo nos conoció",
+      "consents": "Consentimientos"
+    },
+    "api::customer.customer-note": {
+      "rating": "Calificación",
+      "body": "Nota",
+      "author": "Autor"
+    },
+    "api::documents.signed-document": {
+      "documentRef": "Referencia",
+      "isSequential": "Firma en orden",
+      "voidedAt": "Anulado el",
+      "voidReason": "Motivo de anulación",
+      "version": "Versión",
+      "replacedBy": "Reemplazado por",
+      "replaces": "Reemplaza a",
+      "signers": "Firmantes",
+      "events": "Eventos"
+    },
+    "api::documents.signed-document-event": {
+      "eventAt": "Fecha del evento",
+      "ip": "IP",
+      "userAgent": "Navegador (user agent)"
+    },
+    "api::documents.signed-document-signer": {
+      "signOrder": "Orden de firma",
+      "signerRoleSnapshot": "Rol del firmante",
+      "signerNameSnapshot": "Nombre del firmante",
+      "signerDocumentSnapshot": "Documento del firmante",
+      "signatureMethod": "Método de firma",
+      "signedAt": "Firmado el",
+      "signerIp": "IP del firmante",
+      "signerUserAgent": "Navegador del firmante",
+      "evidence": "Evidencia",
+      "evidenceHash": "Hash de la evidencia"
+    },
+    "api::identity.profile": {
+      "firstName": "Nombres",
+      "lastName": "Apellidos",
+      "occupation": "Ocupación",
+      "gender": "Género",
+      "addresses": "Direcciones",
+      "contacts": "Contactos",
+      "user": "Usuario de la app",
+      "adminUser": "Usuario del panel"
+    },
+    "api::marketing.campaign": {
+      "segment": "Segmento",
+      "metrics": "Métricas"
+    },
+    "api::marketing.campaign-metric": {
+      "campaign": "Campaña",
+      "emailsSent": "Correos enviados",
+      "opens": "Aperturas",
+      "clicks": "Clics",
+      "conversions": "Conversiones",
+      "attributedSales": "Ventas atribuidas"
+    },
+    "api::notification.notification": {
+      "subjectType": "Tipo de asunto",
+      "subjectDocumentId": "ID del asunto",
+      "body": "Mensaje",
+      "payload": "Datos",
+      "dedupeKey": "Clave de deduplicación",
+      "recipients": "Destinatarios"
+    },
+    "api::notification.notification-delivery": {
+      "channel": "Canal",
+      "scheduledAt": "Programado para",
+      "nextAttemptAt": "Próximo intento",
+      "attemptCount": "Intentos",
+      "maxAttempts": "Máximo de intentos",
+      "lockedAt": "Bloqueado el",
+      "lockedBy": "Bloqueado por",
+      "lockExpiresAt": "Bloqueo vence el",
+      "idempotencyKey": "Clave de idempotencia",
+      "providerMessageId": "ID del mensaje en el proveedor",
+      "lastErrorCode": "Último código de error",
+      "lastErrorMessage": "Último mensaje de error",
+      "lastErrorAt": "Último error el"
+    },
+    "api::notification.notification-recipient": {
+      "notification": "Notificación",
+      "readAt": "Leída el",
+      "deliveries": "Envíos"
+    },
+    "api::pet.breed": {
+      "isActive": "Activa"
+    },
+    "api::pet.pet": {
+      "owner": "Propietario",
+      "color": "Color",
+      "sex": "Sexo",
+      "microchip": "Microchip",
+      "sterilizationState": "Esterilización",
+      "sterilizedOn": "Esterilizado el",
+      "vaccinations": "Vacunas aplicadas",
+      "allergies": "Alergias"
+    },
+    "api::pet.species": {
+      "isActive": "Activa"
+    },
+    "api::scheduling.appointment": {
+      "responsible": "Responsable",
+      "bookedBy": "Agendada por",
+      "startAt": "Inicio",
+      "endAt": "Fin",
+      "source": "Origen",
+      "cancelledAt": "Cancelada el",
+      "cancelReason": "Motivo de cancelación",
+      "cancelNotes": "Notas de cancelación",
+      "arrivedAt": "Hora de llegada",
+      "completedAt": "Finalizada el"
+    },
+    "api::scheduling.clinic-room": {
+      "roomType": "Tipo de consultorio"
+    },
+    "api::scheduling.schedule-exception": {
+      "exceptionKind": "Tipo de excepción",
+      "fromDate": "Desde (fecha)",
+      "toDate": "Hasta (fecha)",
+      "isAllDay": "Todo el día",
+      "fromTime": "Desde (hora)",
+      "toTime": "Hasta (hora)"
+    },
+    "api::scheduling.service": {
+      "category": "Categoría",
+      "defaultDurationMinutes": "Duración por defecto (min)",
+      "basePrice": "Precio base",
+      "colorHex": "Color"
+    },
+    "api::scheduling.service-category": {
+      "sortOrder": "Orden"
+    },
+    "api::scheduling.staff-schedule": {
+      "shifts": "Franjas"
+    },
+    "api::shared.contact": {
+      "contactType": "Tipo de contacto"
+    },
+    "api::shared.country": {
+      "isoCode": "Código ISO",
+      "dialCode": "Indicativo",
+      "flag": "Bandera"
+    },
+    "api::shared.verification-code": {
+      "contact": "Contacto",
+      "codeHash": "Hash del código",
+      "purpose": "Propósito"
+    },
+    "api::travel.travel-case": {
+      "destinationCountry": "País de destino",
+      "airline": "Aerolínea",
+      "travelOn": "Fecha de viaje",
+      "requirements": "Requisitos"
+    },
+    "plugin::users-permissions.user": {
+      "username": "Nombre de usuario",
+      "provider": "Proveedor",
+      "password": "Contraseña",
+      "resetPasswordToken": "Token de restablecimiento",
+      "confirmationToken": "Token de confirmación",
+      "confirmed": "Confirmado",
+      "blocked": "Bloqueado",
+      "role": "Rol"
+    },
+
+    "billing.dian-resolution": {
+      "resolutionNumber": "Número de resolución",
+      "resolutionDate": "Fecha de resolución",
+      "prefix": "Prefijo",
+      "rangeFrom": "Rango desde",
+      "rangeTo": "Rango hasta",
+      "currentNumber": "Consecutivo actual",
+      "technicalKey": "Clave técnica",
+      "isActive": "Activa"
+    },
+    "billing.fiscal-responsibility": {
+      "code": "Código"
+    },
+    "clinic.opening-hours": {
+      "isClosed": "Cerrado",
+      "opensAt": "Abre",
+      "closesAt": "Cierra"
+    },
+    "clinical.anamnesis": {
+      "history": "Historia",
+      "evolutionDays": "Días de evolución",
+      "reportedBy": "Reportado por"
+    },
+    "clinical.attachment": {
+      "attachmentKind": "Tipo de adjunto"
+    },
+    "clinical.diagnosis": {
+      "diagnosisKind": "Tipo de diagnóstico",
+      "condition": "Condición",
+      "details": "Detalles"
+    },
+    "clinical.imaging": {
+      "modality": "Modalidad",
+      "bodyRegion": "Región anatómica",
+      "images": "Imágenes"
+    },
+    "clinical.lab-result": {
+      "panel": "Panel",
+      "isAbnormal": "Anormal",
+      "report": "Informe"
+    },
+    "clinical.medication": {
+      "dose": "Dosis",
+      "route": "Vía",
+      "frequencyHours": "Frecuencia (horas)",
+      "durationDays": "Duración (días)"
+    },
+    "clinical.physical-exam": {
+      "temperatureC": "Temperatura (°C)",
+      "heartRateBpm": "Frecuencia cardíaca (lpm)",
+      "respiratoryRateRpm": "Frecuencia respiratoria (rpm)",
+      "mucousMembranes": "Mucosas",
+      "capillaryRefillSeconds": "Llenado capilar (s)",
+      "bodyConditionScore": "Condición corporal",
+      "hydrationState": "Hidratación"
+    },
+    "clinical.procedure": {
+      "procedureName": "Procedimiento",
+      "anesthesia": "Anestesia",
+      "complications": "Complicaciones"
+    },
+    "clinical.treatment-plan": {
+      "indications": "Indicaciones",
+      "medications": "Medicamentos",
+      "recommendations": "Recomendaciones",
+      "followUpOn": "Seguimiento el"
+    },
+    "customer.consents": {
+      "marketing": "Marketing",
+      "sms": "SMS",
+      "dataProcessing": "Tratamiento de datos",
+      "lastChangedAt": "Último cambio"
+    },
+    "documents.document-file": {
+      "fileKind": "Tipo de archivo",
+      "sha256": "SHA-256"
+    },
+    "marketing.rule-last-visit": {
+      "operador": "Operador",
+      "fecha": "Fecha"
+    },
+    "marketing.rule-subscription": {
+      "estado": "Estado"
+    },
+    "marketing.rule-vaccination-due": {
+      "vencePara": "Vence para"
+    },
+    "scheduling.consultation-service": {
+      "unitPrice": "Precio unitario",
+      "totalPrice": "Precio total"
+    },
+    "scheduling.work-shift": {
+      "startsAt": "Inicio",
+      "endsAt": "Fin"
+    },
+    "shared.address": {
+      "addressType": "Tipo de dirección",
+      "addressLine": "Dirección",
+      "region": "Departamento",
+      "postalCode": "Código postal",
+      "reference": "Referencia"
+    },
+    "travel.antiparasitic": {
+      "drug": "Producto",
+      "administeredAt": "Administrado el",
+      "windowHoursBeforeFlight": "Ventana antes del vuelo (h)"
+    },
+    "travel.crate": {
+      "lengthCm": "Largo (cm)",
+      "widthCm": "Ancho (cm)",
+      "heightCm": "Alto (cm)",
+      "iataCompliant": "Cumple IATA"
+    },
+    "travel.health-certificate": {
+      "issuingAuthority": "Autoridad emisora",
+      "certificateNumber": "Número de certificado",
+      "issuedOn": "Expedido el"
+    },
+    "travel.import-permit": {
+      "permitNumber": "Número de permiso",
+      "authority": "Autoridad",
+      "expiresOn": "Vence el"
+    },
+    "travel.microchip-check": {
+      "microchipNumber": "Número de microchip",
+      "implantedOn": "Implantado el",
+      "isoCompliant": "Cumple ISO"
+    },
+    "travel.other-requirement": {
+      "requirementName": "Requisito"
+    },
+    "travel.rabies-titer": {
+      "resultIuMl": "Resultado (UI/ml)",
+      "thresholdIuMl": "Umbral (UI/ml)"
+    }
+  }
+}

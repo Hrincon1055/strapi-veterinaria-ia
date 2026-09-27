@@ -1,7 +1,7 @@
 {
   "kind": "collectionType",
   "collectionName": "benefit_usages",
-  "info": { "singularName": "benefit-usage", "pluralName": "benefit-usages", "displayName": "Benefit usage" },
+  "info": { "singularName": "benefit-usage", "pluralName": "benefit-usages", "displayName": "Uso de beneficio" },
   "options": { "draftAndPublish": false },
   "attributes": {
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription", "inversedBy": "usages" },
