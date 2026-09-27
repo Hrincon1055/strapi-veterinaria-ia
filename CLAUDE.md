@@ -26,6 +26,7 @@ node smoke-validations.js         # 27 live assertions against the business rule
 node demo-data.js [--reset]       # 3 sample clients with pets + Kira's clinical history (idempotent)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
+node audit-orphans.js             # duplicate names + tables/dist left behind by a deleted type
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
 ```
@@ -109,6 +110,8 @@ Antes de depurar un middleware por un campo que falta, mira los permisos del rol
 **Hay tres dynamic zones, no una.** `consultation.sections` (historia clínica), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad) y `campaign.segment` (6 reglas de segmentación). Las tres necesitan su middleware de populate y ninguna se puede filtrar con `filters`.
 
 `campaign.segment` sustituyó al campo `json` `segmentCriteria`, que se pasaba **tal cual** como filtro de Strapi — había que escribir filtros a mano en el panel. Ahora `src/api/marketing/services/campaign.ts` traduce cada regla. La regla de suscripción es la excepción: se resuelve con una consulta propia porque `customer` no tiene relación inversa `subscriptions` (solo existe `subscription.customer`, manyToOne sin `inversedBy`), así que no hay camino de cliente a sus suscripciones en los filtros.
+
+`audit-orphans.js` busca precisamente esa basura: nombres duplicados, tablas que Strapi ya no gestiona y archivos que sobreviven en `dist/`. No adivina por el nombre — arranca Strapi y compara contra `strapi.db.metadata`, que conoce hasta las tablas de enlace con nombre truncado y hasheado (`components_scheduling_consultation_services_performed_by_lnk` se guarda como `components_scheduling_consultatiobc665_performed_by_lnk`). Ejecútalo después de cada migración a componente.
 
 **Borrar un content type deja basura que rompe la siguiente migración.** Al convertir `api::scheduling.consultation-service` en componente aparecieron tres trampas encadenadas, y conviene conocerlas antes de repetir la operación:
 
