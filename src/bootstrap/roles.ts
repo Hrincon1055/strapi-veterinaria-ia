@@ -39,6 +39,9 @@ const RECEPTION_CRUD = [
   'api::billing.subscription',
   'api::billing.invoice',
   'api::travel.travel-case',
+  // Recepción monta y ajusta los horarios del personal.
+  'api::scheduling.staff-schedule',
+  'api::scheduling.schedule-exception',
 ];
 
 const VET_CRUD = [
@@ -87,6 +90,7 @@ const receptionActions = [
   'api::clinical.consultation.searchBySection',
   ...LECTURA_USUARIOS,
   'api::clinic.clinic.find',
+  'api::scheduling.availability.find',
 ];
 
 /** Búsqueda dentro de la dynamic zone de la historia clínica. */
@@ -129,6 +133,8 @@ const ROLES: RoleSpec[] = [
       // agendar una cita en línea.
       ...actions(CATALOGS, READ),
       'api::clinic.clinic.find',
+      // El cliente necesita los huecos libres para reservar en línea.
+      'api::scheduling.availability.find',
     ],
   },
   {

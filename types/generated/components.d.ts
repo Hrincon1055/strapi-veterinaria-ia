@@ -556,6 +556,40 @@ export interface SchedulingConsultationService extends Struct.ComponentSchema {
   };
 }
 
+export interface SchedulingWorkShift extends Struct.ComponentSchema {
+  collectionName: 'components_scheduling_work_shifts';
+  info: {
+    description: 'Un tramo de atenci\u00F3n de un d\u00EDa de la semana. Se repite todas las semanas mientras el horario est\u00E9 vigente.';
+    displayName: 'Franja de trabajo';
+    icon: 'calendar';
+  };
+  attributes: {
+    dayOfWeek: Schema.Attribute.Enumeration<
+      [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ]
+    > &
+      Schema.Attribute.Required;
+    endsAt: Schema.Attribute.Time & Schema.Attribute.Required;
+    room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
+    slotMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 480;
+          min: 5;
+        },
+        number
+      >;
+    startsAt: Schema.Attribute.Time & Schema.Attribute.Required;
+  };
+}
+
 export interface SharedAddress extends Struct.ComponentSchema {
   collectionName: 'components_shared_addresses';
   info: {
@@ -832,6 +866,7 @@ declare module '@strapi/strapi' {
       'marketing.rule-vaccination-due': MarketingRuleVaccinationDue;
       'scheduling.appointment-service': SchedulingAppointmentService;
       'scheduling.consultation-service': SchedulingConsultationService;
+      'scheduling.work-shift': SchedulingWorkShift;
       'shared.address': SharedAddress;
       'travel.antiparasitic': TravelAntiparasitic;
       'travel.crate': TravelCrate;

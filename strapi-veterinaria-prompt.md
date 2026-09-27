@@ -48,7 +48,7 @@ src/
     customer/content-types/{customer,customer-note}/schema.json
     pet/content-types/{pet,species,breed}/schema.json
     clinical/content-types/{consultation,vaccine,pet-vaccination,allergy}/schema.json
-    scheduling/content-types/{appointment,service-category,service,clinic-room}/schema.json
+    scheduling/content-types/{appointment,service-category,service,clinic-room,staff-schedule,schedule-exception}/schema.json
     billing/content-types/{plan,plan-benefit,subscription,benefit-usage,invoice}/schema.json
     travel/content-types/travel-case/schema.json
     documents/content-types/{signed-document,signed-document-signer,signed-document-event}/schema.json
@@ -62,7 +62,7 @@ src/
     billing/{dian-resolution,fiscal-responsibility}.json
     clinical/attachment.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
-    scheduling/{appointment-service,consultation-service}.json
+    scheduling/{appointment-service,consultation-service,work-shift}.json
     travel/{health-certificate,rabies-titer,microchip-check,antiparasitic,import-permit,crate,other-requirement}.json
     marketing/{rule-species,rule-last-visit,rule-subscription,rule-vaccination-due,rule-city,rule-referral}.json
     documents/document-file.json
@@ -71,7 +71,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **32 content types (uno de ellos single type), 30 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **34 content types (uno de ellos single type), 31 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -2158,7 +2158,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 32 content types y 30 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 34 content types y 31 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

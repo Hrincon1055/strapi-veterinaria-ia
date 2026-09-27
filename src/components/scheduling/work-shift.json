@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_scheduling_work_shifts",
+  "info": { "displayName": "Franja de trabajo", "icon": "calendar", "description": "Un tramo de atención de un día de la semana. Se repite todas las semanas mientras el horario esté vigente." },
+  "options": {},
+  "attributes": {
+    "dayOfWeek": { "type": "enumeration", "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"], "required": true },
+    "startsAt": { "type": "time", "required": true },
+    "endsAt": { "type": "time", "required": true },
+    "slotMinutes": { "type": "integer", "min": 5, "max": 480 },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" }
+  }
+}

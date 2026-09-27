@@ -1928,6 +1928,58 @@ export interface ApiSchedulingClinicRoom extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSchedulingScheduleException
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'schedule_exceptions';
+  info: {
+    description: 'Rompe el horario semanal en unas fechas concretas: una ausencia que quita disponibilidad, o un turno extra que la a\u00F1ade.';
+    displayName: 'Excepci\u00F3n de horario';
+    pluralName: 'schedule-exceptions';
+    singularName: 'schedule-exception';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    exceptionKind: Schema.Attribute.Enumeration<['absence', 'extra_shift']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'absence'>;
+    fromDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    fromTime: Schema.Attribute.Time;
+    isAllDay: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::scheduling.schedule-exception'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Enumeration<
+      ['vacation', 'sick_leave', 'training', 'holiday', 'personal', 'other']
+    >;
+    room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    staff: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    toDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    toTime: Schema.Attribute.Time;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiSchedulingService extends Struct.CollectionTypeSchema {
   collectionName: 'services';
   info: {
@@ -2019,6 +2071,61 @@ export interface ApiSchedulingServiceCategory
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSchedulingStaffSchedule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'staff_schedules';
+  info: {
+    description: 'Horario semanal de un profesional: qu\u00E9 d\u00EDas atiende, en qu\u00E9 franjas, en qu\u00E9 consultorio y cu\u00E1ntos minutos por paciente.';
+    displayName: 'Horario de atenci\u00F3n';
+    pluralName: 'staff-schedules';
+    singularName: 'staff-schedule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::scheduling.staff-schedule'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    shifts: Schema.Attribute.Component<'scheduling.work-shift', true>;
+    slotMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 480;
+          min: 5;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<30>;
+    staff: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    validFrom: Schema.Attribute.Date & Schema.Attribute.Required;
+    validUntil: Schema.Attribute.Date;
   };
 }
 
@@ -2747,8 +2854,10 @@ declare module '@strapi/strapi' {
       'api::pet.species': ApiPetSpecies;
       'api::scheduling.appointment': ApiSchedulingAppointment;
       'api::scheduling.clinic-room': ApiSchedulingClinicRoom;
+      'api::scheduling.schedule-exception': ApiSchedulingScheduleException;
       'api::scheduling.service': ApiSchedulingService;
       'api::scheduling.service-category': ApiSchedulingServiceCategory;
+      'api::scheduling.staff-schedule': ApiSchedulingStaffSchedule;
       'api::shared.contact': ApiSharedContact;
       'api::shared.country': ApiSharedCountry;
       'api::shared.verification-code': ApiSharedVerificationCode;

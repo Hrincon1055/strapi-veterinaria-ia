@@ -16,6 +16,7 @@
 const { createStrapi } = require('@strapi/strapi');
 const { crearHistoria, borrarHistoria } = require('./demo-clinica');
 const { crearClinica, borrarClinica } = require('./demo-clinic');
+const { crearHorarios, borrarHorarios } = require('./demo-horarios');
 
 const PASSWORD = 'Demo12345';
 
@@ -304,6 +305,7 @@ async function borrar(app) {
   // Primero la historia clínica: cuelga de las mascotas que se borran abajo.
   let n = await borrarHistoria(app);
   n += await borrarClinica(app);
+  n += await borrarHorarios(app);
   const documentos = [...CLIENTES.map((c) => c.perfil.documentNumber), ...DEL_FLUJO.documentos];
 
   for (const documentNumber of documentos) {
@@ -368,6 +370,7 @@ async function borrar(app) {
   const resumen = await crear(app);
   const historia = await crearHistoria(app);
   const clinica = await crearClinica(app);
+  const horarios = await crearHorarios(app);
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
   for (const { perfil, cliente, usuario, mascotas } of resumen) {
@@ -381,6 +384,7 @@ async function borrar(app) {
     console.log('');
   }
 
+  for (const h of horarios) console.log(`Horario: ${h.username.padEnd(16)} ${h.consultorio.padEnd(18)} ${h.slot} min · ${h.dias} días/semana`);
   console.log(`Clínica: ${clinica.nombre}${clinica.nit ? ' · NIT ' + clinica.nit : ''}`);
   console.log(`Historia clínica de ${historia.mascota}: ${historia.visitas} visitas nuevas`);
   console.log(`Veterinaria: ${historia.vet} / Clinica12345`);

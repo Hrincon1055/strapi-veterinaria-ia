@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "schedule_exceptions",
+  "info": {
+    "singularName": "schedule-exception",
+    "pluralName": "schedule-exceptions",
+    "displayName": "Excepción de horario",
+    "description": "Rompe el horario semanal en unas fechas concretas: una ausencia que quita disponibilidad, o un turno extra que la añade."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "staff": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "exceptionKind": { "type": "enumeration", "enum": ["absence", "extra_shift"], "default": "absence", "required": true },
+    "reason": { "type": "enumeration", "enum": ["vacation", "sick_leave", "training", "holiday", "personal", "other"] },
+    "fromDate": { "type": "date", "required": true },
+    "toDate": { "type": "date", "required": true },
+    "isAllDay": { "type": "boolean", "default": true, "required": true },
+    "fromTime": { "type": "time" },
+    "toTime": { "type": "time" },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

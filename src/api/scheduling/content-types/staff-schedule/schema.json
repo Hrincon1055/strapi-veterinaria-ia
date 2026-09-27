@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "staff_schedules",
+  "info": {
+    "singularName": "staff-schedule",
+    "pluralName": "staff-schedules",
+    "displayName": "Horario de atención",
+    "description": "Horario semanal de un profesional: qué días atiende, en qué franjas, en qué consultorio y cuántos minutos por paciente."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "staff": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
+    "slotMinutes": { "type": "integer", "required": true, "default": 30, "min": 5, "max": 480 },
+    "validFrom": { "type": "date", "required": true },
+    "validUntil": { "type": "date" },
+    "isActive": { "type": "boolean", "default": true, "required": true },
+    "shifts": { "type": "component", "repeatable": true, "component": "scheduling.work-shift" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

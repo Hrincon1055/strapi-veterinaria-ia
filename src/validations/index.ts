@@ -14,6 +14,7 @@ import pet from './pet';
 import requiredRelations from './required-relations';
 import scheduling from './scheduling';
 import shared from './shared';
+import staffSchedule from './staff-schedule';
 import travel from './travel';
 
 /**
@@ -39,6 +40,7 @@ export default (strapi: Core.Strapi): void => {
   clinical(strapi);
   clinic(strapi);
   scheduling(strapi);
+  staffSchedule(strapi);
   billing(strapi);
   travel(strapi);
   documents(strapi);
