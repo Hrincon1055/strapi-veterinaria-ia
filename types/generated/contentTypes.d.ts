@@ -1319,6 +1319,7 @@ export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
   };
   attributes: {
     addresses: Schema.Attribute.Component<'shared.address', true>;
+    adminUser: Schema.Attribute.Relation<'oneToOne', 'admin::user'>;
     archivedAt: Schema.Attribute.DateTime;
     birthDate: Schema.Attribute.Date;
     contacts: Schema.Attribute.Relation<'oneToMany', 'api::shared.contact'>;

@@ -1,0 +1,16 @@
+{
+  "name": "veterinaria-agenda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agenda visual semanal: horarios, huecos libres y citas del personal.",
+  "strapi": {
+    "name": "veterinaria-agenda",
+    "displayName": "Agenda",
+    "description": "Calendario semanal del personal, con huecos libres y paso directo a la consulta.",
+    "kind": "plugin"
+  },
+  "exports": {
+    "./strapi-admin": { "source": "./admin/src/index.jsx", "default": "./admin/src/index.jsx" },
+    "./strapi-server": { "source": "./strapi-server.js", "default": "./strapi-server.js" }
+  }
+}

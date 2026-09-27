@@ -91,6 +91,15 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     enabled: true,
   },
 
+  /**
+   * Agenda visual del personal: calendario semanal con huecos libres y paso
+   * directo de la cita a la consulta. Plugin local, en src/plugins/.
+   */
+  'veterinaria-agenda': {
+    enabled: true,
+    resolve: './src/plugins/veterinaria-agenda',
+  },
+
   /** Diagrama de los content types y sus relaciones. Sin configuración. */
   'schema-visualizer': {
     enabled: true,

@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import type { Core } from '@strapi/strapi';
 
 /**
@@ -18,10 +17,20 @@ import type { Core } from '@strapi/strapi';
  * un fallo de este proyecto sino del plugin; mientras no lo corrijan, se tapa
  * aquí.
  *
- * Se valida el JWT del panel contra `admin.auth.secret` y se comprueba que la
- * cuenta siga existiendo y activa — es lo mismo que hace la estrategia de
- * autenticación del admin. El panel del calendario usa `getFetchClient`, que
- * envía ese token, así que la interfaz sigue funcionando igual.
+ * La validación es la MISMA que hace la estrategia `admin` de Strapi 5.55
+ * (`@strapi/admin/.../strategies/admin.js`): el `sessionManager`. No basta con
+ * `jwt.verify` contra `admin.auth.secret`, y hacerlo así estaba mal en los dos
+ * sentidos:
+ *
+ *   - el token que emite el panel lleva `{ userId, sessionId, type: 'access' }`,
+ *     no `{ id }`, así que la comprobación de `carga.id` rechazaba al panel
+ *     legítimo — verificado: 401 con un token real;
+ *   - y un JWT `{ id: 1 }` firmado a mano pasaba, porque no se comprobaba que
+ *     existiera una sesión activa. Un token emitido antes de cerrar sesión
+ *     seguía valiendo.
+ *
+ * `validateAccessToken` comprueba firma, tipo y caducidad; `isSessionActive`
+ * comprueba que la sesión no se haya revocado ni expirado.
  */
 
 const PREFIJO = '/strapi-calendar';
@@ -31,27 +40,30 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
     if (!ctx.path.startsWith(PREFIJO)) return next();
 
     const cabecera: string = ctx.request?.header?.authorization ?? '';
-    const [esquema, token] = cabecera.split(' ');
+    const [esquema, token] = cabecera.split(/\s+/);
 
     if (esquema?.toLowerCase() !== 'bearer' || !token) {
       return ctx.unauthorized('Se requiere sesión de administrador');
     }
 
-    let carga: any;
-    try {
-      carga = jwt.verify(token, strapi.config.get('admin.auth.secret') as string);
-    } catch {
+    const sesiones = (strapi as any).sessionManager;
+    if (!sesiones) return ctx.unauthorized('Se requiere sesión de administrador');
+
+    const resultado = sesiones('admin').validateAccessToken(token);
+    if (!resultado.isValid) {
       return ctx.unauthorized('Se requiere sesión de administrador');
     }
 
-    // El token del panel lleva el id del administrador. Un token de la API de
-    // contenido (users-permissions) va firmado con otro secreto y ya habría
-    // fallado arriba, pero se comprueba igualmente que la cuenta exista.
-    const admin = carga?.id
-      ? await strapi.db.query('admin::user').findOne({ where: { id: carga.id } })
-      : null;
+    if (!(await sesiones('admin').isSessionActive(resultado.payload.sessionId))) {
+      return ctx.unauthorized('Se requiere sesión de administrador');
+    }
 
-    if (!admin || admin.isActive === false || admin.blocked === true) {
+    // La sesión puede seguir viva y la cuenta haberse desactivado después.
+    const admin = await strapi.db.query('admin::user').findOne({
+      where: { id: Number(resultado.payload.userId) },
+    });
+
+    if (!admin || admin.isActive !== true || admin.blocked === true) {
       return ctx.unauthorized('Se requiere sesión de administrador');
     }
 

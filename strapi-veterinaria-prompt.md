@@ -1365,11 +1365,24 @@ Solo verifica contactos del perfil. La verificación del email de login y el res
     "contacts": { "type": "relation", "relation": "oneToMany", "target": "api::shared.contact", "mappedBy": "profile" },
     "user": { "type": "relation", "relation": "oneToOne", "target": "plugin::users-permissions.user", "mappedBy": "profile" },
     "customer": { "type": "relation", "relation": "oneToOne", "target": "api::customer.customer", "mappedBy": "profile" },
-    "archivedAt": { "type": "datetime" }
+    "archivedAt": { "type": "datetime" },
+    "searchLabel": { "type": "string", "maxLength": 255 },
+    "adminUser": { "type": "relation", "relation": "oneToOne", "target": "admin::user" }
   }
 }
 ```
 Un perfil representa a cualquier persona (staff o cliente).
+
+`adminUser` es el puente entre las dos tablas de personas que tiene Strapi. Quien
+entra al **panel** es un `admin::user`; quien firma una consulta o atiende una cita
+es un `plugin::users-permissions.user`. Son cuentas distintas y Strapi no las
+relaciona. Sin este campo, una página personalizada del panel no puede saber qué
+profesional la está mirando, y la agenda personal no existe.
+
+Se pone en el perfil y no en el `user` porque el perfil es justamente lo que ya
+une a la persona con sus dos caras: `profile.user` (cuenta de la app) y
+`profile.adminUser` (cuenta del panel). Es opcional: solo lo llevan los perfiles
+de staff que además entran al panel.
 
 ### 7.3 Customer
 

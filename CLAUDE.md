@@ -28,13 +28,25 @@ node demo-historia.js <mascota>   # prints a pet's full clinical history from th
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
 node audit-orphans.js             # duplicate names + tables/dist left behind by a deleted type
 #  GET /api/availability?staff=…&desde=…&hasta=…  huecos libres de un profesional
+node vincular-admin.js [correo doc|correo --quitar]   # enlaza una cuenta del panel con un perfil (sin argumentos, lista)
+node demo-agenda.js [--reset]     # 7 citas de muestra en la semana en curso, en huecos reales del horario
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
 ```
 
 `npx tsc --noEmit` reports an error per content type if `types/generated/` is stale — run `ts:generate-types` first, not a fix to the source.
 
-Los tres scripts de arriba arrancan su propia instancia de Strapi y compilan contra `dist/`, así que hay que **parar `npm run develop` antes de ejecutarlos** (si no, chocan con su recompilación). `demo-flujo.js` es la excepción: habla solo por HTTP y necesita el servidor en marcha.
+Los scripts de arriba arrancan su propia instancia de Strapi y compilan contra `dist/`, así que hay que **parar `npm run develop` antes de ejecutarlos** (si no, chocan con su recompilación). `demo-flujo.js` es la excepción: habla solo por HTTP y necesita el servidor en marcha.
+
+**Para probar un endpoint de administrador por HTTP no sirve firmar un JWT.** Desde 5.55 la estrategia `admin` exige un *access token* con `sessionId` y una sesión viva. Se pide así, desde un script que cargue Strapi:
+
+```js
+const sm = app.sessionManager('admin');
+const { token: refresh } = await sm.generateRefreshToken('1', 'un-dispositivo', { type: 'session' });
+const { token } = await sm.generateAccessToken(refresh);   // este es el Bearer
+```
+
+Conviene cerrarla al terminar (`POST /admin/logout` con ese token): la sesión queda en la base y sigue siendo válida hasta que caduque.
 
 There is **no test runner and no linter** configured. Don't invent `npm test` / `npm run lint`. `smoke-validations.js` is the stopgap until Jest lands: it boots Strapi against the dev database, asserts that invalid writes are rejected, and deletes everything it created (records are suffixed `SMOKE`). It cleans up at start too, so an interrupted run does not poison the next one.
 
@@ -147,6 +159,17 @@ Dos reglas que evitan agendas imposibles: **un profesional no puede tener dos ho
 
 **No se valida que una cita caiga dentro del horario.** Es deliberado: las urgencias llegan fuera de hora y bloquear eso haría el sistema inservible justo cuando más importa. El horario propone, no impone.
 
+**La agenda visual es un plugin local, `src/plugins/veterinaria-agenda/`.** Pinta la semana de uno o varios profesionales en una rejilla tipo Outlook, y desde una cita crea la consulta ya rellena. No reimplementa nada: los huecos se los pide a `api::scheduling.availability`. Arquitectura limpia en el panel — `domain/` (fechas y colores, sin dependencias), `infrastructure/` (el `fetchClient`), `application/` (el caso de uso) y `presentation/` (Zustand + Design System).
+
+Cuatro cosas que hay que saber antes de tocarlo:
+
+- **El puente es `profile.adminUser`.** Quien entra al panel es un `admin::user`; quien atiende una cita es un `users-permissions.user`. Strapi no los relaciona, así que el perfil los une: `profile.user` por un lado y `profile.adminUser` por el otro. Sin ese enlace, `/veterinaria-agenda/me` responde `enlazado: false` y la vista personal no puede existir — la interfaz lo dice en vez de pintar un calendario vacío que parece un error.
+- **El servidor no se fía de la interfaz.** Hay dos permisos (`agenda.ver-propia`, `agenda.ver-todas`) y el controlador vuelve a preguntar por `ver-todas`: quien no lo tenga recibe su propia agenda aunque pida `?staff=<otro>`. Verificado con una cuenta de rol restringido.
+- **`admin::hasPermissions` es un AND, no un OR.** Su handler hace `permissions.every(…)`, así que declarar las dos acciones en una ruta solo dejaba pasar al Super Admin: un veterinario con `ver-propia` recibía 403 en su propia agenda. Por eso las rutas usan la política propia `plugin::veterinaria-agenda.puede-ver-agenda`, que hace `some`. En el panel no pasa lo mismo: los `permissions` de `addMenuLink` se evalúan con un `filter`, o sea OR.
+- **Los permisos se registran pero no se asignan.** `server/bootstrap.js` solo llama a `actionProvider.registerMany`. El Super Admin las recibe solo; al resto se les conceden desde Ajustes → Roles. Asignarlas desde código con `assignPermissions` rompía el arranque (`[45] is not an existing permission action`) porque ese método **reemplaza** la lista completa del rol.
+
+`strapi-admin.js` tiene que ser **ESM con `export default`** (`export { default } from './admin/src/index.jsx'`); en CommonJS el empaquetador del panel falla con *"default" is not exported*. `strapi-server.js` en cambio es CommonJS. Y el código del plugin va en `.js`, no en `.ts`: `config/plugins.ts` lo resuelve desde `./src/plugins/…`, así que Strapi cargaría el fuente sin compilar.
+
 **Types are generated, not authored.** `types/generated/contentTypes.d.ts` and `components.d.ts` are regenerated by Strapi on `develop`/`build` from the schema JSON files. Never edit them by hand; change the schema (or use the admin Content-Type Builder in dev) and let them regenerate.
 
 **Config is env-driven.** Every `config/*.ts` exports either a plain object or an `({ env }) => object` factory. Non-default choices already made here, worth preserving:
@@ -174,7 +197,11 @@ Four plugins beyond the defaults, all Strapi 5 compatible, configured in `config
 | `strapi-calendar` | Admin menu | Solo **visualiza** `appointment` (colección y campos de fecha en Ajustes → Calendar, no en `plugins.ts`). Los horarios y los huecos son del sistema propio. **Ver la nota de seguridad.** |
 | `schema-visualizer` | Admin menu | None. |
 
-**`@offset-dev/strapi-calendar` ships all six of its routes with `auth: false`.** Unauthenticated, `GET /strapi-calendar/collections` dumps the schema of every content type, `POST /strapi-calendar/settings` repoints the calendar at any collection, and `GET /strapi-calendar/` then returns that collection's rows — chained, that is an anonymous read of patient data. `src/middlewares/protect-calendar.ts` (registered in `config/middlewares.ts`, right after `strapi::errors`) requires a valid admin JWT on `/strapi-calendar/*`. The plugin's own admin UI uses `getFetchClient`, which sends that token, so the panel still works. Verified: all six routes return 401 anonymously and 200 with an admin token. **Do not remove that middleware while this plugin is installed.** El otro plugin de terceros (`schema-visualizer`) usa rutas `type: admin` y ya está protegido (401 sin token).
+**`@offset-dev/strapi-calendar` ships all six of its routes with `auth: false`.** Unauthenticated, `GET /strapi-calendar/collections` dumps the schema of every content type, `POST /strapi-calendar/settings` repoints the calendar at any collection, and `GET /strapi-calendar/` then returns that collection's rows — chained, that is an anonymous read of patient data. `src/middlewares/protect-calendar.ts` (registered in `config/middlewares.ts`, right after `strapi::errors`) requires an active admin session on `/strapi-calendar/*`. The plugin's own admin UI uses `getFetchClient`, which sends that token, so the panel still works. Verified: the six routes return 401 anonymously and pass with a real panel token. **Do not remove that middleware while this plugin is installed.**
+
+**Ese middleware valida con `strapi.sessionManager`, no con `jwt.verify`.** Desde 5.55 la estrategia `admin` ya no acepta un JWT suelto: exige un *access token* con `sessionId` y una sesión viva (`@strapi/admin/.../strategies/admin.js`). Comprobar solo la firma contra `admin.auth.secret` estaba mal en los dos sentidos y así estuvo escrito aquí: el token real del panel lleva `{ userId, sessionId, type: 'access' }` y no `{ id }`, así que **rechazaba al panel legítimo** (401 verificado), mientras que un JWT `{ id: 1 }` firmado a mano **sí pasaba**, porque nadie miraba si la sesión seguía activa. Ahora usa `validateAccessToken` + `isSessionActive`, igual que la estrategia de Strapi. Lo mismo vale para cualquier script de prueba: un token de administrador no se fabrica firmando, se pide con `strapi.sessionManager('admin').generateRefreshToken(...)` y luego `generateAccessToken(...)`.
+
+La colección que pinta el calendario se configura en Ajustes → Calendar y vive en el plugin store: `api::scheduling.appointment` / `startAt` / `endAt`, título `title`, 45 min, de 7:00 a 18:00. Si `GET /strapi-calendar/` responde 500, es que esa configuración está vacía. El otro plugin de terceros (`schema-visualizer`) usa rutas `type: admin` y ya está protegido (401 sin token).
 
 **`strapi-csv-import-export` se desinstaló** (daba errores en el panel; era un 0.0.6 de terceros). Si algún día hace falta importar o exportar CSV, la decisión que había tomada sigue siendo válida: habilitar **solo catálogos**, nunca tablas con datos personales — el plugin filtra por colección y no por rol, así que exponer `profile` o `customer` daría a cualquier administrador una exportación completa de la base de pacientes en un clic.
 

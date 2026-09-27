@@ -93,6 +93,11 @@
     "searchLabel": {
       "type": "string",
       "maxLength": 255
+    },
+    "adminUser": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "admin::user"
     }
   }
 }
