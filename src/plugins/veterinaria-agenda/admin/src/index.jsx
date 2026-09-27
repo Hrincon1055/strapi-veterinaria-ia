@@ -23,6 +23,7 @@ export default {
       permissions: [
         { action: `plugin::${PLUGIN_ID}.agenda.ver-propia`, subject: null },
         { action: `plugin::${PLUGIN_ID}.agenda.ver-todas`, subject: null },
+        { action: `plugin::${PLUGIN_ID}.agenda.agendar`, subject: null },
       ],
       Component: async () => ({ default: AgendaPage }),
     });

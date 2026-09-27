@@ -28,15 +28,34 @@ function EjeHoras({ rango }) {
  * general tantas como personas seleccionadas, cada una rotulada con su
  * nombre. Es lo que pedía el negocio y evita el lío de mezclar en una sola
  * rejilla citas de gente distinta.
+ *
+ * `onAgendar` llega sin definir cuando la cuenta no puede reservar, y eso
+ * basta para que los huecos se pinten inertes: la decisión se toma una vez,
+ * arriba, y no se repite en cada componente.
  */
-export function RejillaSemana({ semana, onAbrirCita }) {
+export function RejillaSemana({ semana, onAbrirCita, onAgendar }) {
   const dias = fechasDeSemana(semana.lunes);
   const rango = rangoVisible(semana.columnas);
   const fechaHoy = hoy();
 
   return (
     <Flex direction="column" gap={6} alignItems="stretch">
-      {semana.columnas.map((col) => (
+      {semana.columnas.map((col) => {
+        // El hueco no sabe de quién es: se le añade la columna aquí, que es
+        // donde se conoce. Sin esto habría que adivinar el profesional al
+        // reservar. Si no se puede agendar queda `undefined`, y con eso solo
+        // el hueco ya se pinta inerte.
+        const agendarEnEstaColumna = onAgendar
+          ? (h) =>
+              onAgendar({
+                ...h,
+                staffDocumentId: col.staff.documentId,
+                staffNombre: col.staff.nombre,
+                consultorio: col.staff.consultorio,
+              })
+          : undefined;
+
+        return (
         <Box key={col.staff.documentId} background="neutral0" hasRadius shadow="tableShadow" padding={4}>
           <Flex justifyContent="space-between" alignItems="center" paddingBottom={3}>
             <Flex direction="column" alignItems="flex-start">
@@ -81,12 +100,14 @@ export function RejillaSemana({ semana, onAbrirCita }) {
                   rango={rango}
                   esHoy={d.fecha === fechaHoy}
                   onAbrirCita={onAbrirCita}
+                  onAgendar={agendarEnEstaColumna}
                 />
               </Grid.Item>
             ))}
           </Grid.Root>
         </Box>
-      ))}
+        );
+      })}
     </Flex>
   );
 }

@@ -30,6 +30,24 @@ export function crearAgendaApi(fetchClient) {
       return data.data;
     },
 
+    async buscarMascotas(q) {
+      const query = new URLSearchParams(q ? { q } : {});
+      const { data } = await fetchClient.get(`${BASE}/pets?${query}`);
+      return data.data;
+    },
+
+    /**
+     * Reserva en un hueco. No se manda `endAt`: lo fija el servidor a partir
+     * del hueco, para que el cliente no pueda estirar la cita sobre el tramo
+     * siguiente.
+     */
+    async reservar({ staff, mascota, startAt, motivo }) {
+      const { data } = await fetchClient.post(`${BASE}/appointments`, {
+        staff, mascota, startAt, motivo,
+      });
+      return data.data;
+    },
+
     async cambiarEstado(documentId, estado) {
       const { data } = await fetchClient.put(`${BASE}/appointments/${documentId}/state`, { estado });
       return data.data;

@@ -52,6 +52,41 @@ export const useAgendaStore = create((set, get) => ({
   setContexto: ({ yo, personal, seleccion }) => set({ yo, personal, seleccion }),
   setSemana: (semana) => set({ semana }),
 
+  /**
+   * Mete una cita recién reservada en su columna y **quita el hueco que
+   * acaba de ocupar**.
+   *
+   * Lo segundo importa tanto como lo primero: los huecos no son registros,
+   * son el resultado de restar las citas al horario. Si se añade la cita sin
+   * quitar el hueco, la rejilla enseña las dos cosas encima y parece que el
+   * tramo sigue libre.
+   */
+  agregarCita: (staffDocumentId, cita) =>
+    set((s) => {
+      if (!s.semana) return s;
+      const inicio = String(cita.startAt).replace(/Z$/, '');
+      return {
+        semana: {
+          ...s.semana,
+          columnas: s.semana.columnas.map((col) =>
+            col.staff.documentId !== staffDocumentId
+              ? col
+              : {
+                  ...col,
+                  citas: [...col.citas, cita].sort((a, b) => String(a.startAt).localeCompare(String(b.startAt))),
+                  dias: (col.dias ?? []).map((d) => {
+                    const huecos = (d.huecos ?? []).filter(
+                      (h) => String(h.startAt).replace(/Z$/, '') !== inicio
+                    );
+                    if (huecos.length === (d.huecos ?? []).length) return d;
+                    return { ...d, huecos, libres: Math.max(0, (d.libres ?? 0) - 1), ocupados: (d.ocupados ?? 0) + 1 };
+                  }),
+                }
+          ),
+        },
+      };
+    }),
+
   /** Actualiza una cita en sitio, sin recargar toda la semana. */
   actualizarCita: (documentId, cambios) =>
     set((s) => {

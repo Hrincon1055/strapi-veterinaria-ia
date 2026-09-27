@@ -1,6 +1,7 @@
 'use strict';
 
 const VER_TODAS = 'plugin::veterinaria-agenda.agenda.ver-todas';
+const AGENDAR = 'plugin::veterinaria-agenda.agenda.agendar';
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 /** ¿Este administrador puede ver la agenda de todo el personal? */
@@ -9,13 +10,20 @@ function puedeVerTodas(ctx) {
   return Boolean(permisos?.can(VER_TODAS));
 }
 
+/** ¿Puede reservar en un hueco libre? Recepción sí; el veterinario, no. */
+function puedeAgendar(ctx) {
+  return Boolean(ctx.state?.userAbility?.can(AGENDAR));
+}
+
 module.exports = ({ strapi }) => {
   const svc = () => strapi.plugin('veterinaria-agenda').service('agenda');
 
   return {
     async quienSoy(ctx) {
       const yo = await svc().quienSoy(ctx.state.user.id);
-      ctx.body = { ...yo, puedeVerTodas: puedeVerTodas(ctx) };
+      // La interfaz necesita los dos para decidir qué pinta: sin `puedeAgendar`
+      // los huecos se quedan como fondo inerte, que es lo que ve un veterinario.
+      ctx.body = { ...yo, puedeVerTodas: puedeVerTodas(ctx), puedeAgendar: puedeAgendar(ctx) };
     },
 
     async personal(ctx) {
@@ -55,6 +63,44 @@ module.exports = ({ strapi }) => {
       }
 
       ctx.body = { data: await svc().semana(String(desde ?? new Date().toISOString().slice(0, 10)), ids) };
+    },
+
+    async mascotas(ctx) {
+      ctx.body = { data: await svc().mascotas(ctx.query?.q) };
+    },
+
+    async reservar(ctx) {
+      const { staff, mascota, startAt, motivo } = ctx.request.body ?? {};
+
+      if (!staff || !mascota || !startAt) {
+        return ctx.badRequest('Faltan datos: hacen falta staff, mascota y startAt');
+      }
+
+      // Mismo criterio que en la lectura: quien no puede ver todas las
+      // agendas tampoco puede llenar la de otro. Sin esto, recepción con
+      // permisos recortados podría agendarle a cualquiera.
+      if (!puedeVerTodas(ctx)) {
+        const yo = await svc().quienSoy(ctx.state.user.id);
+        if (!yo.staffDocumentId || yo.staffDocumentId !== staff) {
+          return ctx.forbidden('Solo puedes reservar en tu propia agenda');
+        }
+      }
+
+      try {
+        ctx.body = {
+          data: await svc().reservar({
+            staffDocumentId: staff,
+            petDocumentId: mascota,
+            startAt,
+            motivo,
+            adminUserId: ctx.state.user.id,
+          }),
+        };
+      } catch (e) {
+        // Aquí caen tanto el hueco ya ocupado como las validaciones del
+        // Document Service sobre la cita.
+        return ctx.badRequest(e.message);
+      }
     },
 
     async cambiarEstado(ctx) {

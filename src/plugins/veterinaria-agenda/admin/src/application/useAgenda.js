@@ -16,7 +16,7 @@ export function useAgenda() {
 
   const {
     lunes, vista, seleccion, yo, personal, semana, cargando, error,
-    setContexto, setSemana, setEstadoCarga, actualizarCita,
+    setContexto, setSemana, setEstadoCarga, actualizarCita, agregarCita,
   } = useAgendaStore();
 
   const avisar = useCallback(
@@ -75,6 +75,31 @@ export function useAgenda() {
     [api, actualizarCita, avisar]
   );
 
+  const buscarMascotas = useCallback((q) => api.buscarMascotas(q), [api]);
+
+  /**
+   * Reserva en un hueco libre. Devuelve `true` si se creó, para que el modal
+   * sepa si cerrarse.
+   *
+   * No recarga la semana entera: mete la cita y borra el hueco en el store.
+   * Recargar haría parpadear la rejilla y perdería la posición del scroll,
+   * que en una vista de 5 días con 13 tramos molesta.
+   */
+  const reservar = useCallback(
+    async ({ staff, mascota, startAt, motivo }) => {
+      try {
+        const cita = await api.reservar({ staff, mascota, startAt, motivo });
+        agregarCita(staff, cita);
+        avisar('success', `Cita reservada para ${cita.mascota?.nombre ?? 'la mascota'}`);
+        return true;
+      } catch (e) {
+        avisar('danger', e?.response?.data?.error?.message ?? 'No se pudo reservar la cita');
+        return false;
+      }
+    },
+    [api, agregarCita, avisar]
+  );
+
   /**
    * Abre la consulta de una cita. Devuelve la ruta del Content Manager para
    * que el componente navegue: la consulta ya viene con mascota, veterinario
@@ -95,5 +120,8 @@ export function useAgenda() {
     [api, actualizarCita, avisar]
   );
 
-  return { lunes, vista, seleccion, yo, personal, semana, cargando, error, cambiarEstado, abrirConsulta };
+  return {
+    lunes, vista, seleccion, yo, personal, semana, cargando, error,
+    cambiarEstado, abrirConsulta, buscarMascotas, reservar,
+  };
 }

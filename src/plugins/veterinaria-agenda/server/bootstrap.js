@@ -6,9 +6,12 @@
  * `registerMany` SOLO se puede llamar desde bootstrap: fuera de aquí lanza
  * "You can't register new actions outside of the bootstrap function".
  *
- * Se registran dos acciones porque las dos vistas que pide el negocio son
- * distintas: el profesional ve su agenda; recepción ve la de todos. Quien no
- * tenga `ver-todas` queda forzado a la suya, lo decida o no la interfaz.
+ * Se registran tres acciones porque son tres cosas distintas que el negocio
+ * reparte de otra manera: el profesional ve su agenda; recepción ve la de
+ * todos; y reservar en un hueco libre es de recepción, no del veterinario,
+ * que solo atiende lo que ya tiene agendado. Quien no tenga `ver-todas` queda
+ * forzado a la suya, lo decida o no la interfaz; quien no tenga `agendar` no
+ * puede crear citas aunque llame al endpoint a mano.
  *
  * Y aquí acaba el trabajo: **no se asignan a ningún rol desde código**. El
  * Super Admin las recibe solo —Strapi le concede toda acción registrada al
@@ -27,6 +30,12 @@ const ACCIONES = [
   {
     uid: 'agenda.ver-todas',
     displayName: 'Ver la agenda de todo el personal',
+    pluginName: 'veterinaria-agenda',
+    section: 'plugins',
+  },
+  {
+    uid: 'agenda.agendar',
+    displayName: 'Reservar citas en los huecos libres',
     pluginName: 'veterinaria-agenda',
     section: 'plugins',
   },

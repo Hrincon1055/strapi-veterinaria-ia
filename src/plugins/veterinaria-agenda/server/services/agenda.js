@@ -11,6 +11,39 @@
 
 const BLOQUEAN = ['scheduled', 'confirmed', 'arrived', 'in_progress'];
 
+/** Lo que la rejilla necesita de una cita, y nada más. */
+function aTarjeta(c) {
+  return {
+    documentId: c.documentId,
+    startAt: c.startAt,
+    endAt: c.endAt,
+    state: c.state,
+    title: c.title,
+    bloquea: BLOQUEAN.includes(c.state),
+    mascota: c.pet ? { documentId: c.pet.documentId, nombre: c.pet.name } : null,
+    propietario: c.pet?.owner?.profile
+      ? `${c.pet.owner.profile.firstName} ${c.pet.owner.profile.lastName}`
+      : null,
+    consultorio: c.room?.name ?? null,
+    // Si ya tiene consulta, el botón lleva a ella en vez de crear otra.
+    consultationDocumentId: c.consultation?.documentId ?? null,
+  };
+}
+
+/** Lo que hay que poblar para construir una tarjeta. */
+const POPULATE_CITA = {
+  pet: { populate: { owner: { populate: ['profile'] } } },
+  room: true,
+  consultation: true,
+};
+
+/**
+ * Los huecos se emiten en la hora local del horario, sin zona
+ * (`2026-09-21T07:00:00.000`), y las citas se guardan en UTC. Para comparar
+ * "¿es este hueco?" se quita la Z de los dos lados.
+ */
+const sinZona = (iso) => String(iso ?? '').replace(/Z$/, '');
+
 /** Lunes de la semana que contiene esa fecha (ISO: la semana empieza en lunes). */
 function lunesDe(fecha) {
   const d = new Date(`${fecha}T00:00:00.000Z`);
@@ -102,36 +135,130 @@ module.exports = ({ strapi }) => ({
           responsible: { documentId: s.documentId },
           startAt: { $gte: `${lunes}T00:00:00.000Z`, $lte: `${domingo}T23:59:59.999Z` },
         },
-        populate: {
-          pet: { populate: { owner: { populate: ['profile'] } } },
-          room: true,
-          consultation: true,
-        },
+        populate: POPULATE_CITA,
         sort: 'startAt:asc',
       });
 
       columnas.push({
         staff: s,
         dias: libres.dias ?? [],
-        citas: citas.map((c) => ({
-          documentId: c.documentId,
-          startAt: c.startAt,
-          endAt: c.endAt,
-          state: c.state,
-          title: c.title,
-          bloquea: BLOQUEAN.includes(c.state),
-          mascota: c.pet ? { documentId: c.pet.documentId, nombre: c.pet.name } : null,
-          propietario: c.pet?.owner?.profile
-            ? `${c.pet.owner.profile.firstName} ${c.pet.owner.profile.lastName}`
-            : null,
-          consultorio: c.room?.name ?? null,
-          // Si ya tiene consulta, el botón lleva a ella en vez de crear otra.
-          consultationDocumentId: c.consultation?.documentId ?? null,
-        })),
+        citas: citas.map(aTarjeta),
       });
     }
 
     return { lunes, domingo, columnas };
+  },
+
+  /**
+   * Mascotas para el selector de "nueva cita".
+   *
+   * Busca por el `searchLabel`, que es justamente la columna que existe para
+   * esto: lleva nombre, especie y dueño concatenados, así que "kira" y
+   * "restrepo" encuentran la misma ficha. Sin texto devuelve las últimas
+   * atendidas, que es lo que recepción suele necesitar.
+   */
+  async mascotas(texto) {
+    const q = String(texto ?? '').trim();
+
+    const mascotas = await strapi.documents('api::pet.pet').findMany({
+      filters: q
+        ? { $or: [{ searchLabel: { $containsi: q } }, { name: { $containsi: q } }] }
+        : {},
+      populate: { owner: { populate: ['profile'] }, species: true },
+      sort: 'name:asc',
+      limit: 20,
+    });
+
+    return mascotas.map((m) => ({
+      documentId: m.documentId,
+      nombre: m.name,
+      especie: m.species?.name ?? null,
+      propietario: m.owner?.profile
+        ? `${m.owner.profile.firstName} ${m.owner.profile.lastName}`
+        : null,
+    }));
+  },
+
+  /**
+   * Reserva una cita en un hueco libre.
+   *
+   * **Se vuelve a comprobar que el hueco esté libre**, en vez de creer lo que
+   * manda el cliente. Entre que se pintó la rejilla y que alguien pulsa pueden
+   * pasar minutos, y en recepción hay varias personas agendando a la vez: sin
+   * esta comprobación se crearían dos citas en el mismo tramo. El servidor
+   * pide los huecos otra vez y exige que el pedido siga estando entre ellos.
+   *
+   * También ata la duración al hueco: no se acepta un `endAt` del cliente,
+   * porque permitiría pisar el tramo siguiente.
+   */
+  async reservar({ staffDocumentId, petDocumentId, startAt, motivo, adminUserId }) {
+    const dia = sinZona(startAt).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+      throw new Error('La hora de inicio no es válida');
+    }
+
+    const libres = await strapi.service('api::scheduling.availability').huecos(
+      staffDocumentId,
+      dia,
+      dia
+    );
+
+    const hueco = (libres.dias ?? [])
+      .flatMap((d) => d.huecos ?? [])
+      .find((h) => sinZona(h.startAt) === sinZona(startAt));
+
+    if (!hueco) {
+      // Los dos motivos se sienten igual desde fuera pero se arreglan de
+      // forma distinta: uno se resuelve actualizando la rejilla, el otro es
+      // una hora que ese profesional no atiende. Decirlo mal manda a
+      // recepción a buscar donde no es.
+      const choca = await strapi.documents('api::scheduling.appointment').findFirst({
+        filters: {
+          responsible: { documentId: staffDocumentId },
+          startAt: `${sinZona(startAt)}Z`,
+          state: { $in: BLOQUEAN },
+        },
+      });
+
+      throw new Error(
+        choca
+          ? 'Ese hueco acaba de ocuparse. Actualiza la agenda y elige otro.'
+          : 'Esa hora no es un hueco del horario de ese profesional.'
+      );
+    }
+
+    const mascota = await strapi.documents('api::pet.pet').findOne({ documentId: petDocumentId });
+    if (!mascota) throw new Error('La mascota no existe');
+
+    // Quién reserva: la cuenta de app de quien está en el panel, si la tiene
+    // enlazada. Si no, se deja vacío antes que atribuirlo a otra persona.
+    const perfil = adminUserId
+      ? await strapi.documents('api::identity.profile').findFirst({
+          filters: { adminUser: { id: adminUserId } },
+          populate: ['user'],
+        })
+      : null;
+
+    const creada = await strapi.documents('api::scheduling.appointment').create({
+      data: {
+        pet: petDocumentId,
+        responsible: staffDocumentId,
+        room: hueco.room ?? undefined,
+        startAt: `${sinZona(hueco.startAt)}Z`,
+        endAt: `${sinZona(hueco.endAt)}Z`,
+        state: 'scheduled',
+        source: 'front_desk',
+        title: motivo?.trim() || null,
+        bookedBy: perfil?.user?.documentId ?? undefined,
+      },
+    });
+
+    const conDatos = await strapi.documents('api::scheduling.appointment').findOne({
+      documentId: creada.documentId,
+      populate: POPULATE_CITA,
+    });
+
+    return aTarjeta(conDatos);
   },
 
   /** Cambia el estado de una cita (llegó, en curso, atendida, no vino...). */

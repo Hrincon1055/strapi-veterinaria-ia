@@ -6,11 +6,21 @@ import { useAgenda } from '../application/useAgenda';
 import { BarraSemana } from './components/BarraSemana';
 import { RejillaSemana } from './components/RejillaSemana';
 import { ModalCita } from './components/ModalCita';
+import { ModalNuevaCita } from './components/ModalNuevaCita';
 
 export function AgendaPage() {
   const navigate = useNavigate();
-  const { yo, personal, semana, cargando, error, seleccion, cambiarEstado, abrirConsulta } = useAgenda();
+  const {
+    yo, personal, semana, cargando, error, seleccion,
+    cambiarEstado, abrirConsulta, buscarMascotas, reservar,
+  } = useAgenda();
   const [citaAbierta, setCitaAbierta] = React.useState(null);
+  const [huecoElegido, setHuecoElegido] = React.useState(null);
+
+  // Quien no puede reservar no recibe el handler, y sin él los huecos se
+  // pintan como fondo inerte. El servidor lo comprueba igual: esto solo evita
+  // ofrecer un botón que iba a dar 403.
+  const puedeAgendar = Boolean(yo?.puedeAgendar);
 
   const atender = async (documentId) => {
     const ruta = await abrirConsulta(documentId);
@@ -52,7 +62,11 @@ export function AgendaPage() {
           )}
 
           {!cargando && semana && semana.columnas.length > 0 && (
-            <RejillaSemana semana={semana} onAbrirCita={setCitaAbierta} />
+            <RejillaSemana
+              semana={semana}
+              onAbrirCita={setCitaAbierta}
+              onAgendar={puedeAgendar ? setHuecoElegido : undefined}
+            />
           )}
 
           {!cargando && semana && semana.columnas.length === 0 && seleccion.length > 0 && (
@@ -66,6 +80,9 @@ export function AgendaPage() {
             <Typography variant="pi" textColor="neutral500">
               Los huecos libres se calculan al vuelo cruzando horario, ausencias y citas.
               No son registros: no existen hasta que se reservan.
+              {puedeAgendar
+                ? ' Pulsa un hueco para reservar una cita en él.'
+                : ' Tu cuenta puede consultar y atender la agenda, pero no reservar citas.'}
             </Typography>
           </Box>
         </Flex>
@@ -77,6 +94,14 @@ export function AgendaPage() {
         onCerrar={() => setCitaAbierta(null)}
         onCambiarEstado={(id, estado) => { cambiarEstado(id, estado); setCitaAbierta(null); }}
         onAtender={atender}
+      />
+
+      <ModalNuevaCita
+        hueco={huecoElegido}
+        abierto={Boolean(huecoElegido)}
+        onCerrar={() => setHuecoElegido(null)}
+        onBuscarMascotas={buscarMascotas}
+        onReservar={reservar}
       />
     </Page.Main>
   );
