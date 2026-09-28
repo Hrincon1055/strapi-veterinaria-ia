@@ -81,7 +81,7 @@ No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente 
 
 **El staff trabaja en el panel; solo el cliente usa users-permissions.** Recepción, Veterinario y Administrador de clínica son roles del RBAC del panel (`src/bootstrap/admin-roles.ts`) y cada persona es un `admin::user`. Se migraron el 2026-09-28 con `migrate-staff-to-admin.js`, conservando el hash bcrypt: cada uno entra en `/admin` con su correo y su contraseña de siempre. Consecuencias que no son obvias:
 
-- **Destinos.** `vet`, `responsible`, `staff`, `author`, `performedBy` (servicio prestado) y `verifiedBy` → `admin::user`. `appointment.bookedBy` y `signed-document-event.performedBy` → `profile`, porque quien actúa puede ser un cliente o alguien del staff y el perfil es lo único que tienen los dos.
+- **Destinos.** `vet`, `responsible`, `staff`, `author` y `verifiedBy` → `admin::user`. (El servicio prestado tuvo un `performedBy` que se quitó: quien lo presta es el `vet` de la consulta.) `appointment.bookedBy` y `signed-document-event.performedBy` → `profile`, porque quien actúa puede ser un cliente o alguien del staff y el perfil es lo único que tienen los dos.
 - **"Quién lo hizo" lo pone `src/validations/actor.ts`**, no un controlador: las escrituras del staff llegan por el Content Manager o por el plugin de agenda, no por los controladores de la API. Lee la sesión con `strapi.requestContext` y distingue `auth.strategy.name` (`admin` / `users-permissions`). Siempre sobrescribe lo que venga en la petición.
 - **Sin `admin::users.read` el selector muestra el `documentId`.** Strapi declara ese permiso como alias de "leer `admin::user`" en el Content Manager (`admin-actions.js`, `aliases`), y `sanitizeMainField` cae a `documentId` si no se puede leer el main field. Por eso los tres roles lo llevan; el precio es que ven la lista de cuentas en Ajustes → Usuarios, solo lectura.
 - **Cambiar el destino de una relación en SQLite no cambia su clave foránea.** `admin::user` y el `user` de users-permissions comparten `singularName`, así que la tabla de enlace conserva la columna `user_id`; Strapi actualiza su instantánea pero no puede alterar la FK (SQLite no admite `ALTER` de FK sin recrear la tabla). La tabla sigue apuntando a `up_users` sin aviso. La migración vacía esas tablas, las borra, vacía `strapi_database_schema` y deja que Strapi las recree — la trampa 3 de abajo, en otra forma.
@@ -136,7 +136,7 @@ No es cosmético. Desde que el staff está en el panel, por la API solo llegan c
 
 - `pet.owner` no llega a un cliente (no puede leer `customer`) — correcto, por eso no se le pide.
 - `pet-vaccination.vaccine` no llegaba hasta que se concedió `api::clinical.vaccine` al rol `client`.
-- `vet`, `responsible`, `staff`, `author`, `performedBy` y `verifiedBy` apuntan a `admin::user`, y **ningún rol de users-permissions puede tener `admin::user.find`**: por la API esas relaciones no le llegan a nadie salvo a un token de acceso total. Es lo buscado — al cliente nunca se le enseñó quién firmó.
+- `vet`, `responsible`, `staff`, `author` y `verifiedBy` apuntan a `admin::user`, y **ningún rol de users-permissions puede tener `admin::user.find`**: por la API esas relaciones no le llegan a nadie salvo a un token de acceso total. Es lo buscado — al cliente nunca se le enseñó quién firmó.
 
 Antes de depurar un middleware por un campo que falta, mira los permisos del rol.
 

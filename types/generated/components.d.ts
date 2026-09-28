@@ -511,20 +511,12 @@ export interface SchedulingAppointmentService extends Struct.ComponentSchema {
 export interface SchedulingConsultationService extends Struct.ComponentSchema {
   collectionName: 'components_scheduling_consultation_services';
   info: {
-    description: 'L\u00EDnea de servicio cobrada en una consulta.';
+    description: 'Servicio o procedimiento prestado durante una consulta.';
     displayName: 'Servicio prestado';
     icon: 'priceTag';
   };
   attributes: {
-    durationMinutes: Schema.Attribute.Integer &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
     notes: Schema.Attribute.Text;
-    performedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     quantity: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -535,21 +527,6 @@ export interface SchedulingConsultationService extends Struct.ComponentSchema {
       > &
       Schema.Attribute.DefaultTo<1>;
     service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
-    totalPrice: Schema.Attribute.Integer &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    unitPrice: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
   };
 }
 

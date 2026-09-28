@@ -413,14 +413,11 @@ async function crearHistoria(app) {
         weightKg: v.weightKg,
         sections: v.secciones,
         // Las líneas de servicio son ahora un componente repetible: se crean
-        // con la consulta, no como documentos aparte. El middleware calcula
-        // `totalPrice`.
+        // con la consulta, no como documentos aparte. Solo servicio y
+        // cantidad: sin precio (será de la facturación); quien lo prestó es `vet`.
         services: v.servicios.map((s) => ({
           service: servicios[s.nombre].documentId,
           quantity: s.cantidad,
-          unitPrice: servicios[s.nombre].basePrice,
-          durationMinutes: servicios[s.nombre].defaultDurationMinutes,
-          performedBy: vet.documentId,
         })),
         ...(v.nextControlOn ? { nextControlOn: v.nextControlOn } : {}),
       },

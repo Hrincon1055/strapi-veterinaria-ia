@@ -416,10 +416,6 @@
     "marketing.rule-vaccination-due": {
       "vencePara": "Vence para"
     },
-    "scheduling.consultation-service": {
-      "unitPrice": "Precio unitario",
-      "totalPrice": "Precio total"
-    },
     "scheduling.work-shift": {
       "startsAt": "Inicio",
       "endsAt": "Fin"

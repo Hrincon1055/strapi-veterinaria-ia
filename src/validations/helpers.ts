@@ -61,7 +61,7 @@ export function toDocumentId(value: unknown): string | null | undefined {
 export async function loadCurrent(
   strapi: Core.Strapi,
   ctx: DocumentContext,
-  populate: string[] = []
+  populate: string[] | Record<string, any> = []
 ): Promise<any | null> {
   if (ctx.action !== 'update' || !ctx.params?.documentId) return null;
   return strapi.documents(ctx.uid as any).findOne({

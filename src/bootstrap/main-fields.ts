@@ -38,7 +38,7 @@ const MAIN_FIELDS: Record<string, string> = {
    * Las cuentas se identifican por su correo, no por el `username`.
    *
    * La del panel (`admin::user`) es la del staff: la apuntan vet,
-   * responsible, staff, author, performedBy y verifiedBy. Strapi elegiría
+   * responsible, staff, author y verifiedBy. Strapi elegiría
    * `firstname`, que se repite entre personas. Para que el selector la muestre,
    * el rol necesita `admin::users.read` (ver `admin-roles.ts`).
    */

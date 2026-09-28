@@ -1,14 +1,10 @@
 {
   "collectionName": "components_scheduling_consultation_services",
-  "info": { "displayName": "Servicio prestado", "icon": "priceTag", "description": "Línea de servicio cobrada en una consulta." },
+  "info": { "displayName": "Servicio prestado", "icon": "priceTag", "description": "Servicio o procedimiento prestado durante una consulta." },
   "options": {},
   "attributes": {
     "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
     "quantity": { "type": "integer", "required": true, "default": 1, "min": 1 },
-    "durationMinutes": { "type": "integer", "min": 0 },
-    "unitPrice": { "type": "integer", "required": true, "min": 0 },
-    "totalPrice": { "type": "integer", "min": 0 },
-    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "notes": { "type": "text" }
   }
 }

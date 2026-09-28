@@ -11,6 +11,31 @@ import {
   today,
 } from './helpers';
 
+/**
+ * Servicio de una línea de consulta, como documentId.
+ *
+ * El panel manda las relaciones como diferencia (`{ connect, disconnect }`):
+ * en una línea que ya existía y cuyo servicio no se tocó llegan las dos listas
+ * vacías, y `toDocumentId` lo leería como "se está limpiando". En ese caso, y
+ * cuando la relación ni siquiera viene, vale la de la línea guardada.
+ */
+function servicioDeLinea(valor: any, previa: any): string | null | undefined {
+  const guardado = previa?.service?.documentId ?? null;
+  if (valor === undefined) return guardado;
+  if (
+    valor &&
+    typeof valor === 'object' &&
+    !Array.isArray(valor) &&
+    Array.isArray(valor.connect) &&
+    valor.connect.length === 0 &&
+    (!Array.isArray(valor.disconnect) || valor.disconnect.length === 0) &&
+    valor.set === undefined
+  ) {
+    return guardado;
+  }
+  return toDocumentId(valor);
+}
+
 export default (strapi: Core.Strapi): void => {
   // ---- api::clinical.vaccine ----------------------------------------------
 
@@ -38,7 +63,10 @@ export default (strapi: Core.Strapi): void => {
 
   on(strapi, 'api::clinical.consultation', ['create', 'update'], async (ctx, next) => {
     const data = ctx.params.data ?? {};
-    const current = await loadCurrent(strapi, ctx, ['pet']);
+    const current = await loadCurrent(strapi, ctx, {
+      pet: true,
+      services: { populate: ['service'] },
+    });
 
     // Si no se indica el momento de la consulta, es ahora.
     if (ctx.action === 'create' && !data.consultedAt) {
@@ -46,21 +74,21 @@ export default (strapi: Core.Strapi): void => {
       ctx.params.data = data;
     }
 
-    // Líneas de servicio. Antes eran un content type con su propio middleware;
-    // al pasar a componente, el cálculo vive aquí: un componente no atraviesa
-    // el Document Service por su cuenta, solo como parte de su padre.
+    // Líneas de servicio: qué procedimientos hizo el veterinario y cuántas
+    // veces. Sin precio ni duración — eso es de la facturación, que los sacará
+    // del catálogo. Un componente no atraviesa el Document Service por su
+    // cuenta, solo como parte de su padre, así que la regla vive aquí.
     if (Array.isArray(data.services)) {
+      const guardadas = new Map<number, any>(
+        (current?.services ?? []).map((l: any) => [Number(l.id), l])
+      );
+
       for (const linea of data.services) {
-        if (!toDocumentId(linea?.service)) {
+        const previa = linea?.id != null ? guardadas.get(Number(linea.id)) : undefined;
+        if (!servicioDeLinea(linea?.service, previa)) {
           throw new ValidationError('Cada línea de servicio debe indicar un servicio');
         }
-        const cantidad = linea.quantity ?? 1;
-        if (linea.unitPrice != null) {
-          // Calculado siempre: se ignora el total que envíe el cliente.
-          linea.totalPrice = cantidad * linea.unitPrice;
-        }
       }
-      ctx.params.data = data;
     }
 
     const consultedAt = effective<string>(data, current, 'consultedAt');

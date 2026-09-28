@@ -13,7 +13,7 @@ Eres un desarrollador senior de Strapi 5 (TypeScript o JavaScript, PostgreSQL). 
    - No crear tablas `roles`, `permissions`, `role_permission`, `model_role`, `oauth_users`, `auth_contacts` ni `refresh_tokens`.
    - Login social: solo providers nativos de `users-permissions` (no crear providers personalizados).
    - Refresh tokens: si la versión de Strapi instalada trae gestión de sesiones nativa en `users-permissions`, activarla según la documentación oficial; si no, usar el JWT nativo. No crear tablas propias de sesión.
-3. **El staff (veterinarios, recepción, administración) trabaja en el panel admin**, no en una app propia. Toda relación con un miembro del staff (`vet`, `responsible`, `staff`, `author`, `performedBy` del servicio prestado, `verifiedBy`) apunta a `admin::user`. Las relaciones de "quién lo hizo" que pueden ser de un cliente o del staff (`appointment.bookedBy`, `signed-document-event.performedBy`) apuntan a `api::identity.profile`, que tienen los dos. `plugin::users-permissions.user` queda solo para clientes. *(Revisado 2026-09-28: antes el staff usaba users-permissions; se migró con `migrate-staff-to-admin.js`.)*
+3. **El staff (veterinarios, recepción, administración) trabaja en el panel admin**, no en una app propia. Toda relación con un miembro del staff (`vet`, `responsible`, `staff`, `author`, `verifiedBy`) apunta a `admin::user`. Las relaciones de "quién lo hizo" que pueden ser de un cliente o del staff (`appointment.bookedBy`, `signed-document-event.performedBy`) apuntan a `api::identity.profile`, que tienen los dos. `plugin::users-permissions.user` queda solo para clientes. *(Revisado 2026-09-28: antes el staff usaba users-permissions; se migró con `migrate-staff-to-admin.js`.)*
 4. **Draft & Publish desactivado** en todos los content types (`"draftAndPublish": false`).
 5. **Sin soft delete genérico.** Solo existe `archivedAt` (datetime) en: `profile`, `customer`, `pet`, `consultation`, `signed-document`, `invoice`. Los catálogos usan `isActive`. El resto se borra físicamente.
 6. **Sin campos de auditoría manuales.** `createdAt`/`updatedAt` los gestiona Strapi. No añadir `created_at`, `updated_at`, `deleted_at`.
@@ -179,15 +179,16 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 
 ### `src/components/scheduling/consultation-service.json`
 
-Línea de servicio cobrada en una consulta.
+Servicio o procedimiento prestado durante una consulta.
 Fue un content type (`api::scheduling.consultation-service`) hasta que se comprobó que nadie lo referenciaba: es una línea de detalle que solo existe dentro de su consulta, igual que `appointment-service` dentro de su cita.
+El veterinario registra qué hizo mientras atendía: servicio y cantidad, una línea por cada cosa distinta (dos vacunas distintas = dos líneas). No lleva precio ni duración — el procedimiento ocurre dentro del tiempo de la consulta, y el precio lo resolverá la facturación desde el catálogo (pendiente). Tampoco `performedBy`: quien lo presta es el `vet` de la consulta.
 ```json
 {
   "collectionName": "components_scheduling_consultation_services",
   "info": {
     "displayName": "Servicio prestado",
     "icon": "priceTag",
-    "description": "Línea de servicio cobrada en una consulta."
+    "description": "Servicio o procedimiento prestado durante una consulta."
   },
   "options": {},
   "attributes": {
@@ -201,24 +202,6 @@ Fue un content type (`api::scheduling.consultation-service`) hasta que se compro
       "required": true,
       "default": 1,
       "min": 1
-    },
-    "durationMinutes": {
-      "type": "integer",
-      "min": 0
-    },
-    "unitPrice": {
-      "type": "integer",
-      "required": true,
-      "min": 0
-    },
-    "totalPrice": {
-      "type": "integer",
-      "min": 0
-    },
-    "performedBy": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "admin::user"
     },
     "notes": {
       "type": "text"
@@ -2095,7 +2078,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
-| componente `scheduling.consultation-service` | `totalPrice = quantity × unitPrice` (calculado en el middleware de `consultation`, ignora el valor enviado) |
+| componente `scheduling.consultation-service` | cada línea debe indicar `service` (en el middleware de `consultation`; una línea existente cuyo servicio no cambia lo conserva aunque el panel envíe la relación vacía) |
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
 | `api::billing.invoice` | exactamente uno de `subscription` o `consultation`; si `state` ≠ `draft`, rechazar cualquier `update` salvo cambios de `state`, `dianState`, `pdfUrl`, `xmlUrl` |

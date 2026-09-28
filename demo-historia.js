@@ -15,9 +15,6 @@ const { createStrapi } = require('@strapi/strapi');
 
 const NOMBRE = process.argv[2] ?? 'Kira';
 
-const COP = (n) =>
-  n == null ? '—' : '$' + Number(n).toLocaleString('es-CO', { maximumFractionDigits: 0 });
-
 const fecha = (v) => (v ? String(v).slice(0, 10) : '—');
 
 /** Extrae el texto plano de un campo `blocks`. */
@@ -201,14 +198,10 @@ function resumenSeccion(s) {
 
   console.log(seccion(`  CONSULTAS  (${consultas.length})`));
 
-  let granTotal = 0;
-
   for (const c of consultas) {
     // Ya no hay que pedirlas aparte: vienen en el populate de la consulta.
+    // Sin precios: la línea solo dice qué se hizo y cuántas veces.
     const servicios = c.services ?? [];
-
-    const total = servicios.reduce((s, x) => s + (x.totalPrice ?? 0), 0);
-    granTotal += total;
 
     console.log(`\n  ${fecha(c.consultedAt)}  ·  ${c.appointment?.title ?? c.reason ?? 'Consulta'}`);
     console.log(`  ${'-'.repeat(72)}`);
@@ -232,16 +225,13 @@ function resumenSeccion(s) {
     if (servicios.length > 0) {
       console.log(`\n    Servicios`);
       for (const s of servicios) {
-        const linea = `      ${(s.service?.name ?? '—').padEnd(34)} ×${String(s.quantity).padEnd(3)} ${COP(s.unitPrice).padStart(12)} ${COP(s.totalPrice).padStart(12)}`;
-        console.log(linea);
+        console.log(`      ${(s.service?.name ?? '—').padEnd(34)} ×${s.quantity}`);
+        if (s.notes) console.log(envolver(s.notes, 66, '        '));
       }
-      console.log(`      ${''.padEnd(34)} ${''.padEnd(4)} ${'total'.padStart(12)} ${COP(total).padStart(12)}`);
     }
   }
 
-  console.log('\n' + '═'.repeat(74));
-  console.log(`  Facturado en ${consultas.length} consultas: ${COP(granTotal)}`);
-  console.log('═'.repeat(74) + '\n');
+  console.log('\n' + '═'.repeat(74) + '\n');
 
   await app.destroy();
   process.exit(0);

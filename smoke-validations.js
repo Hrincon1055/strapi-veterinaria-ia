@@ -65,8 +65,7 @@ async function limpiar(app) {
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
     ['api::billing.plan-benefit', { name: 'Baño SMOKE' }],
     ['api::billing.plan', { name: 'Plan SMOKE' }],
-    ['api::scheduling.service', { name: 'Consulta SMOKE' }],
-    ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
+    ['api::scheduling.service', { name: 'Consulta SMOKE' }],    ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
     ['api::scheduling.clinic-room', { name: 'Consultorio SMOKE' }],
     ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
     ['api::pet.pet', { name: 'Fido SMOKE' }],
@@ -147,7 +146,7 @@ async function limpiar(app) {
   await rechaza('cita que solapa al mismo responsable', () => d('api::scheduling.appointment').create({ data: { pet: mascota.documentId, responsible: vet.documentId, startAt: '2026-10-01T10:30:00.000Z', endAt: '2026-10-01T11:30:00.000Z', state: 'scheduled' } }), 'se cruza');
   await rechaza('cancelar sin motivo', () => d('api::scheduling.appointment').create({ data: { pet: mascota.documentId, responsible: vet.documentId, startAt: '2026-11-01T10:00:00.000Z', endAt: '2026-11-01T11:00:00.000Z', state: 'cancelled' } }), 'motivo');
 
-  console.log('\n--- consultas y cálculo de totales ---');
+  console.log('\n--- consultas y servicios prestados ---');
   const consulta = await acepta('consulta válida, consultedAt se rellena solo', () => d('api::clinical.consultation').create({ data: { pet: mascota.documentId, vet: vet.documentId } }), (c) => !!c.consultedAt);
 
   const categoria = await d('api::scheduling.service-category').findFirst({});
@@ -155,23 +154,35 @@ async function limpiar(app) {
   await rechaza('servicio duplicado en la misma categoría', () => d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30 } }), 'ya existe');
   // Las líneas de servicio son ahora el componente repetible
   // `scheduling.consultation-service`: se escriben dentro de la consulta y el
-  // total lo calcula el middleware de la consulta, no uno propio.
-  await acepta(
-    'totalPrice se calcula e ignora el valor enviado',
+  // veterinario solo dice qué hizo y cuántas veces; sin precios (eso será de
+  // la facturación).
+  const conLinea = await acepta(
+    'línea de servicio con cantidad',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { services: [{ service: servicio.documentId, quantity: 3, unitPrice: 50000, totalPrice: 1 }] },
-        populate: ['services'],
+        data: { services: [{ service: servicio.documentId, quantity: 2 }] },
+        populate: { services: { populate: ['service'] } },
       }),
-    (r) => r.services?.[0]?.totalPrice === 150000
+    (r) => r.services?.[0]?.quantity === 2 && r.services?.[0]?.service?.documentId === servicio.documentId
+  );
+  // El panel manda la relación de una línea sin tocar como `{ connect: [], disconnect: [] }`.
+  await acepta(
+    'cambiar la cantidad desde el panel sin tocar el servicio',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: { services: [{ id: conLinea?.services?.[0]?.id, service: { connect: [], disconnect: [] }, quantity: 3 }] },
+        populate: { services: { populate: ['service'] } },
+      }),
+    (r) => r.services?.[0]?.quantity === 3 && r.services?.[0]?.service?.documentId === servicio.documentId
   );
   await rechaza(
     'línea de servicio sin servicio',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { services: [{ quantity: 1, unitPrice: 1000 }] },
+        data: { services: [{ quantity: 1 }] },
       }),
     'debe indicar un servicio'
   );
