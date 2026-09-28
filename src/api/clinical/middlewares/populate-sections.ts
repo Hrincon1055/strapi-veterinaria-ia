@@ -1,8 +1,8 @@
 import type { Core } from '@strapi/strapi';
 
 /**
- * Rellena la dynamic zone `sections` de la consulta sin que el cliente tenga
- * que pedirlo.
+ * Rellena las dos dynamic zones de la consulta —`sections` (historia clínica)
+ * y `lines` (servicios y productos)— sin que el cliente tenga que pedirlo.
  *
  * Una dynamic zone no se puede poblar con `populate=*`: hay que enumerar cada
  * componente bajo la clave `on`, y además los que llevan media o componentes
@@ -30,6 +30,14 @@ const SECCIONES = {
   'clinical.treatment-plan': { populate: ['medications'] },
 } as const;
 
+/** La otra zona de la consulta: servicios y productos (ver validations/clinical.ts). */
+const LINEAS = {
+  'clinical.service-line': { populate: ['service'] },
+  'clinical.product-line': { populate: ['product'] },
+} as const;
+
+const ZONAS = { sections: SECCIONES, lines: LINEAS } as const;
+
 export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
   return async (ctx: any, next: () => Promise<any>) => {
     const query = ctx.query ?? {};
@@ -37,15 +45,16 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
     // `populate=*` no alcanza a los componentes de una dynamic zone, así que
     // también se sustituye por el mapa explícito.
     const pidioPopulate = query.populate && query.populate !== '*';
-    const yaPidioSecciones =
+    const yaPidio = (zona: string) =>
       pidioPopulate &&
       (Array.isArray(query.populate)
-        ? query.populate.includes('sections')
+        ? query.populate.includes(zona)
         : typeof query.populate === 'object'
-          ? 'sections' in query.populate
-          : query.populate === 'sections');
+          ? zona in query.populate
+          : query.populate === zona);
 
-    if (!yaPidioSecciones) {
+    const faltan = Object.entries(ZONAS).filter(([zona]) => !yaPidio(zona));
+    if (faltan.length > 0) {
       const base =
         pidioPopulate && typeof query.populate === 'object' && !Array.isArray(query.populate)
           ? query.populate
@@ -53,7 +62,7 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
 
       ctx.query = {
         ...query,
-        populate: { ...base, sections: { on: SECCIONES } },
+        populate: { ...base, ...Object.fromEntries(faltan.map(([zona, on]) => [zona, { on }])) },
       };
     }
 

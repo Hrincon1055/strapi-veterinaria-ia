@@ -1103,7 +1103,9 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    items: Schema.Attribute.Component<'clinical.consultation-item', true>;
+    lines: Schema.Attribute.DynamicZone<
+      ['clinical.service-line', 'clinical.product-line']
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

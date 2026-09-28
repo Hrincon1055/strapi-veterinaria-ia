@@ -188,7 +188,7 @@ export default async (strapi: Core.Strapi): Promise<void> => {
     }
 
     // Un permiso del Content Manager guarda la LISTA de campos que deja ver y
-    // editar. Si el esquema gana un campo (`consultation.items`,
+    // editar. Si el esquema gana un campo (`consultation.lines`,
     // `service.tax`), el permiso ya existe y el filtro de arriba no lo toca:
     // el campo quedaría invisible en el formulario para ese rol, sin error.
     // Aquí se añaden los campos que falten a los permisos que ya había.

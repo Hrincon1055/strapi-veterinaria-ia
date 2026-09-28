@@ -38,6 +38,7 @@ for (const [, ruta, json] of bloques) {
 // --- 2. las dynamic zones del código están documentadas --------------------
 const ZONAS = [
   ['src/api/clinical/content-types/consultation/schema.json', 'sections'],
+  ['src/api/clinical/content-types/consultation/schema.json', 'lines'],
   ['src/api/travel/content-types/travel-case/schema.json', 'requirements'],
   ['src/api/marketing/content-types/campaign/schema.json', 'segment'],
   ['src/api/catalog/content-types/product/schema.json', 'details'],
@@ -67,12 +68,11 @@ for (const campo of ['"anamnesis": { "type": "blocks" }', '"diagnosis": { "type"
   if (doc.includes(campo)) mal(`el documento todavía declara ${campo}`);
 }
 if (doc.includes('"segmentCriteria"')) mal('el documento todavía declara segmentCriteria');
-// Las líneas de la consulta pasaron a `clinical.consultation-item` (`items`).
-if (doc.includes('"component": "scheduling.consultation-service"')) {
-  mal('el documento todavía declara consultation.services');
-}
-if (fs.existsSync('src/components/scheduling/consultation-service.json')) {
-  mal('el componente scheduling.consultation-service sigue en src/');
+// Las líneas de la consulta pasaron de `services` a `items` y de ahí a la
+// dynamic zone `lines`: ninguno de los dos componentes viejos puede volver.
+for (const viejo of ['scheduling.consultation-service', 'clinical.consultation-item']) {
+  if (doc.includes(`"component": "${viejo}"`)) mal(`el documento todavía declara un campo con ${viejo}`);
+  if (fs.existsSync(`src/components/${viejo.replace('.', '/')}.json`)) mal(`el componente ${viejo} sigue en src/`);
 }
 
 // --- 3b. ningún atributo usa un nombre reservado (sección 11) ---------------

@@ -57,10 +57,9 @@
       "repeatable": true,
       "component": "clinical.attachment"
     },
-    "items": {
-      "type": "component",
-      "repeatable": true,
-      "component": "clinical.consultation-item"
+    "lines": {
+      "type": "dynamiczone",
+      "components": ["clinical.service-line", "clinical.product-line"]
     },
     "archivedAt": {
       "type": "datetime"

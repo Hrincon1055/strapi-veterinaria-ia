@@ -61,7 +61,7 @@ src/
     shared/address.json
     customer/consents.json
     billing/{dian-resolution,fiscal-responsibility,tax-profile}.json
-    clinical/{attachment,consultation-item}.json
+    clinical/{attachment,service-line,product-line}.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
     scheduling/{appointment-service,work-shift}.json
     catalog/{medication-details,vaccine-details,food-details,accessory-details,sanitary-registration,active-ingredient}.json
@@ -73,7 +73,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **37 content types (uno de ellos single type), 38 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **37 content types (uno de ellos single type), 39 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -175,53 +175,6 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
     "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
     "durationMinutes": { "type": "integer", "min": 5 },
     "price": { "type": "integer", "min": 0 }
-  }
-}
-```
-
-### `src/components/clinical/consultation-item.json`
-
-Servicio o producto del catálogo aplicado, entregado o recomendado en una consulta (campo `consultation.items`).
-Sustituye a `scheduling.consultation-service`, que solo admitía servicios (migrado con `migrate-consultation-items.js`, en dos fases). Cada línea apunta a **un** servicio **o** a **un** producto —nunca a los dos— con su cantidad (decimal: media tableta, 2,5 ml) y su estado: `applied` (aplicado o realizado en la consulta), `dispensed` (entregado para llevar; solo productos) o `recommended` (recomendado, no entregado). Sin precio ni duración: la futura facturación convertirá en cargo las líneas `applied` y `dispensed` con el precio y el impuesto del catálogo. Sin `performedBy`: quien lo hace es el `vet` de la consulta.
-```json
-{
-  "collectionName": "components_clinical_consultation_items",
-  "info": {
-    "displayName": "Servicio o producto",
-    "icon": "shoppingCart",
-    "description": "Servicio o producto del catálogo aplicado, entregado o recomendado en la consulta."
-  },
-  "options": {},
-  "attributes": {
-    "service": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::scheduling.service"
-    },
-    "product": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::catalog.product"
-    },
-    "quantity": {
-      "type": "decimal",
-      "required": true,
-      "default": 1,
-      "min": 0.01
-    },
-    "state": {
-      "type": "enumeration",
-      "enum": [
-        "applied",
-        "dispensed",
-        "recommended"
-      ],
-      "default": "applied",
-      "required": true
-    },
-    "notes": {
-      "type": "text"
-    }
   }
 }
 ```
@@ -1628,6 +1581,105 @@ Datos propios de un juguete o accesorio.
 }
 ```
 
+## 5.4 Servicios y productos de la consulta (dynamic zone de `consultation.lines`)
+
+Lo que el veterinario aplica, entrega o recomienda durante la consulta. Es una dynamic zone con una tarjeta por tipo, igual que la historia clínica: al pulsar "Agregar" se elige **Servicio** o **Producto**, y cada tarjeta tiene un único selector y su propia lista de estados. Así "o servicio o producto" y "entregado solo para productos" los impone el esquema, no una regla.
+
+Sustituye al componente repetible `clinical.consultation-item` (una línea con dos selectores), migrado con `migrate-consultation-lines.js` en dos fases. Sin precio ni duración: la futura facturación convertirá en cargo las líneas `applied` y `dispensed` con el precio y el impuesto del catálogo. Sin `performedBy`: quien lo hace es el `vet` de la consulta. Añadir un tipo de línea (p. ej. un cargo libre) = otra tarjeta en la zona.
+
+`label` lo rellena siempre el servidor con el nombre del servicio o producto, y es el main field de la tarjeta: con el bloque cerrado, el panel pinta en la cabecera el valor de un campo de texto del componente, y una relación no sirve para eso.
+
+Consecuencia aceptada: los filtros de Strapi no atraviesan una dynamic zone, así que "consultas que recomendaron el producto X" necesitaría un endpoint propio, como `/consultations/search` para las secciones.
+
+### `src/components/clinical/service-line.json`
+
+Tarjeta Servicio: un servicio del catálogo realizado (`applied`) o recomendado (`recommended`).
+```json
+{
+  "collectionName": "components_clinical_service_lines",
+  "info": {
+    "displayName": "Servicio",
+    "icon": "handHeart",
+    "description": "Servicio del catálogo realizado o recomendado en la consulta."
+  },
+  "options": {},
+  "attributes": {
+    "service": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::scheduling.service"
+    },
+    "quantity": {
+      "type": "decimal",
+      "required": true,
+      "default": 1,
+      "min": 0.01
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "applied",
+        "recommended"
+      ],
+      "default": "applied",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "label": {
+      "type": "string",
+      "maxLength": 255
+    }
+  }
+}
+```
+
+### `src/components/clinical/product-line.json`
+
+Tarjeta Producto: un producto del catálogo aplicado en la consulta (`applied`), entregado para llevar (`dispensed`) o recomendado (`recommended`). La cantidad es decimal (media tableta, 2,5 ml).
+```json
+{
+  "collectionName": "components_clinical_product_lines",
+  "info": {
+    "displayName": "Producto",
+    "icon": "shoppingCart",
+    "description": "Producto del catálogo aplicado, entregado o recomendado en la consulta."
+  },
+  "options": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.product"
+    },
+    "quantity": {
+      "type": "decimal",
+      "required": true,
+      "default": 1,
+      "min": 0.01
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "applied",
+        "dispensed",
+        "recommended"
+      ],
+      "default": "applied",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "label": {
+      "type": "string",
+      "maxLength": 255
+    }
+  }
+}
+```
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -1872,7 +1924,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "weightKg": { "type": "decimal", "min": 0 },
     "nextControlOn": { "type": "date" },
     "attachments": { "type": "component", "repeatable": true, "component": "clinical.attachment" },
-    "items": { "type": "component", "repeatable": true, "component": "clinical.consultation-item" },
+    "lines": { "type": "dynamiczone", "components": ["clinical.service-line", "clinical.product-line"] },
     "archivedAt": { "type": "datetime" }
   }
 }
@@ -2688,7 +2740,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::clinical.allergy` | `pet` |
 | `api::scheduling.appointment` | `pet`, `responsible` |
 | `api::scheduling.service` | `category` |
-| componente `clinical.consultation-item` | `service` **o** `product`, exactamente uno (la pertenencia a la consulta es estructural) |
+| componente `clinical.service-line` / `clinical.product-line` | `service` / `product` (la pertenencia a la consulta es estructural) |
 | `api::billing.plan-benefit` | `plan` |
 | `api::billing.subscription` | `customer`, `pet`, `plan` |
 | `api::billing.benefit-usage` | `subscription`, `benefit` |
@@ -2733,7 +2785,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
-| componente `clinical.consultation-item` | exactamente uno de `service` o `product`; `state = dispensed` solo con producto; una línea existente conserva su relación aunque el panel la envíe como diferencia vacía (`{ connect: [], disconnect: [] }`) |
+| zona `consultation.lines` | cada tarjeta exige su `service` o `product`; `label` = nombre del servicio o `searchLabel` del producto, puesto por el servidor (ignora el valor enviado); un bloque existente conserva su relación aunque el panel la envíe como diferencia vacía (`{ connect: [], disconnect: [] }`) |
 | `api::catalog.product` | como mucho un bloque en `details`, y del componente que corresponde a `productType`; obligatorio para `medication` y `vaccine`; `catalog.vaccine-details.vaccine` obligatorio; si no se indica `tracksBatches` al crear, `true` para `medication`/`vaccine`/`food` |
 | `api::catalog.product`, `api::scheduling.service` | `tax`: `gravado` exige `ivaRate` 5 o 19; `exento`/`excluido` fijan `ivaRate = 0` |
 | `api::catalog.supplier` | si `documentType = nit`, `verificationDigit` debe cuadrar con el módulo 11 de la DIAN |
@@ -2820,7 +2872,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 37 content types y 38 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 37 content types y 39 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

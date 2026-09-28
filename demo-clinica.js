@@ -9,7 +9,7 @@
  *
  * Cada visita se modela igual que en la vida real: una cita (`appointment`)
  * que se completó, y la consulta (`consultation`) que quedó de ella con los
- * servicios y productos (`items`): lo aplicado, lo entregado y lo recomendado. La vacunación añade además el registro `pet-vaccination`,
+ * servicios y productos (zona `lines`): lo aplicado, lo entregado y lo recomendado. La vacunación añade además el registro `pet-vaccination`,
  * que alimenta el carné de vacunas y los recordatorios.
  *
  * El contenido clínico va en la dynamic zone `sections`: cada visita compone
@@ -438,16 +438,18 @@ async function crearHistoria(app) {
         reason: v.reason,
         weightKg: v.weightKg,
         sections: v.secciones,
-        // Servicios y productos en el mismo componente repetible: cada línea
-        // apunta a un servicio O a un producto. Sin precio (será de la
-        // facturación, desde el catálogo); quien lo hizo es `vet`.
-        items: [
+        // Servicios y productos: dynamic zone con una tarjeta por tipo. Sin
+        // precio (será de la facturación, desde el catálogo); quien lo hizo
+        // es `vet`. `label` lo pone el servidor.
+        lines: [
           ...v.servicios.map((s) => ({
+            __component: 'clinical.service-line',
             service: servicios[s.nombre].documentId,
             quantity: s.cantidad,
             state: 'applied',
           })),
           ...(v.productos ?? []).map((p) => ({
+            __component: 'clinical.product-line',
             product: productos[p.nombre].documentId,
             quantity: p.cantidad,
             state: p.estado,

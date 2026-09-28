@@ -350,34 +350,6 @@ export interface ClinicalAttachment extends Struct.ComponentSchema {
   };
 }
 
-export interface ClinicalConsultationItem extends Struct.ComponentSchema {
-  collectionName: 'components_clinical_consultation_items';
-  info: {
-    description: 'Servicio o producto del cat\u00E1logo aplicado, entregado o recomendado en la consulta.';
-    displayName: 'Servicio o producto';
-    icon: 'shoppingCart';
-  };
-  attributes: {
-    notes: Schema.Attribute.Text;
-    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
-    quantity: Schema.Attribute.Decimal &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0.01;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<1>;
-    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
-    state: Schema.Attribute.Enumeration<
-      ['applied', 'dispensed', 'recommended']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'applied'>;
-  };
-}
-
 export interface ClinicalDiagnosis extends Struct.ComponentSchema {
   collectionName: 'components_clinical_diagnoses';
   info: {
@@ -580,6 +552,66 @@ export interface ClinicalProcedure extends Struct.ComponentSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 200;
       }>;
+  };
+}
+
+export interface ClinicalProductLine extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_product_lines';
+  info: {
+    description: 'Producto del cat\u00E1logo aplicado, entregado o recomendado en la consulta.';
+    displayName: 'Producto';
+    icon: 'shoppingCart';
+  };
+  attributes: {
+    label: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    notes: Schema.Attribute.Text;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    state: Schema.Attribute.Enumeration<
+      ['applied', 'dispensed', 'recommended']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'applied'>;
+  };
+}
+
+export interface ClinicalServiceLine extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_service_lines';
+  info: {
+    description: 'Servicio del cat\u00E1logo realizado o recomendado en la consulta.';
+    displayName: 'Servicio';
+    icon: 'handHeart';
+  };
+  attributes: {
+    label: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    notes: Schema.Attribute.Text;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
+    state: Schema.Attribute.Enumeration<['applied', 'recommended']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'applied'>;
   };
 }
 
@@ -1039,13 +1071,14 @@ declare module '@strapi/strapi' {
       'clinic.opening-hours': ClinicOpeningHours;
       'clinical.anamnesis': ClinicalAnamnesis;
       'clinical.attachment': ClinicalAttachment;
-      'clinical.consultation-item': ClinicalConsultationItem;
       'clinical.diagnosis': ClinicalDiagnosis;
       'clinical.imaging': ClinicalImaging;
       'clinical.lab-result': ClinicalLabResult;
       'clinical.medication': ClinicalMedication;
       'clinical.physical-exam': ClinicalPhysicalExam;
       'clinical.procedure': ClinicalProcedure;
+      'clinical.product-line': ClinicalProductLine;
+      'clinical.service-line': ClinicalServiceLine;
       'clinical.treatment-plan': ClinicalTreatmentPlan;
       'customer.consents': CustomerConsents;
       'documents.document-file': DocumentsDocumentFile;

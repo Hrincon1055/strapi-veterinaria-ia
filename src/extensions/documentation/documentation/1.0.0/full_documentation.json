@@ -13,7 +13,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "x-generation-date": "2026-09-28T14:12:53.787Z"
+    "x-generation-date": "2026-09-28T18:48:00.129Z"
   },
   "servers": [
     {
@@ -23403,10 +23403,24 @@
                                   "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                 }
                               },
-                              "items": {
+                              "lines": {
                                 "type": "array",
                                 "items": {
-                                  "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                    "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                  }
                                 }
                               },
                               "archivedAt": {
@@ -26056,6 +26070,62 @@
           }
         }
       },
+      "ClinicalServiceLineComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.service-line"
+            ]
+          },
+          "service": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "documentId": {
+                "type": "string"
+              }
+            }
+          },
+          "quantity": {
+            "type": "number",
+            "format": "float"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "recommended"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
       "CatalogSanitaryRegistrationComponent": {
         "type": "object",
         "properties": {
@@ -26464,7 +26534,7 @@
           }
         }
       },
-      "ClinicalConsultationItemComponent": {
+      "ClinicalProductLineComponent": {
         "type": "object",
         "properties": {
           "id": {
@@ -26477,23 +26547,11 @@
               }
             ]
           },
-          "service": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "oneOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ]
-              },
-              "documentId": {
-                "type": "string"
-              }
-            }
+          "__component": {
+            "type": "string",
+            "enum": [
+              "clinical.product-line"
+            ]
           },
           "product": {
             "type": "object",
@@ -27165,6 +27223,9 @@
             ]
           },
           "notes": {
+            "type": "string"
+          },
+          "label": {
             "type": "string"
           }
         }
@@ -30186,10 +30247,24 @@
                               "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                             }
                           },
-                          "items": {
+                          "lines": {
                             "type": "array",
                             "items": {
-                              "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                              }
                             }
                           },
                           "archivedAt": {
@@ -37506,10 +37581,24 @@
                               "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                             }
                           },
-                          "items": {
+                          "lines": {
                             "type": "array",
                             "items": {
-                              "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                              }
                             }
                           },
                           "archivedAt": {
@@ -50072,10 +50161,24 @@
                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                       }
                     },
-                    "items": {
+                    "lines": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                        }
                       }
                     },
                     "archivedAt": {
@@ -50876,10 +50979,24 @@
                   "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                 }
               },
-              "items": {
+              "lines": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                    }
+                  ]
+                },
+                "discriminator": {
+                  "propertyName": "__component",
+                  "mapping": {
+                    "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                    "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                  }
                 }
               },
               "archivedAt": {
@@ -54044,10 +54161,24 @@
                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                       }
                     },
-                    "items": {
+                    "lines": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                        }
                       }
                     },
                     "archivedAt": {
@@ -54682,10 +54813,24 @@
               "$ref": "#/components/schemas/ClinicalAttachmentComponent"
             }
           },
-          "items": {
+          "lines": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                },
+                {
+                  "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                }
+              ]
+            },
+            "discriminator": {
+              "propertyName": "__component",
+              "mapping": {
+                "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+              }
             }
           },
           "archivedAt": {
@@ -58015,10 +58160,24 @@
                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                       }
                     },
-                    "items": {
+                    "lines": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                        }
                       }
                     },
                     "archivedAt": {
@@ -62804,10 +62963,24 @@
                                   "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                 }
                               },
-                              "items": {
+                              "lines": {
                                 "type": "array",
                                 "items": {
-                                  "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                    "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                  }
                                 }
                               },
                               "archivedAt": {
@@ -66798,10 +66971,24 @@
                               "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                             }
                           },
-                          "items": {
+                          "lines": {
                             "type": "array",
                             "items": {
-                              "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                              }
                             }
                           },
                           "archivedAt": {
@@ -71554,10 +71741,24 @@
                   "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                 }
               },
-              "items": {
+              "lines": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                    }
+                  ]
+                },
+                "discriminator": {
+                  "propertyName": "__component",
+                  "mapping": {
+                    "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                    "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                  }
                 }
               },
               "archivedAt": {
@@ -76647,10 +76848,24 @@
                       "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                     }
                   },
-                  "items": {
+                  "lines": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                        }
+                      ]
+                    },
+                    "discriminator": {
+                      "propertyName": "__component",
+                      "mapping": {
+                        "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                        "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                      }
                     }
                   },
                   "archivedAt": {
@@ -81438,10 +81653,24 @@
                       "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                     }
                   },
-                  "items": {
+                  "lines": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                        }
+                      ]
+                    },
+                    "discriminator": {
+                      "propertyName": "__component",
+                      "mapping": {
+                        "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                        "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                      }
                     }
                   },
                   "archivedAt": {
@@ -85687,10 +85916,24 @@
                                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                       }
                                     },
-                                    "items": {
+                                    "lines": {
                                       "type": "array",
                                       "items": {
-                                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                        "anyOf": [
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                          }
+                                        ]
+                                      },
+                                      "discriminator": {
+                                        "propertyName": "__component",
+                                        "mapping": {
+                                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                        }
                                       }
                                     },
                                     "archivedAt": {
@@ -92521,10 +92764,24 @@
                                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                       }
                                     },
-                                    "items": {
+                                    "lines": {
                                       "type": "array",
                                       "items": {
-                                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                        "anyOf": [
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                          },
+                                          {
+                                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                          }
+                                        ]
+                                      },
+                                      "discriminator": {
+                                        "propertyName": "__component",
+                                        "mapping": {
+                                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                        }
                                       }
                                     },
                                     "archivedAt": {
@@ -96821,10 +97078,24 @@
                                       "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                     }
                                   },
-                                  "items": {
+                                  "lines": {
                                     "type": "array",
                                     "items": {
-                                      "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                      "anyOf": [
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                        }
+                                      ]
+                                    },
+                                    "discriminator": {
+                                      "propertyName": "__component",
+                                      "mapping": {
+                                        "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                        "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                      }
                                     }
                                   },
                                   "archivedAt": {
@@ -101063,10 +101334,24 @@
                                             "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                           }
                                         },
-                                        "items": {
+                                        "lines": {
                                           "type": "array",
                                           "items": {
-                                            "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                            "anyOf": [
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                              },
+                                              {
+                                                "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                              }
+                                            ]
+                                          },
+                                          "discriminator": {
+                                            "propertyName": "__component",
+                                            "mapping": {
+                                              "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                              "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                            }
                                           }
                                         },
                                         "archivedAt": {
@@ -106546,10 +106831,24 @@
                               "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                             }
                           },
-                          "items": {
+                          "lines": {
                             "type": "array",
                             "items": {
-                              "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                              "anyOf": [
+                                {
+                                  "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                }
+                              ]
+                            },
+                            "discriminator": {
+                              "propertyName": "__component",
+                              "mapping": {
+                                "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                              }
                             }
                           },
                           "archivedAt": {
@@ -112077,10 +112376,24 @@
                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                       }
                     },
-                    "items": {
+                    "lines": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                        }
                       }
                     },
                     "archivedAt": {
@@ -121325,10 +121638,24 @@
                                   "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                 }
                               },
-                              "items": {
+                              "lines": {
                                 "type": "array",
                                 "items": {
-                                  "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                    }
+                                  ]
+                                },
+                                "discriminator": {
+                                  "propertyName": "__component",
+                                  "mapping": {
+                                    "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                    "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                  }
                                 }
                               },
                               "archivedAt": {
@@ -126013,10 +126340,24 @@
                                       "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                                     }
                                   },
-                                  "items": {
+                                  "lines": {
                                     "type": "array",
                                     "items": {
-                                      "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                                      "anyOf": [
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                                        },
+                                        {
+                                          "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                                        }
+                                      ]
+                                    },
+                                    "discriminator": {
+                                      "propertyName": "__component",
+                                      "mapping": {
+                                        "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                                        "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                                      }
                                     }
                                   },
                                   "archivedAt": {
@@ -130439,10 +130780,24 @@
                         "$ref": "#/components/schemas/ClinicalAttachmentComponent"
                       }
                     },
-                    "items": {
+                    "lines": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ClinicalConsultationItemComponent"
+                        "anyOf": [
+                          {
+                            "$ref": "#/components/schemas/ClinicalServiceLineComponent"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClinicalProductLineComponent"
+                          }
+                        ]
+                      },
+                      "discriminator": {
+                        "propertyName": "__component",
+                        "mapping": {
+                          "clinical.service-line": "#/components/schemas/ClinicalServiceLineComponent",
+                          "clinical.product-line": "#/components/schemas/ClinicalProductLineComponent"
+                        }
                       }
                     },
                     "archivedAt": {

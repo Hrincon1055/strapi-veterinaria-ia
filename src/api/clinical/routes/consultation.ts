@@ -6,7 +6,7 @@ import { factories } from '@strapi/strapi';
  * filtro porque su alcance lo define el permiso del rol.
  *
  * Tres middlewares: `date-range` valida el rango (y expande `?hoy=`),
- * `populate-sections` rellena la dynamic zone de la historia y
+ * `populate-sections` rellena las dos dynamic zones (historia y servicios/productos) y
  * `query-defaults` traduce `?pet=…&desde=…&hasta=…` a filtros.
  *
  * Quien no es cliente (una integración con token de API) ve además qué
@@ -19,12 +19,10 @@ const ownerOnly = { policies: ['global::is-owner'] };
 const PARA_STAFF = {
   vet: { fields: ['firstname', 'lastname'] },
   pet: { populate: { owner: { populate: ['profile'] } } },
-  items: { populate: ['service', 'product'] },
 };
 
 const PARA_CLIENTE = {
   pet: true,
-  items: { populate: ['service', 'product'] },
 };
 
 const lectura = {

@@ -182,7 +182,12 @@ function resumenSeccion(s) {
     populate: {
       vet: true,
       appointment: { populate: ['room'] },
-      items: { populate: ['service', 'product'] },
+      lines: {
+        on: {
+          'clinical.service-line': { populate: ['service'] },
+          'clinical.product-line': { populate: ['product'] },
+        },
+      },
       sections: {
         on: {
           'clinical.anamnesis': true,
@@ -204,7 +209,7 @@ function resumenSeccion(s) {
     // Servicios y productos: vienen en el populate de la consulta. Sin
     // precios: la línea solo dice qué, cuánto y si se aplicó, se entregó o
     // se recomendó.
-    const lineas = c.items ?? [];
+    const lineas = c.lines ?? [];
 
     console.log(`\n  ${fecha(c.consultedAt)}  ·  ${c.appointment?.title ?? c.reason ?? 'Consulta'}`);
     console.log(`  ${'-'.repeat(72)}`);
@@ -229,7 +234,7 @@ function resumenSeccion(s) {
       console.log(`\n    Servicios y productos`);
       for (const l of lineas) {
         const nombre = l.service?.name ?? l.product?.name ?? '—';
-        const clase = l.service ? 'servicio' : 'producto';
+        const clase = l.__component === 'clinical.service-line' ? 'servicio' : 'producto';
         console.log(`      ${nombre.padEnd(34)} ×${String(Number(l.quantity)).padEnd(4)} ${clase.padEnd(9)} ${ESTADOS[l.state] ?? l.state}`);
         if (l.notes) console.log(envolver(l.notes, 66, '        '));
       }

@@ -16,6 +16,10 @@
  * y state = 'applied' (lo que había eran servicios ya prestados).
  *
  * Es idempotente: una consulta que ya tenga `items` no se vuelve a tocar.
+ *
+ * YA EJECUTADA Y SUPERADA: `items` se migró a su vez a la dynamic zone
+ * `lines` (migrate-consultation-lines.js) y ya no existe en el esquema. Se
+ * conserva como historia, igual que migrate-consultation-services.js.
  */
 
 const { createStrapi } = require('@strapi/strapi');

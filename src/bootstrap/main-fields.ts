@@ -67,6 +67,22 @@ const MAIN_FIELDS: Record<string, string> = {
 };
 
 /**
+ * Main field de componentes de dynamic zone, y de solo lectura.
+ *
+ * Con el bloque cerrado, el panel pinta en la cabecera el icono, el nombre del
+ * componente y el valor de su main field (content-manager
+ * `DynamicZone/DynamicComponent`). El main field tiene que ser un campo de
+ * texto: una relación no sirve. Por eso las líneas de la consulta llevan
+ * `label`, que rellena el servidor con el nombre del servicio o producto
+ * (`validations/clinical.ts`); sin esto todas las cabeceras dirían solo
+ * "Producto". Se marca no editable porque el servidor lo sobrescribe igual.
+ */
+const MAIN_FIELDS_COMPONENTES: Record<string, string> = {
+  'clinical.service-line': 'label',
+  'clinical.product-line': 'label',
+};
+
+/**
  * `strapi.store` ya antepone `plugin_content_manager_configuration_`, así que
  * la clave aquí es solo la parte final. En la tabla se ve como
  * `plugin_content_manager_configuration_content_types::api::pet.pet`.
@@ -78,7 +94,7 @@ export default async (strapi: Core.Strapi): Promise<void> => {
 
   // Qué campo de relación de cada content type —y de cada componente— apunta
   // a un destino que cambia. Los componentes cuentan: el selector de producto
-  // de una línea de consulta vive en `clinical.consultation-item`, y su
+  // de una línea de consulta vive en `clinical.product-line`, y su
   // configuración está en `components::<uid>`, no en la de la consulta.
   const aCorregir: Array<{ key: string; campo: string; mainField: string }> = [];
   const origenes = [
@@ -126,6 +142,28 @@ export default async (strapi: Core.Strapi): Promise<void> => {
       tocado = true;
     }
 
+    if (tocado) {
+      await store.set({ key, value: config });
+      cambios++;
+    }
+  }
+
+  // 3. main field (y solo lectura) de los componentes de dynamic zone.
+  for (const [uid, mainField] of Object.entries(MAIN_FIELDS_COMPONENTES)) {
+    const key = `components::${uid}`;
+    const config: any = await store.get({ key });
+    if (!config?.settings) continue;
+
+    let tocado = false;
+    if (config.settings.mainField !== mainField) {
+      config.settings = { ...config.settings, mainField };
+      tocado = true;
+    }
+    const edit = config.metadatas?.[mainField]?.edit;
+    if (edit && edit.editable !== false) {
+      edit.editable = false;
+      tocado = true;
+    }
     if (tocado) {
       await store.set({ key, value: config });
       cambios++;

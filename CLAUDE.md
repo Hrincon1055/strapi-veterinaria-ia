@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 37 content types (uno es single type) across 13 API domains, 38 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
+Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 37 content types (uno es single type) across 13 API domains, 39 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
 Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
@@ -30,7 +30,7 @@ node audit-orphans.js             # duplicate names + tables/dist left behind by
 #  GET /api/availability?staff=…&desde=…&hasta=…  huecos libres de un profesional
 node vincular-admin.js [correo doc|correo --quitar]   # enlaza una cuenta del panel con un perfil (sin argumentos, lista)
 node migrate-staff-to-admin.js --export|--import      # ya ejecutada: staff de users-permissions al panel (ver abajo)
-node migrate-consultation-items.js [--dry]            # ya ejecutada: consultation.services -> consultation.items (ver abajo)
+node migrate-consultation-lines.js [--dry]            # ya ejecutada: consultation.items -> dynamic zone consultation.lines (ver abajo)
 node demo-agenda.js [--reset]     # solo las 7 citas de la semana en curso (demo-data.js ya las crea); útil al cambiar de semana
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
@@ -118,7 +118,7 @@ La ruta de búsqueda declara el handler completo (`api::clinical.consultation.se
 | --- | --- | --- |
 | `global::query-defaults` | las 10 rutas de lectura | Traduce atajos (`?pet=`, `?estado=`, `?buscar=`, `?desde=`…) a `filters`, y pone `sort`/`populate` por defecto **según el rol** |
 | `global::date-range` | todo lo que tiene fechas | Expande `?hoy=` / `?manana=` / `?semana=` / `?mes=` a `desde`/`hasta`, valida el formato (400 si no es AAAA-MM-DD real o el rango está invertido) y deja `ctx.state.rango` para los endpoints propios |
-| `api::clinical.populate-sections` | consultation | Rellena la dynamic zone de la historia |
+| `api::clinical.populate-sections` | consultation | Rellena las dos dynamic zones: la historia (`sections`) y los servicios y productos (`lines`) |
 | `api::travel.populate-requirements` | travel-case | Rellena la zona de requisitos |
 | `api::marketing.populate-segment` | campaign | Rellena la zona de reglas de segmento |
 | `api::catalog.populate-details` | product | Rellena la zona de datos específicos del tipo de producto |
@@ -142,7 +142,7 @@ No es cosmético. Desde que el staff está en el panel, por la API solo llegan c
 
 Antes de depurar un middleware por un campo que falta, mira los permisos del rol.
 
-**Hay cuatro dynamic zones, no una.** `consultation.sections` (historia clínica), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad), `campaign.segment` (6 reglas de segmentación) y `product.details` (datos propios de cada tipo de producto). Las cuatro necesitan su middleware de populate y ninguna se puede filtrar con `filters`; por eso el producto lleva además `productType` como columna.
+**Hay cinco dynamic zones, no una.** `consultation.sections` (historia clínica), `consultation.lines` (servicios y productos), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad), `campaign.segment` (6 reglas de segmentación) y `product.details` (datos propios de cada tipo de producto). Las cinco necesitan su middleware de populate y ninguna se puede filtrar con `filters`; por eso el producto lleva además `productType` como columna.
 
 `campaign.segment` sustituyó al campo `json` `segmentCriteria`, que se pasaba **tal cual** como filtro de Strapi — había que escribir filtros a mano en el panel. Ahora `src/api/marketing/services/campaign.ts` traduce cada regla. La regla de suscripción es la excepción: se resuelve con una consulta propia porque `customer` no tiene relación inversa `subscriptions` (solo existe `subscription.customer`, manyToOne sin `inversedBy`), así que no hay camino de cliente a sus suscripciones en los filtros.
 
@@ -163,7 +163,11 @@ Y como el campo debía seguir llamándose `services`, la migración fue **export
 - **Las existencias no se guardan en el producto.** Solo están las banderas (`tracksInventory`, `tracksBatches`, `minStock`), `referenceCost` (`private`, verificado que no sale por la API) y `preferredSupplier`. El stock saldrá de movimientos por lote, que es lo que da vencimientos y costo real; un campo `stock` editable se desincronizaría el primer día.
 - **Proveedores (`supplier`) solo los ve el rol Administrador de clínica.** Sí se leen por API `product` y `product-category`: el cliente tiene que ver en su consulta lo que se le recomendó, y sin leer `product` el saneado lo quitaría de la línea.
 
-**La consulta tiene `items`, no `services`.** Es un componente repetible (`clinical.consultation-item`) donde cada línea apunta a **un** servicio **o** a **un** producto, con su cantidad (decimal) y su `state`: `applied`, `dispensed` (solo productos) o `recommended`. Sin precio: la facturación cobrará `applied` + `dispensed` con el precio del catálogo. Se migró con `migrate-consultation-items.js` en dos fases, igual que `sections`.
+**Servicios y productos de la consulta son una dynamic zone, `lines`.** Hay una tarjeta por tipo, con icono, como en la historia: `clinical.service-line` (Servicio, `handHeart`; estados `applied`/`recommended`) y `clinical.product-line` (Producto, `shoppingCart`; `applied`/`dispensed`/`recommended`). Cada una lleva un único selector, cantidad decimal y notas. "O servicio o producto" y "entregado solo para productos" los impone el esquema de cada tarjeta, no una regla. Sin precio: la facturación cobrará `applied` + `dispensed` con el precio del catálogo. Historia de la migración: `services` → `items` (componente repetible con dos selectores por línea, confuso en el panel) → `lines`, esta última con `migrate-consultation-lines.js` en dos fases.
+
+- **`label` es el main field de cada tarjeta y lo pone el servidor.** Con el bloque cerrado, el panel pinta en la cabecera el icono, el nombre del componente y el valor del main field (`content-manager/.../DynamicZone/DynamicComponent`). Ese main field tiene que ser un campo de texto: una relación no sirve. Sin `label`, todas las cabeceras dirían solo "Producto". `validations/clinical.ts` lo rellena en cada escritura (nombre del servicio, `searchLabel` del producto) y `main-fields.ts` lo declara main field y no editable (`MAIN_FIELDS_COMPONENTES`). Solo aparece después de guardar.
+- **La zona la rellena `populate-sections`**, que ahora inyecta las dos zonas de la consulta. La historia de la mascota (`populate-history`) y `demo-historia.js` la piden con su propio `on`. Añadir una tarjeta = una entrada en `LINEAS` (`validations/clinical.ts`), otra en `populate-sections` y otra en `populate-history`.
+- **No se puede filtrar por la zona.** "Consultas que recomendaron el producto X" necesitaría un endpoint propio, como `/consultations/search` para las secciones.
 
 **El panel manda las relaciones de un componente como diferencia.** En una línea que ya existía y cuya relación no se tocó llega `{ connect: [], disconnect: [] }`, y `toDocumentId` lo interpreta como "se está limpiando". Una regla que exija la relación rechazaría así cualquier edición hecha desde el panel. `relacionDeComponente()` + `porId()`/`previaDe()` (en `helpers.ts`) toman en ese caso la relación del componente guardado con el mismo `id`. Úsalos en cualquier regla sobre relaciones dentro de componentes o dynamic zones; las pruebas de humo lo cubren con ese mismo payload.
 

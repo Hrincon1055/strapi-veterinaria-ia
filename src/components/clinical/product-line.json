@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_clinical_product_lines",
+  "info": { "displayName": "Producto", "icon": "shoppingCart", "description": "Producto del catálogo aplicado, entregado o recomendado en la consulta." },
+  "options": {},
+  "attributes": {
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "state": { "type": "enumeration", "enum": ["applied", "dispensed", "recommended"], "default": "applied", "required": true },
+    "notes": { "type": "text" },
+    "label": { "type": "string", "maxLength": 255 }
+  }
+}

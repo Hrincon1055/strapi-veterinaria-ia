@@ -23,9 +23,10 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::clinical.allergy': ['pet'],
   'api::scheduling.appointment': ['pet', 'responsible'],
   'api::scheduling.service': ['category'],
-  // Las líneas de la consulta son el componente `clinical.consultation-item`:
-  // su pertenencia a la consulta es estructural, y "servicio o producto" se
-  // valida en el middleware de la consulta (una tabla no expresa "uno de dos").
+  // Las líneas de la consulta son la dynamic zone `lines` (tarjetas
+  // `clinical.service-line` y `clinical.product-line`): su pertenencia a la
+  // consulta es estructural, y que cada tarjeta lleve su servicio o producto
+  // se valida en el middleware de la consulta.
   'api::billing.plan-benefit': ['plan'],
   'api::billing.subscription': ['customer', 'pet', 'plan'],
   'api::billing.benefit-usage': ['subscription', 'benefit'],

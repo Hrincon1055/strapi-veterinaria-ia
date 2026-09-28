@@ -235,69 +235,78 @@ async function limpiar(app) {
   );
 
   console.log('\n--- servicios y productos de la consulta ---');
-  // Una línea = un servicio O un producto, con cantidad y estado. Sin precios:
-  // eso será de la facturación, desde el catálogo.
+  // Dynamic zone `lines`: una tarjeta por tipo (Servicio / Producto), con
+  // cantidad y estado. Sin precios: eso será de la facturación, desde el
+  // catálogo. `label` lo pone el servidor para la cabecera del bloque.
+  const POP_LINEAS = { lines: { on: { 'clinical.service-line': { populate: ['service'] }, 'clinical.product-line': { populate: ['product'] } } } };
   const conLineas = await acepta(
-    'servicio aplicado + producto entregado + producto recomendado',
+    'servicio aplicado + producto entregado + producto recomendado; label lo pone el servidor',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
         data: {
-          items: [
-            { service: servicio.documentId, quantity: 1, state: 'applied' },
-            { product: medicamento?.documentId, quantity: 2, state: 'dispensed' },
-            { product: vacunaProducto?.documentId, quantity: 1, state: 'recommended' },
+          lines: [
+            { __component: 'clinical.service-line', service: servicio.documentId, quantity: 1, state: 'applied', label: 'FALSO' },
+            { __component: 'clinical.product-line', product: medicamento?.documentId, quantity: 2, state: 'dispensed' },
+            { __component: 'clinical.product-line', product: vacunaProducto?.documentId, quantity: 1, state: 'recommended' },
           ],
         },
-        populate: { items: { populate: ['service', 'product'] } },
+        populate: POP_LINEAS,
       }),
     (r) =>
-      r.items?.length === 3 &&
-      r.items[0].service?.documentId === servicio.documentId &&
-      r.items[1].product?.documentId === medicamento?.documentId &&
-      Number(r.items[1].quantity) === 2
+      r.lines?.length === 3 &&
+      r.lines[0].service?.documentId === servicio.documentId &&
+      r.lines[0].label === 'Consulta SMOKE' &&
+      r.lines[1].product?.documentId === medicamento?.documentId &&
+      String(r.lines[1].label).startsWith('Meloxicam SMOKE') &&
+      Number(r.lines[1].quantity) === 2
   );
-  // El panel manda la relación de una línea sin tocar como `{ connect: [], disconnect: [] }`.
+  // El panel reenvía cada bloque con la relación sin tocar como `{ connect: [], disconnect: [] }`.
   await acepta(
-    'cambiar la cantidad desde el panel sin tocar el servicio',
+    'cambiar la cantidad desde el panel sin tocar el servicio ni el producto',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
         data: {
-          items: (conLineas?.items ?? []).map((l, i) => ({
-            id: l.id,
-            service: { connect: [], disconnect: [] },
-            product: { connect: [], disconnect: [] },
-            quantity: i === 0 ? 3 : Number(l.quantity),
-            state: l.state,
-          })),
+          lines: (conLineas?.lines ?? []).map((l, i) => {
+            const campo = l.__component === 'clinical.service-line' ? 'service' : 'product';
+            return { __component: l.__component, id: l.id, [campo]: { connect: [], disconnect: [] }, quantity: i === 0 ? 3 : Number(l.quantity), state: l.state };
+          }),
         },
-        populate: { items: { populate: ['service', 'product'] } },
+        populate: POP_LINEAS,
       }),
-    (r) => Number(r.items?.[0]?.quantity) === 3 && r.items?.[0]?.service?.documentId === servicio.documentId && r.items?.length === 3
+    (r) =>
+      Number(r.lines?.[0]?.quantity) === 3 &&
+      r.lines?.[0]?.service?.documentId === servicio.documentId &&
+      r.lines?.[1]?.product?.documentId === medicamento?.documentId &&
+      r.lines?.length === 3
   );
   await rechaza(
-    'línea sin servicio ni producto',
-    () => d('api::clinical.consultation').update({ documentId: consulta.documentId, data: { items: [{ quantity: 1 }] } }),
-    'debe indicar un servicio o un producto'
-  );
-  await rechaza(
-    'línea con servicio y producto a la vez',
+    'tarjeta de servicio sin servicio',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { items: [{ service: servicio.documentId, product: medicamento?.documentId, quantity: 1 }] },
+        data: { lines: [{ __component: 'clinical.service-line', quantity: 1 }] },
       }),
-    'no los dos'
+    'qué servicio'
   );
+  await rechaza(
+    'tarjeta de producto sin producto',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: { lines: [{ __component: 'clinical.product-line', quantity: 1 }] },
+      }),
+    'qué producto'
+  );
+  // Lo impone el esquema de la tarjeta, no una regla: su enum no tiene `dispensed`.
   await rechaza(
     'servicio marcado como entregado',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { items: [{ service: servicio.documentId, quantity: 1, state: 'dispensed' }] },
-      }),
-    'solo para productos'
+        data: { lines: [{ __component: 'clinical.service-line', service: servicio.documentId, quantity: 1, state: 'dispensed' }] },
+      })
   );
 
   console.log('\n--- facturas ---');

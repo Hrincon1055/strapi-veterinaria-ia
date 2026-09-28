@@ -47,9 +47,15 @@ const HISTORIA = {
       vet: { fields: ['firstname', 'lastname'] },
       appointment: { populate: ['room'] },
       sections: { on: SECCIONES },
-      // Servicios y productos de cada visita (componente repetible): si no se
-      // piden, la historia sale sin lo que se aplicó o recomendó.
-      items: { populate: ['service', 'product'] },
+      // Servicios y productos de cada visita (dynamic zone): si no se piden
+      // componente a componente, la historia sale sin lo que se aplicó o
+      // recomendó.
+      lines: {
+        on: {
+          'clinical.service-line': { populate: ['service'] },
+          'clinical.product-line': { populate: ['product'] },
+        },
+      },
     },
   },
   vaccinations: {

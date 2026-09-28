@@ -14,10 +14,25 @@ import {
 } from './helpers';
 
 /**
- * Estados de una línea de la consulta. `dispensed` (entregado para llevar)
- * solo tiene sentido con un producto: un servicio se aplica o se recomienda.
+ * Tarjetas de la zona `lines` (Servicios y productos): qué relación lleva cada
+ * una y de dónde sale su nombre. Añadir un tipo de línea = una entrada aquí,
+ * otra en `populate-sections` y otra en `populate-history`.
+ *
+ * Lo que antes eran reglas —"servicio o producto, no los dos", "entregado solo
+ * para productos"— ahora lo impone el propio componente: cada tarjeta tiene un
+ * único selector y su propia lista de estados.
  */
-const SOLO_PRODUCTO = ['dispensed'];
+const LINEAS: Record<string, { campo: string; uid: string; nombre: string; etiqueta: string }> = {
+  'clinical.service-line': { campo: 'service', uid: 'api::scheduling.service', nombre: 'servicio', etiqueta: 'name' },
+  'clinical.product-line': { campo: 'product', uid: 'api::catalog.product', nombre: 'producto', etiqueta: 'searchLabel' },
+};
+
+const POPULATE_LINEAS = {
+  on: {
+    'clinical.service-line': { populate: ['service'] },
+    'clinical.product-line': { populate: ['product'] },
+  },
+};
 
 export default (strapi: Core.Strapi): void => {
   // ---- api::clinical.vaccine ----------------------------------------------
@@ -48,7 +63,7 @@ export default (strapi: Core.Strapi): void => {
     const data = ctx.params.data ?? {};
     const current = await loadCurrent(strapi, ctx, {
       pet: true,
-      items: { populate: ['service', 'product'] },
+      lines: POPULATE_LINEAS,
     });
 
     // Si no se indica el momento de la consulta, es ahora.
@@ -57,35 +72,38 @@ export default (strapi: Core.Strapi): void => {
       ctx.params.data = data;
     }
 
-    // Servicios y productos de la consulta: qué aplicó, entregó o recomendó el
-    // veterinario, y cuánto. Cada línea apunta a UNA cosa del catálogo —un
-    // servicio o un producto—, que es lo que la facturación convertirá en
-    // cargo con el precio y el impuesto de ese catálogo. Un componente no
+    // Servicios y productos de la consulta (zona `lines`): qué aplicó, entregó
+    // o recomendó el veterinario, y cuánto. La facturación convertirá en cargo
+    // cada línea con el precio y el impuesto del catálogo. Un componente no
     // atraviesa el Document Service por su cuenta, solo como parte de su
     // padre, así que la regla vive aquí.
-    if (Array.isArray(data.items)) {
-      const guardadas = porId(current?.items);
+    if (Array.isArray(data.lines)) {
+      const guardadas = porId(current?.lines);
 
-      for (const linea of data.items) {
+      for (const linea of data.lines) {
+        const tipo = LINEAS[linea?.__component];
+        if (!tipo) continue; // Strapi rechaza por su cuenta un componente ajeno a la zona.
+
         const previa = previaDe(guardadas, linea);
-        const servicio = relacionDeComponente(linea?.service, previa, 'service');
-        const producto = relacionDeComponente(linea?.product, previa, 'product');
+        const documentId = relacionDeComponente(linea[tipo.campo], previa, tipo.campo);
+        if (!documentId) {
+          throw new ValidationError(`Cada línea de ${tipo.nombre} de la consulta debe indicar qué ${tipo.nombre} es`);
+        }
 
-        if (!servicio && !producto) {
-          throw new ValidationError('Cada línea de la consulta debe indicar un servicio o un producto');
+        // El panel pinta en la cabecera de un bloque cerrado el valor de un
+        // campo de texto del componente; una relación no sirve para eso. Sin
+        // `label`, todas las cabeceras dirían solo "Producto" o "Servicio".
+        // Lo pone siempre el servidor: se ignora lo que llegue.
+        const destino: any = await strapi.documents(tipo.uid as any).findOne({
+          documentId,
+          fields: ['name', tipo.etiqueta] as any,
+        });
+        if (!destino) {
+          throw new ValidationError(`El ${tipo.nombre} indicado no existe`);
         }
-        if (servicio && producto) {
-          throw new ValidationError(
-            'Cada línea de la consulta lleva un servicio o un producto, no los dos: usa una línea para cada uno'
-          );
-        }
-        const estado = linea?.state ?? previa?.state;
-        if (servicio && SOLO_PRODUCTO.includes(estado)) {
-          throw new ValidationError(
-            'Un servicio se aplica o se recomienda; "entregado" (dispensed) es solo para productos'
-          );
-        }
+        linea.label = String(destino[tipo.etiqueta] ?? destino.name ?? '').slice(0, 255) || null;
       }
+      ctx.params.data = data;
     }
 
     const consultedAt = effective<string>(data, current, 'consultedAt');

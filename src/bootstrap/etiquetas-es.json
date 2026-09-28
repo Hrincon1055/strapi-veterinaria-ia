@@ -146,12 +146,16 @@
       "sections": "Historia clínica",
       "nextControlOn": "Próximo control",
       "attachments": "Adjuntos",
-      "items": "Servicios y productos"
+      "lines": "Servicios y productos"
     },
-    "clinical.consultation-item": {
-      "service": "Servicio (o bien un producto)",
-      "product": "Producto (o bien un servicio)",
-      "state": "Aplicado, entregado o recomendado"
+    "clinical.service-line": {
+      "state": "Aplicado o recomendado",
+      "label": "Nombre (se rellena al guardar)"
+    },
+    "clinical.product-line": {
+      "product": "Producto",
+      "state": "Aplicado, entregado o recomendado",
+      "label": "Nombre (se rellena al guardar)"
     },
     "api::catalog.product": {
       "productType": "Tipo de producto",
