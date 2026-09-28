@@ -44,7 +44,7 @@ const HISTORIA = {
   consultations: {
     sort: ['consultedAt:desc'],
     populate: {
-      vet: { fields: ['username', 'email'] },
+      vet: { fields: ['firstname', 'lastname'] },
       appointment: { populate: ['room'] },
       sections: { on: SECCIONES },
       // Las líneas de servicio son un componente desde la migración: si no se

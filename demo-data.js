@@ -1,10 +1,13 @@
 'use strict';
 
 /**
- * Datos de muestra para ver el modelo funcionando: 3 clientes con sus mascotas.
+ * Datos de muestra para ver el modelo funcionando: 3 clientes con sus
+ * mascotas, el personal (cuentas del panel con horario), la historia clínica
+ * de Kira, la ficha de la clínica y las citas de la semana en curso.
  *
  *   node demo-data.js           crea los datos (idempotente, se puede repetir)
- *   node demo-data.js --reset   los borra
+ *   node demo-data.js --reset   los borra, y además los restos sin mascota que
+ *                               hayan dejado ejecuciones anteriores
  *
  * Dos de los clientes tienen cuenta de portal y uno no: es el cliente de
  * mostrador, que existe como profile + customer sin usuario. Esa diferencia es
@@ -17,6 +20,39 @@ const { createStrapi } = require('@strapi/strapi');
 const { crearHistoria, borrarHistoria } = require('./demo-clinica');
 const { crearClinica, borrarClinica } = require('./demo-clinic');
 const { crearHorarios, borrarHorarios } = require('./demo-horarios');
+const { crearAgenda, borrarAgenda } = require('./demo-agenda');
+
+/**
+ * Registros que no pueden existir sin mascota (la relación es obligatoria).
+ * Si aparece uno sin ella, es resto de una mascota ya borrada: por ejemplo,
+ * las citas de la agenda cuando se borraban las mascotas pero no las citas.
+ */
+const CUELGAN_DE_LA_MASCOTA = [
+  'api::clinical.pet-vaccination',
+  'api::clinical.allergy',
+  'api::clinical.consultation',
+  'api::scheduling.appointment',
+];
+
+async function borrarHuerfanos(app) {
+  let n = 0;
+  for (const uid of CUELGAN_DE_LA_MASCOTA) {
+    // `archivedAt` en el filtro para que archived.ts no esconda los archivados.
+    const huerfanos = await app.documents(uid).findMany({
+      filters: {
+        pet: { id: { $null: true } },
+        ...(uid === 'api::clinical.consultation' ? { $or: [{ archivedAt: { $null: true } }, { archivedAt: { $notNull: true } }] } : {}),
+      },
+      fields: ['documentId'],
+      pagination: { limit: -1 },
+    });
+    for (const h of huerfanos) {
+      await app.documents(uid).delete({ documentId: h.documentId });
+      n++;
+    }
+  }
+  return n;
+}
 
 const PASSWORD = 'Demo12345';
 
@@ -302,8 +338,11 @@ const DEL_FLUJO = {
 async function borrar(app) {
   const d = (uid) => app.documents(uid);
 
-  // Primero la historia clínica: cuelga de las mascotas que se borran abajo.
-  let n = await borrarHistoria(app);
+  // Primero lo que cuelga de las mascotas que se borran abajo: la agenda de
+  // la semana y la historia clínica. Si las mascotas se borraran antes, esas
+  // citas y consultas quedarían huérfanas y ya no se podrían encontrar.
+  let n = await borrarAgenda(app);
+  n += await borrarHistoria(app);
   n += await borrarClinica(app);
   n += await borrarHorarios(app);
   const documentos = [...CLIENTES.map((c) => c.perfil.documentNumber), ...DEL_FLUJO.documentos];
@@ -362,15 +401,22 @@ async function borrar(app) {
   const app = await createStrapi({ appDir: process.cwd(), distDir: 'dist' }).load();
 
   if (process.argv.includes('--reset')) {
-    console.log(`\n${await borrar(app)} registros de muestra eliminados\n`);
+    const n = await borrar(app);
+    // Al final: lo que quedó sin mascota es resto de ejecuciones anteriores.
+    const huerfanos = await borrarHuerfanos(app);
+    console.log(`\n${n} registros de muestra eliminados${huerfanos ? `, y ${huerfanos} huérfanos sin mascota` : ''}\n`);
     await app.destroy();
     process.exit(0);
   }
 
+  // El orden importa: el personal (con sus horarios) antes que la historia y
+  // la agenda, porque sus citas apuntan a esas cuentas y las de muestra salen
+  // agendadas por recepción.
   const resumen = await crear(app);
+  const horarios = await crearHorarios(app);
   const historia = await crearHistoria(app);
   const clinica = await crearClinica(app);
-  const horarios = await crearHorarios(app);
+  await crearAgenda(app);
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
   for (const { perfil, cliente, usuario, mascotas } of resumen) {
@@ -384,10 +430,10 @@ async function borrar(app) {
     console.log('');
   }
 
-  for (const h of horarios) console.log(`Horario: ${h.username.padEnd(16)} ${h.consultorio.padEnd(18)} ${h.slot} min · ${h.dias} días/semana`);
+  for (const h of horarios) console.log(`Horario: ${h.email.padEnd(32)} ${h.consultorio.padEnd(18)} ${h.slot} min · ${h.dias} días/semana`);
   console.log(`Clínica: ${clinica.nombre}${clinica.nit ? ' · NIT ' + clinica.nit : ''}`);
   console.log(`Historia clínica de ${historia.mascota}: ${historia.visitas} visitas nuevas`);
-  console.log(`Veterinaria: ${historia.vet} / Clinica12345`);
+  console.log(`Personal: entra al panel (/admin) con su correo / Clinica12345 — p. ej. ${historia.vet}`);
   console.log(`\nVer la historia:  node demo-historia.js ${historia.mascota}\n`);
 
   await app.destroy();

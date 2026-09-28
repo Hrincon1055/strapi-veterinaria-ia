@@ -15,7 +15,12 @@
  * El contenido clínico va en la dynamic zone `sections`: cada visita compone
  * las secciones que necesita en lugar de rellenar tres campos fijos. La
  * cirugía usa las siete.
+ *
+ * La veterinaria es una cuenta del panel (`admin::user`, rol Veterinario):
+ * `vet`, `responsible` y `performedBy` apuntan ahí, no a users-permissions.
  */
+
+const { cuentaDelPanel, borrarCuentaDelPanel, perfilDeCuenta, RECEPCION } = require('./demo-staff');
 
 const MASCOTA = 'Kira';
 
@@ -313,16 +318,23 @@ async function asegurar(d, uid, filtros, datos) {
   return d(uid).create({ data: datos });
 }
 
+/** Los consultorios; los horarios del personal los necesitan antes que la historia. */
+async function asegurarConsultorios(app) {
+  const d = (uid) => app.documents(uid);
+  const consultorios = {};
+  for (const c of CONSULTORIOS) {
+    consultorios[c.name] = await asegurar(d, 'api::scheduling.clinic-room', { name: c.name }, { ...c, isActive: true });
+  }
+  return consultorios;
+}
+
 async function crearHistoria(app) {
   const d = (uid) => app.documents(uid);
 
   const mascota = await d('api::pet.pet').findFirst({ filters: { name: MASCOTA } });
   if (!mascota) throw new Error(`No existe la mascota "${MASCOTA}"; ejecuta antes node demo-data.js`);
 
-  const consultorios = {};
-  for (const c of CONSULTORIOS) {
-    consultorios[c.name] = await asegurar(d, 'api::scheduling.clinic-room', { name: c.name }, { ...c, isActive: true });
-  }
+  const consultorios = await asegurarConsultorios(app);
 
   const servicios = {};
   for (const s of SERVICIOS) {
@@ -354,22 +366,16 @@ async function crearHistoria(app) {
     );
   }
 
-  // La veterinaria: usuario + perfil, sin customer.
-  let vet = await app.query('plugin::users-permissions.user').findOne({ where: { username: VETERINARIO.username } });
-  if (!vet) {
-    const perfilVet = await asegurar(d, 'api::identity.profile', { documentNumber: VETERINARIO.perfil.documentNumber }, VETERINARIO.perfil);
-    const rolVet = await app.query('plugin::users-permissions.role').findOne({ where: { type: 'veterinarian' } });
-    vet = await app.plugin('users-permissions').service('user').add({
-      username: VETERINARIO.username,
-      email: VETERINARIO.email,
-      password: VETERINARIO.password,
-      provider: 'local',
-      confirmed: true,
-      blocked: false,
-      role: rolVet.id,
-      profile: perfilVet.documentId,
-    });
-  }
+  // La veterinaria: cuenta del panel + perfil, sin customer.
+  const vet = await cuentaDelPanel(app, {
+    email: VETERINARIO.email,
+    rol: 'Veterinario',
+    password: VETERINARIO.password,
+    perfil: VETERINARIO.perfil,
+  });
+
+  // Las citas las agendó recepción (demo-horarios.js crea esa cuenta antes).
+  const agendadaPor = await perfilDeCuenta(app, RECEPCION);
 
   let creadas = 0;
 
@@ -388,6 +394,7 @@ async function crearHistoria(app) {
         endAt: v.fin,
         state: 'completed',
         source: 'front_desk',
+        bookedBy: agendadaPor,
         title: v.etiqueta,
         arrivedAt: v.inicio,
         completedAt: v.fin,
@@ -444,7 +451,7 @@ async function crearHistoria(app) {
     creadas++;
   }
 
-  return { mascota: MASCOTA, visitas: creadas, vet: VETERINARIO.username };
+  return { mascota: MASCOTA, visitas: creadas, vet: VETERINARIO.email };
 }
 
 /** Borra la historia y el catálogo que creó este módulo. */
@@ -500,17 +507,12 @@ async function borrarHistoria(app) {
     }
   }
 
-  const borrado = await app.query('plugin::users-permissions.user').deleteMany({ where: { username: VETERINARIO.username } });
-  n += borrado?.count ?? 0;
-
-  for (const r of await d('api::identity.profile').findMany({
-    filters: { documentNumber: VETERINARIO.perfil.documentNumber },
-  })) {
-    await d('api::identity.profile').delete({ documentId: r.documentId });
-    n++;
-  }
+  n += await borrarCuentaDelPanel(app, {
+    email: VETERINARIO.email,
+    documentNumber: VETERINARIO.perfil.documentNumber,
+  });
 
   return n;
 }
 
-module.exports = { crearHistoria, borrarHistoria, MASCOTA, DEL_FLUJO };
+module.exports = { crearHistoria, borrarHistoria, asegurarConsultorios, MASCOTA, DEL_FLUJO, VETERINARIO };

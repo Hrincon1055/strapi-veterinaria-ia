@@ -20,6 +20,7 @@
  */
 
 const { createStrapi } = require('@strapi/strapi');
+const { perfilDeCuenta, RECEPCION } = require('./demo-staff');
 
 const MARCA = '[demo]';
 
@@ -64,11 +65,13 @@ async function crear(app) {
 
   let creadas = 0;
   let saltadas = 0;
+  const agendadaPor = await perfilDeCuenta(app, RECEPCION);
 
   for (const c of CITAS) {
-    const usuario = await app
-      .query('plugin::users-permissions.user')
-      .findOne({ where: { username: c.staff } });
+    // El personal es una cuenta del panel; se busca por su correo.
+    const usuario = await app.db
+      .query('admin::user')
+      .findOne({ where: { email: `${c.staff}@veterinaria.test` } });
     const mascota = await d('api::pet.pet').findFirst({ filters: { name: c.mascota } });
 
     if (!usuario || !mascota) {
@@ -109,6 +112,7 @@ async function crear(app) {
         endAt,
         state: c.estado,
         source: 'front_desk',
+        bookedBy: agendadaPor,
         title: `${c.titulo} ${MARCA}`,
       },
     });
@@ -121,6 +125,7 @@ async function crear(app) {
 
   console.log(`\n${creadas} cita(s) creada(s)${saltadas ? `, ${saltadas} omitida(s)` : ''}.`);
   console.log('Abre el panel -> Agenda para verlas.\n');
+  return creadas;
 }
 
 async function borrar(app) {
@@ -141,19 +146,24 @@ async function borrar(app) {
     n++;
   }
 
-  console.log(`\n${n} registro(s) de muestra eliminado(s).\n`);
+  return n;
 }
 
-(async () => {
-  const app = await createStrapi({ appDir: process.cwd(), distDir: 'dist' }).load();
-  try {
-    if (process.argv.includes('--reset')) await borrar(app);
-    else await crear(app);
-  } finally {
-    await app.destroy();
-  }
-  process.exit(0);
-})().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+module.exports = { crearAgenda: crear, borrarAgenda: borrar };
+
+// `demo-data.js` lo usa como módulo; suelto sigue funcionando igual.
+if (require.main === module) {
+  (async () => {
+    const app = await createStrapi({ appDir: process.cwd(), distDir: 'dist' }).load();
+    try {
+      if (process.argv.includes('--reset')) console.log(`\n${await borrar(app)} registro(s) de muestra eliminado(s).\n`);
+      else await crear(app);
+    } finally {
+      await app.destroy();
+    }
+    process.exit(0);
+  })().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

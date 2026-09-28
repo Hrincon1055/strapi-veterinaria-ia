@@ -9,7 +9,7 @@
   },
   "options": { "draftAndPublish": false },
   "attributes": {
-    "staff": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "staff": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
     "slotMinutes": { "type": "integer", "required": true, "default": 30, "min": 5, "max": 480 },
     "validFrom": { "type": "date", "required": true },

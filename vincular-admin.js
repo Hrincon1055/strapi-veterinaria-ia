@@ -1,21 +1,24 @@
 'use strict';
 
 /**
- * Enlaza una cuenta del PANEL con un perfil de personal.
+ * Enlaza una cuenta del PANEL con el perfil (ficha) de esa persona.
  *
  *   node vincular-admin.js                                   lista los enlaces
  *   node vincular-admin.js <correo-admin> <documento>        enlaza
  *   node vincular-admin.js <correo-admin> --quitar           desenlaza
  *
- * Por qué hace falta: Strapi tiene dos tablas de personas que no se conocen
- * entre sí. Quien entra al panel es un `admin::user`; quien atiende una cita o
- * firma una consulta es un `plugin::users-permissions.user`. El perfil es lo
- * único que puede unirlos, y por eso lleva las dos relaciones: `user` (cuenta
- * de la app) y `adminUser` (cuenta del panel).
+ * El staff trabaja en el panel: su cuenta es un `admin::user`, y a ella
+ * apuntan `vet`, `responsible`, `staff`… La agenda funciona sin perfil. Lo que
+ * aporta el enlace `profile.adminUser` es:
  *
- * Sin este enlace, la página de Agenda no sabe qué profesional la está
- * mirando: `/veterinaria-agenda/me` responde `enlazado: false` y la vista
- * personal no puede mostrarse.
+ *  - el nombre completo y la ocupación en la agenda (sin él sale el
+ *    nombre de la cuenta);
+ *  - `appointment.bookedBy` y `signed-document-event.performedBy`, que apuntan
+ *    al PERFIL de quien actúa: sin enlace, lo que esa persona agende queda con
+ *    `bookedBy` vacío (ver src/validations/actor.ts).
+ *
+ * `demo-staff.js` ya lo deja enlazado al crear personal; esto es para cuentas
+ * creadas a mano en Ajustes → Usuarios.
  *
  * Arranca su propia instancia de Strapi, así que hay que parar `npm run
  * develop` antes de ejecutarlo.
@@ -25,34 +28,28 @@ const { createStrapi } = require('@strapi/strapi');
 
 async function listar(app) {
   const perfiles = await app.documents('api::identity.profile').findMany({
-    populate: ['adminUser', 'user'],
+    filters: { adminUser: { id: { $notNull: true } } },
+    populate: ['adminUser'],
     pagination: { limit: -1 },
   });
 
-  const enlazados = perfiles.filter((p) => p.adminUser);
-
-  console.log('\nEnlaces panel <-> personal\n');
-  if (enlazados.length === 0) {
+  console.log('\nEnlaces cuenta del panel <-> perfil\n');
+  if (perfiles.length === 0) {
     console.log('  (ninguno)');
   } else {
-    for (const p of enlazados) {
+    for (const p of perfiles) {
       console.log(
         `  ${p.adminUser.email.padEnd(34)} -> ${`${p.firstName} ${p.lastName}`.padEnd(20)}` +
-          ` doc ${String(p.documentNumber).padEnd(12)} ${p.user ? `app: ${p.user.username}` : 'SIN cuenta de app'}`
+          ` doc ${p.documentNumber}${p.occupation ? `  (${p.occupation})` : ''}`
       );
     }
   }
 
   const admins = await app.db.query('admin::user').findMany({});
-  const sinEnlace = admins.filter((a) => !enlazados.some((p) => p.adminUser.id === a.id));
+  const sinEnlace = admins.filter((a) => !perfiles.some((p) => p.adminUser.id === a.id));
   if (sinEnlace.length > 0) {
-    console.log('\nCuentas de panel sin perfil enlazado (no verán agenda personal):');
+    console.log('\nCuentas del panel sin perfil (lo que agenden queda sin bookedBy):');
     sinEnlace.forEach((a) => console.log(`  ${a.email}`));
-  }
-
-  console.log('\nPerfiles de personal disponibles (tienen cuenta de app):');
-  for (const p of perfiles.filter((x) => x.user)) {
-    console.log(`  doc ${String(p.documentNumber).padEnd(12)} ${p.firstName} ${p.lastName}  (${p.user.username})`);
   }
   console.log('');
 }
@@ -68,16 +65,15 @@ async function listar(app) {
       return;
     }
 
-    const admin = await app.db.query('admin::user').findOne({ where: { email: correo } });
+    const admin = await app.db.query('admin::user').findOne({ where: { email: correo.toLowerCase() } });
     if (!admin) {
-      console.error(`No existe la cuenta de panel ${correo}`);
+      console.error(`No existe la cuenta del panel ${correo}`);
       process.exitCode = 1;
       return;
     }
 
-    // Una cuenta de panel solo puede estar en un perfil: la relación es 1-1 y
-    // dejar dos apuntando al mismo administrador daría una agenda "propia"
-    // ambigua. Se limpia siempre antes de asignar.
+    // Una cuenta del panel solo puede estar en un perfil: la relación es 1-1.
+    // Se limpia siempre antes de asignar.
     const previos = await app.documents('api::identity.profile').findMany({
       filters: { adminUser: { id: admin.id } },
     });
@@ -96,18 +92,9 @@ async function listar(app) {
 
     const perfil = await app.documents('api::identity.profile').findFirst({
       filters: { documentNumber: String(documento) },
-      populate: ['user'],
     });
     if (!perfil) {
       console.error(`No hay perfil con documento ${documento}`);
-      process.exitCode = 1;
-      return;
-    }
-    if (!perfil.user) {
-      console.error(
-        `${perfil.firstName} ${perfil.lastName} no tiene cuenta de app (profile.user).\n` +
-          'Sin ella no hay citas que mostrar: las citas apuntan al usuario, no al perfil.'
-      );
       process.exitCode = 1;
       return;
     }
@@ -117,8 +104,7 @@ async function listar(app) {
       data: { adminUser: admin.id },
     });
 
-    console.log(`\n  ${admin.email}  ->  ${perfil.firstName} ${perfil.lastName}  (app: ${perfil.user.username})\n`);
-    console.log('Ya puedes abrir Agenda en el panel y ver la vista personal.\n');
+    console.log(`\n  ${admin.email}  ->  ${perfil.firstName} ${perfil.lastName}\n`);
   } finally {
     await app.destroy();
   }

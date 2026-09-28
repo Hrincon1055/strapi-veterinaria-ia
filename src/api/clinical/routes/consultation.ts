@@ -9,14 +9,15 @@ import { factories } from '@strapi/strapi';
  * `populate-sections` rellena la dynamic zone de la historia y
  * `query-defaults` traduce `?pet=…&desde=…&hasta=…` a filtros.
  *
- * El staff ve además qué veterinario firmó y de quién es la mascota. Al
- * cliente no se le piden: el saneado los descartaría igual porque no puede
- * leer `user` ni `customer`, así que pedirlos sería trabajo tirado.
+ * Quien no es cliente (una integración con token de API) ve además qué
+ * veterinario firmó y de quién es la mascota. Al cliente no se le piden: el
+ * saneado los descartaría igual porque no puede leer `admin::user` ni
+ * `customer`, así que pedirlos sería trabajo tirado.
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
 const PARA_STAFF = {
-  vet: { fields: ['username', 'email'] },
+  vet: { fields: ['firstname', 'lastname'] },
   pet: { populate: { owner: { populate: ['profile'] } } },
   services: { populate: ['service'] },
 };

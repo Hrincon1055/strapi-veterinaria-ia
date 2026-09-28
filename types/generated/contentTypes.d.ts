@@ -844,10 +844,7 @@ export interface ApiClinicalAllergy extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    vet: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    vet: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -904,10 +901,7 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    vet: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    vet: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     weightKg: Schema.Attribute.Decimal &
       Schema.Attribute.SetMinMax<
         {
@@ -963,10 +957,7 @@ export interface ApiClinicalPetVaccination extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     vaccine: Schema.Attribute.Relation<'manyToOne', 'api::clinical.vaccine'>;
-    vet: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    vet: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -1067,10 +1058,7 @@ export interface ApiCustomerCustomerNote extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    author: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    author: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     body: Schema.Attribute.Text & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1229,7 +1217,7 @@ export interface ApiDocumentsSignedDocumentEvent
     metadata: Schema.Attribute.JSON;
     performedBy: Schema.Attribute.Relation<
       'manyToOne',
-      'plugin::users-permissions.user'
+      'api::identity.profile'
     >;
     publishedAt: Schema.Attribute.DateTime;
     signedDocument: Schema.Attribute.Relation<
@@ -1824,10 +1812,7 @@ export interface ApiSchedulingAppointment extends Struct.CollectionTypeSchema {
   };
   attributes: {
     arrivedAt: Schema.Attribute.DateTime;
-    bookedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    bookedBy: Schema.Attribute.Relation<'manyToOne', 'api::identity.profile'>;
     cancelledAt: Schema.Attribute.DateTime;
     cancelNotes: Schema.Attribute.Text;
     cancelReason: Schema.Attribute.Enumeration<
@@ -1851,10 +1836,7 @@ export interface ApiSchedulingAppointment extends Struct.CollectionTypeSchema {
     notes: Schema.Attribute.Text;
     pet: Schema.Attribute.Relation<'manyToOne', 'api::pet.pet'>;
     publishedAt: Schema.Attribute.DateTime;
-    responsible: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    responsible: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
     services: Schema.Attribute.Component<
       'scheduling.appointment-service',
@@ -1969,10 +1951,7 @@ export interface ApiSchedulingScheduleException
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
-    staff: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    staff: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     toDate: Schema.Attribute.Date & Schema.Attribute.Required;
     toTime: Schema.Attribute.Time;
     updatedAt: Schema.Attribute.DateTime;
@@ -2118,10 +2097,7 @@ export interface ApiSchedulingStaffSchedule
         number
       > &
       Schema.Attribute.DefaultTo<30>;
-    staff: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    staff: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

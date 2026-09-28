@@ -7,7 +7,7 @@
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "vaccinations" },
     "vaccine": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.vaccine" },
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
-    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "doseNumber": { "type": "integer", "min": 1 },
     "appliedOn": { "type": "date", "required": true },
     "nextDueOn": { "type": "date" },

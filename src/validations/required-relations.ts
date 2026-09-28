@@ -13,7 +13,7 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::shared.contact': ['profile'],
   'api::shared.verification-code': ['contact'],
   'api::customer.customer': ['profile'],
-  // `author` lo rellena el controlador con el usuario autenticado.
+  // `author` lo rellena `actor.ts` con la cuenta del panel que escribe.
   'api::customer.customer-note': ['customer', 'author'],
   'api::pet.pet': ['owner', 'species'],
   'api::pet.breed': ['species'],

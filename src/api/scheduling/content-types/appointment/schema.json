@@ -5,9 +5,9 @@
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
-    "responsible": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "responsible": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
-    "bookedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "bookedBy": { "type": "relation", "relation": "manyToOne", "target": "api::identity.profile" },
     "startAt": { "type": "datetime", "required": true },
     "endAt": { "type": "datetime", "required": true },
     "state": { "type": "enumeration", "enum": ["draft", "scheduled", "confirmed", "arrived", "in_progress", "completed", "cancelled", "no_show"], "default": "scheduled", "required": true },

@@ -524,10 +524,7 @@ export interface SchedulingConsultationService extends Struct.ComponentSchema {
         number
       >;
     notes: Schema.Attribute.Text;
-    performedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    performedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     quantity: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -643,10 +640,7 @@ export interface TravelAntiparasitic extends Struct.ComponentSchema {
       }>;
     isCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     windowHoursBeforeFlight: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
@@ -684,10 +678,7 @@ export interface TravelCrate extends Struct.ComponentSchema {
         number
       >;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     widthCm: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
@@ -720,10 +711,7 @@ export interface TravelHealthCertificate extends Struct.ComponentSchema {
       Schema.Attribute.DefaultTo<'ICA'>;
     validUntil: Schema.Attribute.Date;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -747,10 +735,7 @@ export interface TravelImportPermit extends Struct.ComponentSchema {
         maxLength: 60;
       }>;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -771,10 +756,7 @@ export interface TravelMicrochipCheck extends Struct.ComponentSchema {
         maxLength: 20;
       }>;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -795,10 +777,7 @@ export interface TravelOtherRequirement extends Struct.ComponentSchema {
         maxLength: 150;
       }>;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 
@@ -834,10 +813,7 @@ export interface TravelRabiesTiter extends Struct.ComponentSchema {
       Schema.Attribute.DefaultTo<0.5>;
     validUntil: Schema.Attribute.Date;
     verifiedAt: Schema.Attribute.DateTime;
-    verifiedBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
+    verifiedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
   };
 }
 

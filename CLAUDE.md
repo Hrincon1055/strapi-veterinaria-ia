@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 32 content types (uno es single type) across 12 API domains, 30 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
-Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native users-permissions with no custom RBAC tables, and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
+Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
 ## Commands
 
@@ -23,13 +23,14 @@ npm run upgrade:dry  # preview a Strapi version upgrade (then `npm run upgrade`)
 npx strapi ts:generate-types      # regenerate types/generated/ after a schema change, without a full boot
 npx tsc --noEmit                  # typecheck server code
 node smoke-validations.js         # 27 live assertions against the business rules (boots Strapi, self-cleaning)
-node demo-data.js [--reset]       # 3 sample clients with pets + Kira's clinical history (idempotent)
+node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda (idempotent; --reset also sweeps pet-less leftovers)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
 node audit-orphans.js             # duplicate names + tables/dist left behind by a deleted type
 #  GET /api/availability?staff=…&desde=…&hasta=…  huecos libres de un profesional
 node vincular-admin.js [correo doc|correo --quitar]   # enlaza una cuenta del panel con un perfil (sin argumentos, lista)
-node demo-agenda.js [--reset]     # 7 citas de muestra en la semana en curso, en huecos reales del horario
+node migrate-staff-to-admin.js --export|--import      # ya ejecutada: staff de users-permissions al panel (ver abajo)
+node demo-agenda.js [--reset]     # solo las 7 citas de la semana en curso (demo-data.js ya las crea); útil al cambiar de semana
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
 ```
@@ -78,6 +79,15 @@ Como Strapi no tiene campos calculados, la solución es una columna real. `src/l
 
 No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente escritura. Y no lo ocultes del panel: un campo oculto deja de ser `isListable` y Strapi volvería a `documentId`.
 
+**El staff trabaja en el panel; solo el cliente usa users-permissions.** Recepción, Veterinario y Administrador de clínica son roles del RBAC del panel (`src/bootstrap/admin-roles.ts`) y cada persona es un `admin::user`. Se migraron el 2026-09-28 con `migrate-staff-to-admin.js`, conservando el hash bcrypt: cada uno entra en `/admin` con su correo y su contraseña de siempre. Consecuencias que no son obvias:
+
+- **Destinos.** `vet`, `responsible`, `staff`, `author`, `performedBy` (servicio prestado) y `verifiedBy` → `admin::user`. `appointment.bookedBy` y `signed-document-event.performedBy` → `profile`, porque quien actúa puede ser un cliente o alguien del staff y el perfil es lo único que tienen los dos.
+- **"Quién lo hizo" lo pone `src/validations/actor.ts`**, no un controlador: las escrituras del staff llegan por el Content Manager o por el plugin de agenda, no por los controladores de la API. Lee la sesión con `strapi.requestContext` y distingue `auth.strategy.name` (`admin` / `users-permissions`). Siempre sobrescribe lo que venga en la petición.
+- **Sin `admin::users.read` el selector muestra el `documentId`.** Strapi declara ese permiso como alias de "leer `admin::user`" en el Content Manager (`admin-actions.js`, `aliases`), y `sanitizeMainField` cae a `documentId` si no se puede leer el main field. Por eso los tres roles lo llevan; el precio es que ven la lista de cuentas en Ajustes → Usuarios, solo lectura.
+- **Cambiar el destino de una relación en SQLite no cambia su clave foránea.** `admin::user` y el `user` de users-permissions comparten `singularName`, así que la tabla de enlace conserva la columna `user_id`; Strapi actualiza su instantánea pero no puede alterar la FK (SQLite no admite `ALTER` de FK sin recrear la tabla). La tabla sigue apuntando a `up_users` sin aviso. La migración vacía esas tablas, las borra, vacía `strapi_database_schema` y deja que Strapi las recree — la trampa 3 de abajo, en otra forma.
+- **Un token de API de acceso total sí ve esas relaciones**; ningún rol de users-permissions puede, porque `admin::user.find` no existe ahí.
+- Los scripts de demo crean el personal con `demo-staff.js` (`cuentaDelPanel`), que deja el perfil enlazado. Contraseña de demo del staff: `Clinica12345`; la de los clientes, `Demo12345`.
+
 **El panel está en español en tres capas distintas**, y cada una vive en un sitio:
 
 - **La interfaz de Strapi** (menús, botones): `src/admin/app.tsx` con `locales: ['es']`. Solo lo habilita; cada administrador lo elige en su perfil y queda en su navegador.
@@ -118,13 +128,15 @@ Tres reglas que respetan todos: el valor por defecto solo se pone **si el client
 
 **Los defaults cambian según el rol.** `query-defaults` acepta `porRol`, y el rol está disponible porque la autenticación corre antes que los middlewares de ruta (`ctx.state.user.role.type`). La propiedad NO lo está: `ctx.state.ownership` la pone la policy, que corre después.
 
-No es cosmético. En la agenda, recepción quiere la próxima cita primero (`startAt:asc`) y el cliente su historial más reciente (`startAt:desc`). Y poblarle `pet.owner` a un cliente es trabajo tirado: el saneado lo descarta porque no puede leer `customer`.
+No es cosmético. Desde que el staff está en el panel, por la API solo llegan clientes (`porRol.client`) e integraciones con token de API (la base, que no tiene rol). En la agenda la integración quiere la próxima cita primero (`startAt:asc`) y el cliente su historial más reciente (`startAt:desc`). Y poblarle `pet.owner` a un cliente es trabajo tirado: el saneado lo descarta porque no puede leer `customer`.
+
+**No pidas `email` de un `admin::user` en un populate por defecto.** Es `private`, y con `strictParams` un campo privado en `fields` no se descarta: la petición entera falla con 400 *"Invalid key email"*, también la del cliente, aunque a él la relación se le quite después. Pasó en `?historia=true` durante la migración. Usa `firstname`/`lastname`.
 
 **Un populate que no aparece suele ser permisos, no el middleware.** El saneado descarta en silencio lo que el rol no puede leer; no hay error ni aviso, el campo simplemente falta. Ya pasó tres veces:
 
 - `pet.owner` no llega a un cliente (no puede leer `customer`) — correcto, por eso no se le pide.
 - `pet-vaccination.vaccine` no llegaba hasta que se concedió `api::clinical.vaccine` al rol `client`.
-- **Ningún rol podía leer `plugin::users-permissions.user`**, así que todo populate de `vet`, `responsible`, `performedBy`, `author` y `verifiedBy` se descartaba para todos: la agenda no decía quién atiende y la consulta no decía qué veterinario la firmó. Ahora `LECTURA_USUARIOS` lo concede a los tres roles de staff, **nunca al cliente** — se lo permitiría listar `/api/users` entero.
+- `vet`, `responsible`, `staff`, `author`, `performedBy` y `verifiedBy` apuntan a `admin::user`, y **ningún rol de users-permissions puede tener `admin::user.find`**: por la API esas relaciones no le llegan a nadie salvo a un token de acceso total. Es lo buscado — al cliente nunca se le enseñó quién firmó.
 
 Antes de depurar un middleware por un campo que falta, mira los permisos del rol.
 
@@ -142,7 +154,7 @@ Antes de depurar un middleware por un campo que falta, mira los permisos del rol
 
 Y como el campo debía seguir llamándose `services`, la migración fue **exportar a un archivo, cambiar el esquema, importar** (`migrate-consultation-services.js --export|--import`): no se puede tener a la vez la relación y el componente con el mismo nombre, y renombrar pierde el contenido.
 
-**`api::clinic.clinic` es el único single type**: datos de la veterinaria, obligaciones tributarias y resoluciones de facturación DIAN. Lo leen todos los autenticados (la app necesita nombre, logo y horarios); solo `clinic_admin` puede modificarlo.
+**`api::clinic.clinic` es el único single type**: datos de la veterinaria, obligaciones tributarias y resoluciones de facturación DIAN. Lo leen el cliente por la API y todo el staff en el panel (la app necesita nombre, logo y horarios); solo el rol del panel Administrador de clínica puede modificarlo.
 
 Cuatro decisiones que no conviene revertir:
 
@@ -171,7 +183,7 @@ Dos reglas que evitan agendas imposibles: **un profesional no puede tener dos ho
 
 Cuatro cosas que hay que saber antes de tocarlo:
 
-- **El puente es `profile.adminUser`.** Quien entra al panel es un `admin::user`; quien atiende una cita es un `users-permissions.user`. Strapi no los relaciona, así que el perfil los une: `profile.user` por un lado y `profile.adminUser` por el otro. Sin ese enlace, `/veterinaria-agenda/me` responde `enlazado: false` y la vista personal no puede existir — la interfaz lo dice en vez de pintar un calendario vacío que parece un error.
+- **El profesional ES su cuenta del panel.** `responsible` y `staff` apuntan a `admin::user`, así que `/veterinaria-agenda/me` no necesita puente: la agenda propia existe si la cuenta tiene un `staff-schedule`. Sin horario (el Super Admin, por ejemplo) responde `enlazado: false` y la interfaz lo dice en vez de pintar un calendario vacío que parece un error. `profile.adminUser` solo aporta nombre completo, ocupación y el `bookedBy` de lo que esa persona agende.
 - **El servidor no se fía de la interfaz.** Hay tres permisos (`agenda.ver-propia`, `agenda.ver-todas`, `agenda.agendar`) y el controlador vuelve a preguntar por ellos: quien no tenga `ver-todas` recibe su propia agenda aunque pida `?staff=<otro>`, y si además puede agendar, reservarle a otro da 403. Verificado con tres cuentas de rol restringido.
 - **Mirar la agenda y llenarla son permisos distintos.** Un hueco libre solo es pulsable con `agenda.agendar`, que es de recepción: el veterinario atiende lo que ya tiene. Sin ese permiso los huecos se pintan como fondo inerte y `GET /pets` + `POST /appointments` responden 403 (política `puede-agendar`), así que ocultar el botón no es la protección.
 - **Al reservar se vuelve a calcular el hueco.** `reservar()` no cree el `startAt` que llega: pide otra vez los huecos de ese día y exige que el pedido siga entre ellos. En recepción hay varias personas agendando sobre una rejilla que se pintó hace minutos, y sin esto se crearían dos citas en el mismo tramo. El `endAt` **no se acepta del cliente** — lo fija el hueco, o se podría pisar el tramo siguiente. Los dos motivos de rechazo se distinguen en el mensaje ("acaba de ocuparse" frente a "no es un hueco del horario"), porque se arreglan de forma distinta.
@@ -191,7 +203,7 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - `config/middlewares.ts` — the default ordered stack; order is significant, insert custom middleware at a deliberate position rather than appending.
 - `config/admin.ts`, `config/server.ts` — secrets and `APP_KEYS` come from env with non-null assertions, so a missing var fails loudly at boot.
 
-**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the four users-permissions roles (`client`, `receptionist`, `veterinarian`, `clinic_admin`) if missing and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
+**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the users-permissions `client` role if missing (and Public's permissions) and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/admin-roles.ts` does the same for the three panel roles (`Recepción`, `Veterinario`, `Administrador de clínica`) with `addPermissions` — never `assignPermissions`, which replaces the whole list. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
 
 **Admin customization** is opt-in: `src/admin/app.example.tsx` and `vite.config.example.ts` must be renamed (drop `.example`) to take effect. `src/admin/` has its own tsconfig and is excluded from the server compilation.
 

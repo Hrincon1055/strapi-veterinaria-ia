@@ -1,14 +1,17 @@
 import type { Core } from '@strapi/strapi';
 
 /**
- * Roles y permisos de la sección 10 del modelo, con el RBAC nativo de
- * `users-permissions`. No hay tablas propias de roles ni permisos.
+ * Roles y permisos de la API (users-permissions): solo Cliente y Public.
+ *
+ * El staff (Recepción, Veterinario, Administrador de clínica) trabaja en el
+ * panel con cuentas `admin::user`; sus roles están en `admin-roles.ts`. Se
+ * sacaron de aquí con `migrate-staff-to-admin.js`, así que este bootstrap ya
+ * no los crea: si volvieran a aparecer, recrearía roles de API sin usuarios.
  *
  * Es idempotente: crea el rol si falta y añade solo los permisos que no
  * existan, sin tocar los que un administrador haya ajustado a mano.
  */
 
-const CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
 const READ = ['find', 'findOne'];
 
 /** Catálogos: lectura pública y mantenimiento reservado a la administración. */
@@ -20,37 +23,6 @@ const CATALOGS = [
   'api::scheduling.service',
   'api::billing.plan',
   'api::billing.plan-benefit',
-];
-
-/** Catálogos que además administra la clínica (incluye consultorios y vacunas). */
-const MANAGED_CATALOGS = [
-  ...CATALOGS,
-  'api::scheduling.clinic-room',
-  'api::clinical.vaccine',
-];
-
-const RECEPTION_CRUD = [
-  'api::identity.profile',
-  'api::shared.contact',
-  'api::customer.customer',
-  'api::customer.customer-note',
-  'api::pet.pet',
-  'api::scheduling.appointment',
-  'api::billing.subscription',
-  'api::billing.invoice',
-  'api::travel.travel-case',
-  // Recepción monta y ajusta los horarios del personal.
-  'api::scheduling.staff-schedule',
-  'api::scheduling.schedule-exception',
-];
-
-const VET_CRUD = [
-  'api::clinical.consultation',
-  
-  'api::clinical.pet-vaccination',
-  'api::clinical.allergy',
-  'api::documents.signed-document',
-  'api::documents.signed-document-signer',
 ];
 
 /** Acciones `uid.accion` a partir de una lista de UIDs. */
@@ -67,48 +39,6 @@ const CLIENT_READ = [
   'api::billing.invoice',
   'api::documents.signed-document',
   'api::notification.notification-recipient',
-];
-
-/**
- * Lectura de cuentas de usuario, solo para el staff.
- *
- * Sin esto el saneado descarta en silencio TODO populate que apunte a
- * `plugin::users-permissions.user`: la agenda no dice quién atiende, la
- * consulta no dice qué veterinario la firmó y el requisito de viaje no dice
- * quién lo verificó. No hay error, los campos simplemente faltan.
- *
- * Al cliente NO se le concede: le permitiría listar `/api/users` entero. El
- * precio de dárselo al staff es que puede listar las cuentas, pero ya ve los
- * datos de contacto por `profile`, así que no expone una clase de dato nueva.
- */
-const LECTURA_USUARIOS = actions(['plugin::users-permissions.user'], READ);
-
-const receptionActions = [
-  ...actions(RECEPTION_CRUD, CRUD),
-  ...actions(MANAGED_CATALOGS, READ),
-  ...actions(['api::clinical.consultation'], READ),
-  'api::clinical.consultation.searchBySection',
-  ...LECTURA_USUARIOS,
-  'api::clinic.clinic.find',
-  'api::scheduling.availability.find',
-];
-
-/** Búsqueda dentro de la dynamic zone de la historia clínica. */
-const BUSQUEDA_CLINICA = 'api::clinical.consultation.searchBySection';
-
-const vetActions = [
-  ...receptionActions,
-  ...actions(VET_CRUD, CRUD),
-  'api::documents.signed-document-event.create',
-  BUSQUEDA_CLINICA,
-];
-
-const clinicAdminActions = [
-  ...vetActions,
-  ...actions(MANAGED_CATALOGS, CRUD),
-  ...actions(['api::marketing.campaign', 'api::marketing.campaign-metric', 'api::notification.notification'], CRUD),
-  // La configuración fiscal la cambia solo la administración de la clínica.
-  'api::clinic.clinic.update',
 ];
 
 type RoleSpec = { name: string; description: string; type: string; actions: string[] };
@@ -136,24 +66,6 @@ const ROLES: RoleSpec[] = [
       // El cliente necesita los huecos libres para reservar en línea.
       'api::scheduling.availability.find',
     ],
-  },
-  {
-    name: 'Recepción',
-    type: 'receptionist',
-    description: 'Front desk: agenda, clientes, mascotas, facturación y viajes.',
-    actions: receptionActions,
-  },
-  {
-    name: 'Veterinario',
-    type: 'veterinarian',
-    description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
-    actions: vetActions,
-  },
-  {
-    name: 'Administrador de clínica',
-    type: 'clinic_admin',
-    description: 'Todo lo anterior más catálogos, campañas y notificaciones.',
-    actions: clinicAdminActions,
   },
 ];
 

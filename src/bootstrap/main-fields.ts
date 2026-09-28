@@ -35,12 +35,18 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::marketing.campaign-metric': 'searchLabel',
 
   /**
-   * El usuario se identifica por su correo, no por el `username`.
+   * Las cuentas se identifican por su correo, no por el `username`.
    *
-   * Afecta a las 10 relaciones que apuntan a `user` (profile.user,
-   * consultation.vet, appointment.responsible, customer-note.author…), no solo
-   * a `profile.user`: tener el mismo usuario con dos etiquetas distintas según
-   * el formulario sería peor que el problema original.
+   * La del panel (`admin::user`) es la del staff: la apuntan vet,
+   * responsible, staff, author, performedBy y verifiedBy. Strapi elegiría
+   * `firstname`, que se repite entre personas. Para que el selector la muestre,
+   * el rol necesita `admin::users.read` (ver `admin-roles.ts`).
+   */
+  'admin::user': 'email',
+
+  /**
+   * La de la app (users-permissions) ya solo la apunta `profile.user`: el
+   * staff se migró al panel y solo quedan clientes.
    *
    * Ojo: en Strapi 5 `unique: true` se valida en la capa de aplicación y no
    * hay índice único sobre `email` en `up_users`. La unicidad la sostienen el

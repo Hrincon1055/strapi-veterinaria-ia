@@ -62,25 +62,37 @@ module.exports = ({ strapi }) => ({
   lunesDe,
 
   /**
-   * Quién es el administrador que está mirando.
+   * Quién es la cuenta del panel que está mirando.
    *
-   * El puente es `profile.adminUser`: quien entra al panel es un `admin::user`
-   * y las citas apuntan a un `users-permissions.user`. El perfil une ambos.
+   * El staff ES su cuenta del panel: `responsible`, `staff` y `vet` apuntan
+   * a `admin::user`, así que no hace falta ningún puente para saber de quién
+   * es la agenda. El perfil (`profile.adminUser`) solo aporta nombre completo
+   * y ocupación, y es opcional.
+   *
+   * Tener agenda personal = tener un horario. Una cuenta sin horario (el
+   * Super Admin, por ejemplo) no tiene "Mi agenda": la interfaz lo dice en
+   * vez de mostrar un calendario vacío que parece un error.
    */
   async quienSoy(adminUserId) {
+    const cuenta = await strapi.db.query('admin::user').findOne({
+      where: { id: adminUserId },
+      select: ['documentId', 'firstname', 'lastname'],
+    });
     const perfil = await strapi.documents('api::identity.profile').findFirst({
       filters: { adminUser: { id: adminUserId } },
-      populate: ['user'],
+    });
+    const horarios = await strapi.documents('api::scheduling.staff-schedule').count({
+      filters: { staff: { id: adminUserId } },
     });
 
     return {
       adminUserId,
       profileDocumentId: perfil?.documentId ?? null,
-      nombre: perfil ? `${perfil.firstName} ${perfil.lastName}` : null,
-      staffDocumentId: perfil?.user?.documentId ?? null,
-      // Sin enlace no hay agenda personal posible: la interfaz debe decirlo
-      // en vez de mostrar un calendario vacío que parece un error.
-      enlazado: Boolean(perfil?.user?.documentId),
+      nombre: perfil
+        ? `${perfil.firstName} ${perfil.lastName}`
+        : [cuenta?.firstname, cuenta?.lastname].filter(Boolean).join(' ') || null,
+      staffDocumentId: horarios > 0 ? cuenta?.documentId ?? null : null,
+      enlazado: horarios > 0,
     };
   },
 
@@ -96,14 +108,17 @@ module.exports = ({ strapi }) => ({
       const s = h.staff;
       if (!s || vistos.has(s.documentId)) continue;
 
+      // `s` es la cuenta del panel; el perfil, si está enlazado, da la ocupación.
       const perfil = await strapi.documents('api::identity.profile').findFirst({
-        filters: { user: { documentId: s.documentId } },
+        filters: { adminUser: { documentId: s.documentId } },
       });
 
       vistos.set(s.documentId, {
         documentId: s.documentId,
         email: s.email,
-        nombre: perfil ? `${perfil.firstName} ${perfil.lastName}` : s.username,
+        nombre: perfil
+          ? `${perfil.firstName} ${perfil.lastName}`
+          : [s.firstname, s.lastname].filter(Boolean).join(' ') || s.email,
         ocupacion: perfil?.occupation ?? null,
         consultorio: h.room?.name ?? null,
         slotMinutes: h.slotMinutes,
@@ -191,7 +206,7 @@ module.exports = ({ strapi }) => ({
    * También ata la duración al hueco: no se acepta un `endAt` del cliente,
    * porque permitiría pisar el tramo siguiente.
    */
-  async reservar({ staffDocumentId, petDocumentId, startAt, motivo, adminUserId }) {
+  async reservar({ staffDocumentId, petDocumentId, startAt, motivo }) {
     const dia = sinZona(startAt).slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
       throw new Error('La hora de inicio no es válida');
@@ -230,15 +245,8 @@ module.exports = ({ strapi }) => ({
     const mascota = await strapi.documents('api::pet.pet').findOne({ documentId: petDocumentId });
     if (!mascota) throw new Error('La mascota no existe');
 
-    // Quién reserva: la cuenta de app de quien está en el panel, si la tiene
-    // enlazada. Si no, se deja vacío antes que atribuirlo a otra persona.
-    const perfil = adminUserId
-      ? await strapi.documents('api::identity.profile').findFirst({
-          filters: { adminUser: { id: adminUserId } },
-          populate: ['user'],
-        })
-      : null;
-
+    // `bookedBy` no se pasa: lo fija src/validations/actor.ts con el perfil
+    // de la cuenta del panel que está reservando.
     const creada = await strapi.documents('api::scheduling.appointment').create({
       data: {
         pet: petDocumentId,
@@ -249,7 +257,6 @@ module.exports = ({ strapi }) => ({
         state: 'scheduled',
         source: 'front_desk',
         title: motivo?.trim() || null,
-        bookedBy: perfil?.user?.documentId ?? undefined,
       },
     });
 

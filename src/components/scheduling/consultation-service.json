@@ -8,7 +8,7 @@
     "durationMinutes": { "type": "integer", "min": 0 },
     "unitPrice": { "type": "integer", "required": true, "min": 0 },
     "totalPrice": { "type": "integer", "min": 0 },
-    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "notes": { "type": "text" }
   }
 }

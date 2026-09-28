@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
 
+import actor from './actor';
 import archived from './archived';
 import billing from './billing';
 import clinic from './clinic';
@@ -25,12 +26,14 @@ import travel from './travel';
  * con otro campo no se puede expresar como restricción de base de datos.
  *
  * El orden importa: el filtro de archivados se registra primero para que las
- * lecturas que hagan las demás reglas no vean documentos archivados.
+ * lecturas que hagan las demás reglas no vean documentos archivados. `actor`
+ * va antes que las relaciones obligatorias porque es quien rellena `author`.
  */
 export default (strapi: Core.Strapi): void => {
   archived(strapi);
   ownership(strapi);
   labels(strapi);
+  actor(strapi);
   requiredRelations(strapi);
 
   shared(strapi);

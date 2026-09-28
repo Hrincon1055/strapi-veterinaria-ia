@@ -11,7 +11,7 @@ const lectura = {
       name: 'global::query-defaults',
       config: {
         sort: 'fromDate:desc',
-        populate: { staff: { fields: ['username', 'email'] }, room: true },
+        populate: { staff: { fields: ['firstname', 'lastname'] }, room: true },
         atajos: {
           staff: { campo: 'staff', relacionPor: 'documentId' },
           tipo: { campo: 'exceptionKind' },

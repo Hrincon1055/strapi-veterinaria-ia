@@ -8,7 +8,7 @@
     "isoCompliant": { "type": "boolean", "default": true },
     "isCompleted": { "type": "boolean", "default": false },
     "document": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
-    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "verifiedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "verifiedAt": { "type": "datetime" }
   }
 }

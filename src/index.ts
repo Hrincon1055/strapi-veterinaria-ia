@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import registerValidations from './validations';
 import backfillLabels from './bootstrap/backfill-labels';
 import ensureIndexes from './bootstrap/indexes';
+import setupAdminRoles from './bootstrap/admin-roles';
 import setFieldLabels from './bootstrap/field-labels';
 import setMainFields from './bootstrap/main-fields';
 import seedCatalogs from './bootstrap/seed';
@@ -19,14 +20,16 @@ export default {
   },
 
   /**
-   * Con el esquema ya sincronizado: índices, roles, catálogos, etiquetas de
-   * búsqueda y configuración del panel. Todos los pasos son idempotentes.
+   * Con el esquema ya sincronizado: índices, roles (Cliente en
+   * users-permissions, staff en el panel), catálogos, etiquetas de búsqueda y
+   * configuración del panel. Todos los pasos son idempotentes.
    * El orden importa: las etiquetas se rellenan antes de declararlas como
    * main field, para que ningún selector quede en blanco.
    */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await ensureIndexes(strapi);
     await setupRoles(strapi);
+    await setupAdminRoles(strapi);
     await seedCatalogs(strapi);
     await backfillLabels(strapi);
     await setMainFields(strapi);

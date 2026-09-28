@@ -8,12 +8,12 @@ Eres un desarrollador senior de Strapi 5 (TypeScript o JavaScript, PostgreSQL). 
 
 1. **Sin multi-tenant.** No crear organizaciones, membresías, dominios, planes SaaS ni ningún campo `organization`/`tenant`. Se hará en otra iteración.
 2. **Roles y permisos 100 % nativos de Strapi.**
-   - Usuarios de la app (staff y clientes): plugin `users-permissions`, un rol por usuario.
-   - Usuarios del panel admin: RBAC nativo del admin.
+   - Clientes (dueños de mascotas): plugin `users-permissions`, rol `client`. Es el único rol de la API.
+   - Staff (Recepción, Veterinario, Administrador de clínica): cuentas del panel (`admin::user`) con el RBAC nativo del admin.
    - No crear tablas `roles`, `permissions`, `role_permission`, `model_role`, `oauth_users`, `auth_contacts` ni `refresh_tokens`.
    - Login social: solo providers nativos de `users-permissions` (no crear providers personalizados).
    - Refresh tokens: si la versión de Strapi instalada trae gestión de sesiones nativa en `users-permissions`, activarla según la documentación oficial; si no, usar el JWT nativo. No crear tablas propias de sesión.
-3. **El staff (veterinarios, recepción) trabaja en una app propia**, no en el panel admin. Toda relación con "usuario" apunta a `plugin::users-permissions.user`. El panel admin solo se usa para configurar catálogos.
+3. **El staff (veterinarios, recepción, administración) trabaja en el panel admin**, no en una app propia. Toda relación con un miembro del staff (`vet`, `responsible`, `staff`, `author`, `performedBy` del servicio prestado, `verifiedBy`) apunta a `admin::user`. Las relaciones de "quién lo hizo" que pueden ser de un cliente o del staff (`appointment.bookedBy`, `signed-document-event.performedBy`) apuntan a `api::identity.profile`, que tienen los dos. `plugin::users-permissions.user` queda solo para clientes. *(Revisado 2026-09-28: antes el staff usaba users-permissions; se migró con `migrate-staff-to-admin.js`.)*
 4. **Draft & Publish desactivado** en todos los content types (`"draftAndPublish": false`).
 5. **Sin soft delete genérico.** Solo existe `archivedAt` (datetime) en: `profile`, `customer`, `pet`, `consultation`, `signed-document`, `invoice`. Los catálogos usan `isActive`. El resto se borra físicamente.
 6. **Sin campos de auditoría manuales.** `createdAt`/`updatedAt` los gestiona Strapi. No añadir `created_at`, `updated_at`, `deleted_at`.
@@ -218,7 +218,7 @@ Fue un content type (`api::scheduling.consultation-service`) hasta que se compro
     "performedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "notes": {
       "type": "text"
@@ -270,7 +270,7 @@ Certificado de exportación emitido por la autoridad sanitaria.
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -326,7 +326,7 @@ Titulación de anticuerpos antirrábicos. Muchos destinos exigen un mínimo de 0
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -374,7 +374,7 @@ Lectura del microchip y comprobación de la norma ISO.
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -423,7 +423,7 @@ Desparasitación exigida por el destino, con su ventana de tiempo antes del vuel
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -471,7 +471,7 @@ Autorización del país de destino.
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -524,7 +524,7 @@ Contenedor de viaje y su conformidad con la norma IATA.
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -569,7 +569,7 @@ Escape para exigencias del destino que no encajan en los tipos anteriores.
     "verifiedBy": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "verifiedAt": {
       "type": "datetime"
@@ -1373,16 +1373,15 @@ Solo verifica contactos del perfil. La verificación del email de login y el res
 ```
 Un perfil representa a cualquier persona (staff o cliente).
 
-`adminUser` es el puente entre las dos tablas de personas que tiene Strapi. Quien
-entra al **panel** es un `admin::user`; quien firma una consulta o atiende una cita
-es un `plugin::users-permissions.user`. Son cuentas distintas y Strapi no las
-relaciona. Sin este campo, una página personalizada del panel no puede saber qué
-profesional la está mirando, y la agenda personal no existe.
+Cada persona entra por una sola puerta: un cliente con `profile.user` (cuenta de
+la app, users-permissions) y un miembro del staff con `profile.adminUser` (cuenta
+del panel). El perfil es lo que tienen en común, y por eso las relaciones de
+"quién lo hizo" que pueden ser de cualquiera de los dos (`appointment.bookedBy`,
+`signed-document-event.performedBy`) apuntan al perfil.
 
-Se pone en el perfil y no en el `user` porque el perfil es justamente lo que ya
-une a la persona con sus dos caras: `profile.user` (cuenta de la app) y
-`profile.adminUser` (cuenta del panel). Es opcional: solo lo llevan los perfiles
-de staff que además entran al panel.
+`adminUser` es opcional: la agenda funciona sin él, porque las citas apuntan
+directamente a la cuenta del panel. Lo que aporta es el nombre completo y la
+ocupación, y que lo que esa persona agende quede con `bookedBy`.
 
 ### 7.3 Customer
 
@@ -1417,7 +1416,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer", "inversedBy": "notes" },
     "rating": { "type": "enumeration", "enum": ["good", "regular", "bad"] },
     "body": { "type": "text", "required": true },
-    "author": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+    "author": { "type": "relation", "relation": "manyToOne", "target": "admin::user" }
   }
 }
 ```
@@ -1493,7 +1492,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "consultations" },
-    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "appointment": { "type": "relation", "relation": "oneToOne", "target": "api::scheduling.appointment", "inversedBy": "consultation" },
     "consultedAt": { "type": "datetime" },
     "reason": { "type": "text" },
@@ -1554,7 +1553,7 @@ Dos consecuencias operativas de esa decisión:
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "vaccinations" },
     "vaccine": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.vaccine" },
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
-    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "doseNumber": { "type": "integer", "min": 1 },
     "appliedOn": { "type": "date", "required": true },
     "nextDueOn": { "type": "date" },
@@ -1579,7 +1578,7 @@ Dos consecuencias operativas de esa decisión:
     "reaction": { "type": "text" },
     "severity": { "type": "enumeration", "enum": ["low", "moderate", "high", "life_threatening"] },
     "diagnosedOn": { "type": "date" },
-    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
     "isActive": { "type": "boolean", "default": true },
     "resolvedOn": { "type": "date" },
@@ -1599,9 +1598,9 @@ Dos consecuencias operativas de esa decisión:
   "options": { "draftAndPublish": false },
   "attributes": {
     "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
-    "responsible": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "responsible": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
-    "bookedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "bookedBy": { "type": "relation", "relation": "manyToOne", "target": "api::identity.profile" },
     "startAt": { "type": "datetime", "required": true },
     "endAt": { "type": "datetime", "required": true },
     "state": { "type": "enumeration", "enum": ["draft", "scheduled", "confirmed", "arrived", "in_progress", "completed", "cancelled", "no_show"], "default": "scheduled", "required": true },
@@ -1875,7 +1874,7 @@ El firmante apunta a `profile` porque tanto staff como clientes tienen perfil.
   "attributes": {
     "signedDocument": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document", "inversedBy": "events" },
     "signer": { "type": "relation", "relation": "manyToOne", "target": "api::documents.signed-document-signer" },
-    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "api::identity.profile" },
     "eventType": { "type": "enumeration", "enum": ["created", "sent", "viewed", "signed", "declined", "voided", "file_added"], "required": true },
     "eventAt": { "type": "datetime", "required": true },
     "ip": { "type": "string" },
@@ -2044,7 +2043,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::shared.contact` | `profile` |
 | `api::shared.verification-code` | `contact` |
 | `api::customer.customer` | `profile` |
-| `api::customer.customer-note` | `customer`, `author` (asignar el usuario autenticado en el controlador) |
+| `api::customer.customer-note` | `customer`, `author` (asignar la cuenta del panel autenticada en un middleware del Document Service) |
 | `api::pet.pet` | `owner`, `species` |
 | `api::pet.breed` | `species` |
 | `api::clinical.consultation` | `pet`, `vet` |
@@ -2093,7 +2092,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::clinical.consultation` | si falta `consultedAt`, asignar la fecha actual; `nextControlOn` posterior a `consultedAt`; si llega `weightKg`, actualizar `pet.weightKg` |
 | `api::clinical.pet-vaccination` | `vaccine.species` = `pet.species`; `appliedOn` no futura; `nextDueOn` > `appliedOn` |
 | `api::clinical.allergy` | `resolvedOn` obligatorio si `isActive = false` |
-| `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el usuario autenticado al crear |
+| `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
 | componente `scheduling.consultation-service` | `totalPrice = quantity × unitPrice` (calculado en el middleware de `consultation`, ignora el valor enviado) |
@@ -2150,21 +2149,30 @@ La regla de unicidad de `profiles` por documento también debe validarse en el m
 
 ## 10. Roles y permisos (nativos)
 
-Crea los roles de `users-permissions` en `bootstrap()` si no existen, y asigna permisos con el servicio nativo del plugin. No crear tablas ni lógica de RBAC propia.
+Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógica de RBAC propia. Los roles se crean en `bootstrap()` si no existen y solo se les **añaden** los permisos que falten.
+
+**API (`users-permissions`) — clientes.**
 
 | Rol (users-permissions) | Permisos |
 | --- | --- |
 | Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`; `register`/`callback` nativos |
 | Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `subscription`, `invoice`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
-| Recepción (`receptionist`) | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `travel-case`; lectura de catálogos y de `consultation` |
-| Veterinario (`veterinarian`) | todo lo de Recepción + CRUD de `consultation`, `consultation-service`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; `create` de `signed-document-event` |
-| Administrador de clínica (`clinic_admin`) | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`), `campaign`, `campaign-metric`, `notification` |
+
+**Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda.
+
+| Rol del panel | Permisos |
+| --- | --- |
+| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos, `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar |
+| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar |
+
+Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
 Reglas:
 
 - "Sus propios" = filtrado por propietario con una **policy** nativa de Strapi (`src/policies/is-owner.js`) aplicada en las rutas del rol Cliente. La cadena de propiedad es `user → profile → customer → pets`.
 - `verification-code`, `notification-delivery` y `signed-document-event` (salvo `create`) no se exponen a ningún rol de la API; los usa solo el backend.
-- El panel admin usa el RBAC nativo del admin (Super Admin, Editor, Author) solo para configurar catálogos.
+- Las relaciones hacia `admin::user` no salen por la API a ningún rol de `users-permissions` (el saneado exige `admin::user.find`, que no existe ahí); solo a un token de API de acceso total.
 - Un usuario tiene un único rol (limitación nativa aceptada).
 
 ---
@@ -2179,7 +2187,7 @@ Reglas:
 - [ ] No existen tablas propias de roles, permisos, OAuth ni refresh tokens.
 - [ ] La migración de índices se ejecuta y los índices existen en PostgreSQL.
 - [ ] Cada regla de la sección 8 tiene al menos una prueba (Jest) que demuestra que rechaza el caso inválido.
-- [ ] Los roles de la sección 10 existen tras el primer arranque y un Cliente no puede leer mascotas de otro cliente.
+- [ ] Los roles de la sección 10 (de la API y del panel) existen tras el primer arranque y un Cliente no puede leer mascotas de otro cliente.
 - [ ] Seed idempotente en `bootstrap()` de `country` (ISO 3166-1), `species` (perro, gato) y `service-category` iniciales.
 
 ## 12. Qué NO hacer

@@ -9,6 +9,7 @@
  */
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');
+const { cuentaDelPanel, borrarCuentaDelPanel } = require('./demo-staff');
 
 let pass = 0;
 let fail = 0;
@@ -85,10 +86,7 @@ async function limpiar(app) {
       n++;
     }
   }
-  const borradoUsuario = await app
-    .query('plugin::users-permissions.user')
-    .deleteMany({ where: { username: 'smoke-vet' } });
-  return n + (borradoUsuario?.count ?? 0);
+  return n + (await borrarCuentaDelPanel(app, { email: 'smoke-vet@example.test' }));
 }
 
 (async () => {
@@ -112,19 +110,12 @@ async function limpiar(app) {
     data: { species: otraEspecie.documentId, name: 'Siamés SMOKE' },
   });
 
-  // Un veterinario de prueba: `consultation.vet` es obligatorio.
-  const rolVet = await app.query('plugin::users-permissions.role').findOne({
-    where: { type: 'veterinarian' },
-  });
-  const vet = await app.query('plugin::users-permissions.user').create({
-    data: {
-      username: 'smoke-vet',
-      email: 'smoke-vet@example.test',
-      password: 'Smoke12345',
-      confirmed: true,
-      provider: 'local',
-      role: rolVet.id,
-    },
+  // Un veterinario de prueba: `consultation.vet` es obligatorio y apunta a
+  // una cuenta del panel.
+  const vet = await cuentaDelPanel(app, {
+    email: 'smoke-vet@example.test',
+    rol: 'Veterinario',
+    password: 'Smoke12345',
   });
 
   console.log('\n--- relaciones obligatorias ---');

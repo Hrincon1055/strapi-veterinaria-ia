@@ -19,7 +19,7 @@
     "vet": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "admin::user"
     },
     "appointment": {
       "type": "relation",

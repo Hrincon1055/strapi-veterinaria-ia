@@ -1,8 +1,9 @@
 import { factories } from '@strapi/strapi';
 
 /**
- * Las campañas son solo de `clinic_admin`: no llevan policy de propiedad
- * porque ningún cliente las ve. El permiso del rol ya acota el acceso.
+ * Las campañas son del rol del panel Administrador de clínica: no llevan
+ * policy de propiedad porque ningún cliente las ve. Por esta API solo llegan
+ * integraciones con token.
  */
 const lectura = {
   middlewares: [

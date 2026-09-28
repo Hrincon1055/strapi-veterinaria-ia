@@ -53,11 +53,12 @@ export type DefaultsBase = {
 
 export type QueryDefaultsConfig = DefaultsBase & {
   /**
-   * Ajustes por tipo de rol de users-permissions (`client`, `receptionist`,
-   * `veterinarian`, `clinic_admin`). Se fusionan sobre la base.
+   * Ajustes por tipo de rol de users-permissions. Se fusionan sobre la base.
+   * En la práctica solo hay `client`: el staff trabaja en el panel y la base
+   * es la de las integraciones con token de API, que no tienen rol.
    *
-   * No es cosmético: el staff y el cliente miran los mismos datos con
-   * intenciones opuestas. En la agenda, recepción quiere la próxima cita
+   * No es cosmético: una integración y el cliente miran los mismos datos con
+   * intenciones opuestas. En la agenda, la integración quiere la próxima cita
    * primero y el cliente su historial más reciente primero. Y poblar
    * `pet.owner` para un cliente es trabajo tirado: el saneado lo descarta
    * porque no puede leer `customer`.

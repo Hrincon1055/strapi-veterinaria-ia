@@ -10,7 +10,7 @@
     "reaction": { "type": "text" },
     "severity": { "type": "enumeration", "enum": ["low", "moderate", "high", "life_threatening"] },
     "diagnosedOn": { "type": "date" },
-    "vet": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
     "isActive": { "type": "boolean", "default": true },
     "resolvedOn": { "type": "date" },

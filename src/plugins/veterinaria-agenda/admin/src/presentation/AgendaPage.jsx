@@ -40,9 +40,9 @@ export function AgendaPage() {
       <Layouts.Content>
         <Flex direction="column" gap={4} alignItems="stretch">
           {yo && !yo.staffDocumentId && (
-            <Alert variant="warning" title="Tu cuenta no está enlazada a un perfil de personal">
-              Para ver tu agenda personal, abre Content Manager → Profile, busca tu perfil y
-              rellena el campo <strong>adminUser</strong> con tu cuenta de administrador.
+            <Alert variant="warning" title="Tu cuenta no tiene horario de atención">
+              Para ver tu agenda personal, crea tu horario en Content Manager → Horario de
+              atención y elige tu cuenta en el campo <strong>Profesional</strong>.
             </Alert>
           )}
 

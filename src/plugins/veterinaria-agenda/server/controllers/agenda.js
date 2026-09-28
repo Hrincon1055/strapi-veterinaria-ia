@@ -55,8 +55,8 @@ module.exports = ({ strapi }) => {
       } else {
         if (!yo.staffDocumentId) {
           return ctx.badRequest(
-            'Tu cuenta de administrador no está enlazada a un perfil de personal. ' +
-              'Enlázala en Content Manager -> Profile -> campo "adminUser".'
+            'Tu cuenta del panel no tiene horario de atención. ' +
+              'Créalo en Content Manager -> Horario de atención, con tu cuenta en "Profesional".'
           );
         }
         ids = [yo.staffDocumentId];
@@ -93,7 +93,6 @@ module.exports = ({ strapi }) => {
             petDocumentId: mascota,
             startAt,
             motivo,
-            adminUserId: ctx.state.user.id,
           }),
         };
       } catch (e) {

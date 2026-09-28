@@ -1,12 +1,12 @@
 import { factories } from '@strapi/strapi';
 
 /**
- * La agenda es la pantalla más usada de la clínica, y la miran dos perfiles
- * con intenciones opuestas:
+ * La agenda la leen por esta API dos tipos de consumidor con intenciones
+ * opuestas:
  *
- * - **Recepción y veterinarios** trabajan hacia adelante: quieren la próxima
- *   cita primero y necesitan ver de quién es la mascota para llamar al
- *   propietario. Su día empieza con `?hoy=true`.
+ * - **Integraciones con token de API** trabajan hacia adelante, como la
+ *   recepción: la próxima cita primero y de quién es la mascota. El staff ya
+ *   no pasa por aquí: trabaja en el panel con cuentas `admin::user`.
  * - **El cliente** mira hacia atrás: su historial de citas, la más reciente
  *   primero. Poblarle el propietario no sirve de nada — es él mismo, y
  *   además el saneado lo descartaría porque no puede leer `customer`.
@@ -16,10 +16,18 @@ import { factories } from '@strapi/strapi';
  */
 const ownerOnly = { policies: ['global::is-owner'] };
 
-/** Lo que el staff necesita ver de un vistazo en la agenda. */
+/**
+ * Lo que una integración necesita ver de un vistazo en la agenda.
+ * `responsible` es un `admin::user`: el saneado de la API solo lo deja pasar
+ * con un token de acceso total (ningún rol de users-permissions tiene
+ * `admin::user.find`). Solo nombre y apellido: su `email` es `private`, y con
+ * `strictParams` pedir un campo privado en un populate no se descarta, hace
+ * fallar la petición entera con 400 "Invalid key email" — también la del
+ * cliente, aunque a él la relación se le quite después.
+ */
 const PARA_STAFF = {
   pet: { populate: { owner: { populate: ['profile'] } } },
-  responsible: { fields: ['username', 'email'] },
+  responsible: { fields: ['firstname', 'lastname'] },
   room: true,
   services: { populate: ['service'] },
 };
@@ -39,7 +47,8 @@ const lectura = {
     {
       name: 'global::query-defaults',
       config: {
-        sort: 'startAt:desc',
+        // La agenda del día se lee hacia adelante.
+        sort: 'startAt:asc',
         populate: PARA_STAFF,
         atajos: {
           pet: { campo: 'pet', relacionPor: 'documentId' },
@@ -51,10 +60,6 @@ const lectura = {
           hasta: { campo: 'startAt', operador: '$lte' },
         },
         porRol: {
-          // La agenda del día se lee hacia adelante.
-          receptionist: { sort: 'startAt:asc' },
-          veterinarian: { sort: 'startAt:asc' },
-          clinic_admin: { sort: 'startAt:asc' },
           client: { sort: 'startAt:desc', populate: PARA_CLIENTE },
         },
       },

@@ -3,7 +3,8 @@
 /**
  * Horarios de atención de muestra.
  *
- * Lo usa `demo-data.js`; no se ejecuta suelto.
+ * Lo usa `demo-data.js`; no se ejecuta suelto. Va ANTES que la historia
+ * clínica: crea las cuentas del personal a las que apuntan sus citas.
  *
  * Tres perfiles distintos a propósito, para que se vea que el sistema no está
  * atado a "médico veterinario":
@@ -14,11 +15,18 @@
  *
  * Y una ausencia real: Laura de vacaciones una semana, para comprobar que
  * esos días desaparecen de los huecos.
+ *
+ * Cada persona es una cuenta del panel (ver demo-staff.js). Andrés entra con
+ * el rol Recepción aunque sea peluquero: es quien agenda en la clínica.
  */
+
+const { cuentaDelPanel, borrarCuentaDelPanel } = require('./demo-staff');
+const { VETERINARIO, asegurarConsultorios } = require('./demo-clinica');
 
 const PERSONAL = [
   {
-    username: 'laura.gomez', // ya existe (demo-clinica.js)
+    // La veterinaria de la historia de Kira: sus datos viven en demo-clinica.js.
+    crear: { email: VETERINARIO.email, rol: 'Veterinario', perfil: VETERINARIO.perfil },
     horario: {
       consultorio: 'Consultorio 1',
       slotMinutes: 45,
@@ -42,9 +50,8 @@ const PERSONAL = [
   },
   {
     crear: {
-      username: 'andres.mejia',
       email: 'andres.mejia@veterinaria.test',
-      rol: 'receptionist',
+      rol: 'Recepción',
       perfil: {
         firstName: 'Andrés', lastName: 'Mejía', documentType: 'cc',
         documentNumber: '1038456712', occupation: 'Peluquero canino', gender: 'male',
@@ -69,9 +76,8 @@ const PERSONAL = [
   },
   {
     crear: {
-      username: 'sofia.arango',
       email: 'sofia.arango@veterinaria.test',
-      rol: 'veterinarian',
+      rol: 'Veterinario',
       perfil: {
         firstName: 'Sofía', lastName: 'Arango', documentType: 'cc',
         documentNumber: '43991205', occupation: 'Cirujana veterinaria', gender: 'female',
@@ -95,30 +101,13 @@ async function crearHorarios(app) {
   const d = (uid) => app.documents(uid);
   const resumen = [];
 
+  // Sin consultorios el horario se crearía sin sala.
+  await asegurarConsultorios(app);
+
   for (const p of PERSONAL) {
-    // --- la persona ---
-    const username = p.crear?.username ?? p.username;
-    let usuario = await app.query('plugin::users-permissions.user').findOne({ where: { username } });
-
-    if (!usuario && p.crear) {
-      let perfil = await d('api::identity.profile').findFirst({
-        filters: { documentNumber: p.crear.perfil.documentNumber },
-      });
-      if (!perfil) perfil = await d('api::identity.profile').create({ data: p.crear.perfil });
-
-      const rol = await app.query('plugin::users-permissions.role').findOne({ where: { type: p.crear.rol } });
-      usuario = await app.plugin('users-permissions').service('user').add({
-        username: p.crear.username,
-        email: p.crear.email,
-        password: PASSWORD,
-        provider: 'local',
-        confirmed: true,
-        blocked: false,
-        role: rol.id,
-        profile: perfil.documentId,
-      });
-    }
-    if (!usuario) continue;
+    // --- la persona: su cuenta del panel ---
+    const email = p.crear.email;
+    const usuario = await cuentaDelPanel(app, { email, rol: p.crear.rol, password: PASSWORD, perfil: p.crear.perfil });
 
     // --- su horario ---
     const yaTiene = await d('api::scheduling.staff-schedule').findFirst({
@@ -159,7 +148,7 @@ async function crearHorarios(app) {
     }
 
     resumen.push({
-      username,
+      email,
       consultorio: p.horario.consultorio,
       slot: p.horario.slotMinutes,
       dias: [...new Set(p.horario.turnos.map((t) => t[0]))].length,
@@ -181,18 +170,10 @@ async function borrarHorarios(app) {
   }
 
   for (const p of PERSONAL) {
-    if (!p.crear) continue;
-    const borrado = await app
-      .query('plugin::users-permissions.user')
-      .deleteMany({ where: { username: p.crear.username } });
-    n += borrado?.count ?? 0;
-
-    for (const r of await d('api::identity.profile').findMany({
-      filters: { documentNumber: p.crear.perfil.documentNumber },
-    })) {
-      await d('api::identity.profile').delete({ documentId: r.documentId });
-      n++;
-    }
+    n += await borrarCuentaDelPanel(app, {
+      email: p.crear.email,
+      documentNumber: p.crear.perfil.documentNumber,
+    });
   }
 
   return n;

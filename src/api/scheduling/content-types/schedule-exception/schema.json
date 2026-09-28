@@ -9,7 +9,7 @@
   },
   "options": { "draftAndPublish": false },
   "attributes": {
-    "staff": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "staff": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
     "exceptionKind": { "type": "enumeration", "enum": ["absence", "extra_shift"], "default": "absence", "required": true },
     "reason": { "type": "enumeration", "enum": ["vacation", "sick_leave", "training", "holiday", "personal", "other"] },
     "fromDate": { "type": "date", "required": true },
