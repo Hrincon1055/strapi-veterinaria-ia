@@ -691,6 +691,240 @@ export interface ApiBillingSubscription extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCatalogProduct extends Struct.CollectionTypeSchema {
+  collectionName: 'products';
+  info: {
+    description: 'Todo lo vendible que no es un servicio: medicamentos, vacunas, alimentos, juguetes, accesorios, higiene, insumos.';
+    displayName: 'Producto';
+    pluralName: 'products';
+    singularName: 'product';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    barcode: Schema.Attribute.String &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    brand: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    category: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::catalog.product-category'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'COP'>;
+    description: Schema.Attribute.Text;
+    details: Schema.Attribute.DynamicZone<
+      [
+        'catalog.medication-details',
+        'catalog.vaccine-details',
+        'catalog.food-details',
+        'catalog.accessory-details',
+      ]
+    >;
+    image: Schema.Attribute.Media<'images'>;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::catalog.product'
+    > &
+      Schema.Attribute.Private;
+    minStock: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    preferredSupplier: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::catalog.supplier'
+    >;
+    presentation: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    productType: Schema.Attribute.Enumeration<
+      [
+        'medication',
+        'vaccine',
+        'food',
+        'toy',
+        'accessory',
+        'hygiene',
+        'supply',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    referenceCost: Schema.Attribute.Integer &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    salePrice: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    saleUnit: Schema.Attribute.Enumeration<
+      [
+        'unit',
+        'box',
+        'bottle',
+        'vial',
+        'bag',
+        'tablet',
+        'dose',
+        'ml',
+        'g',
+        'kg',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'unit'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    sku: Schema.Attribute.String &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    targetSpecies: Schema.Attribute.Relation<'manyToMany', 'api::pet.species'>;
+    tax: Schema.Attribute.Component<'billing.tax-profile', false>;
+    tracksBatches: Schema.Attribute.Boolean;
+    tracksInventory: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCatalogProductCategory extends Struct.CollectionTypeSchema {
+  collectionName: 'product_categories';
+  info: {
+    description: 'Clasificaci\u00F3n comercial libre (Antiparasitarios, Concentrados, Juguetes de cuerda\u2026). El comportamiento lo decide el tipo de producto, no la categor\u00EDa.';
+    displayName: 'Categor\u00EDa de producto';
+    pluralName: 'product-categories';
+    singularName: 'product-category';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::catalog.product-category'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    products: Schema.Attribute.Relation<'oneToMany', 'api::catalog.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCatalogSupplier extends Struct.CollectionTypeSchema {
+  collectionName: 'suppliers';
+  info: {
+    description: 'Laboratorio, distribuidor o comercializadora a quien se le compra.';
+    displayName: 'Proveedor';
+    pluralName: 'suppliers';
+    singularName: 'supplier';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.Component<'shared.address', false>;
+    contactName: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    documentNumber: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    documentType: Schema.Attribute.Enumeration<['nit', 'cc', 'ce']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'nit'>;
+    email: Schema.Attribute.Email;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::catalog.supplier'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    notes: Schema.Attribute.Text;
+    paymentTermDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    phone: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    products: Schema.Attribute.Relation<'oneToMany', 'api::catalog.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    verificationDigit: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1;
+      }>;
+  };
+}
+
 export interface ApiClinicClinic extends Struct.SingleTypeSchema {
   collectionName: 'clinic';
   info: {
@@ -869,6 +1103,7 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    items: Schema.Attribute.Component<'clinical.consultation-item', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -893,10 +1128,6 @@ export interface ApiClinicalConsultation extends Struct.CollectionTypeSchema {
         'clinical.procedure',
         'clinical.treatment-plan',
       ]
-    >;
-    services: Schema.Attribute.Component<
-      'scheduling.consultation-service',
-      true
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -2011,6 +2242,7 @@ export interface ApiSchedulingService extends Struct.CollectionTypeSchema {
         maxLength: 120;
       }>;
     publishedAt: Schema.Attribute.DateTime;
+    tax: Schema.Attribute.Component<'billing.tax-profile', false>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2810,6 +3042,9 @@ declare module '@strapi/strapi' {
       'api::billing.plan': ApiBillingPlan;
       'api::billing.plan-benefit': ApiBillingPlanBenefit;
       'api::billing.subscription': ApiBillingSubscription;
+      'api::catalog.product': ApiCatalogProduct;
+      'api::catalog.product-category': ApiCatalogProductCategory;
+      'api::catalog.supplier': ApiCatalogSupplier;
       'api::clinic.clinic': ApiClinicClinic;
       'api::clinical.allergy': ApiClinicalAllergy;
       'api::clinical.consultation': ApiClinicalConsultation;

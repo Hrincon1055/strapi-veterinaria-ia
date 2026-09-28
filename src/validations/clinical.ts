@@ -7,34 +7,17 @@ import {
   isAfter,
   loadCurrent,
   on,
-  toDocumentId,
+  porId,
+  previaDe,
+  relacionDeComponente,
   today,
 } from './helpers';
 
 /**
- * Servicio de una línea de consulta, como documentId.
- *
- * El panel manda las relaciones como diferencia (`{ connect, disconnect }`):
- * en una línea que ya existía y cuyo servicio no se tocó llegan las dos listas
- * vacías, y `toDocumentId` lo leería como "se está limpiando". En ese caso, y
- * cuando la relación ni siquiera viene, vale la de la línea guardada.
+ * Estados de una línea de la consulta. `dispensed` (entregado para llevar)
+ * solo tiene sentido con un producto: un servicio se aplica o se recomienda.
  */
-function servicioDeLinea(valor: any, previa: any): string | null | undefined {
-  const guardado = previa?.service?.documentId ?? null;
-  if (valor === undefined) return guardado;
-  if (
-    valor &&
-    typeof valor === 'object' &&
-    !Array.isArray(valor) &&
-    Array.isArray(valor.connect) &&
-    valor.connect.length === 0 &&
-    (!Array.isArray(valor.disconnect) || valor.disconnect.length === 0) &&
-    valor.set === undefined
-  ) {
-    return guardado;
-  }
-  return toDocumentId(valor);
-}
+const SOLO_PRODUCTO = ['dispensed'];
 
 export default (strapi: Core.Strapi): void => {
   // ---- api::clinical.vaccine ----------------------------------------------
@@ -65,7 +48,7 @@ export default (strapi: Core.Strapi): void => {
     const data = ctx.params.data ?? {};
     const current = await loadCurrent(strapi, ctx, {
       pet: true,
-      services: { populate: ['service'] },
+      items: { populate: ['service', 'product'] },
     });
 
     // Si no se indica el momento de la consulta, es ahora.
@@ -74,19 +57,33 @@ export default (strapi: Core.Strapi): void => {
       ctx.params.data = data;
     }
 
-    // Líneas de servicio: qué procedimientos hizo el veterinario y cuántas
-    // veces. Sin precio ni duración — eso es de la facturación, que los sacará
-    // del catálogo. Un componente no atraviesa el Document Service por su
-    // cuenta, solo como parte de su padre, así que la regla vive aquí.
-    if (Array.isArray(data.services)) {
-      const guardadas = new Map<number, any>(
-        (current?.services ?? []).map((l: any) => [Number(l.id), l])
-      );
+    // Servicios y productos de la consulta: qué aplicó, entregó o recomendó el
+    // veterinario, y cuánto. Cada línea apunta a UNA cosa del catálogo —un
+    // servicio o un producto—, que es lo que la facturación convertirá en
+    // cargo con el precio y el impuesto de ese catálogo. Un componente no
+    // atraviesa el Document Service por su cuenta, solo como parte de su
+    // padre, así que la regla vive aquí.
+    if (Array.isArray(data.items)) {
+      const guardadas = porId(current?.items);
 
-      for (const linea of data.services) {
-        const previa = linea?.id != null ? guardadas.get(Number(linea.id)) : undefined;
-        if (!servicioDeLinea(linea?.service, previa)) {
-          throw new ValidationError('Cada línea de servicio debe indicar un servicio');
+      for (const linea of data.items) {
+        const previa = previaDe(guardadas, linea);
+        const servicio = relacionDeComponente(linea?.service, previa, 'service');
+        const producto = relacionDeComponente(linea?.product, previa, 'product');
+
+        if (!servicio && !producto) {
+          throw new ValidationError('Cada línea de la consulta debe indicar un servicio o un producto');
+        }
+        if (servicio && producto) {
+          throw new ValidationError(
+            'Cada línea de la consulta lleva un servicio o un producto, no los dos: usa una línea para cada uno'
+          );
+        }
+        const estado = linea?.state ?? previa?.state;
+        if (servicio && SOLO_PRODUCTO.includes(estado)) {
+          throw new ValidationError(
+            'Un servicio se aplica o se recomienda; "entregado" (dispensed) es solo para productos'
+          );
         }
       }
     }

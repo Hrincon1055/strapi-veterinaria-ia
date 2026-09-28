@@ -94,6 +94,13 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
   },
 
 
+  // "Amoxicilina 250 mg" existe de varios laboratorios y presentaciones: en el
+  // selector de la consulta hay que distinguirlos sin abrir cada uno.
+  'api::catalog.product': {
+    populate: [],
+    build: (e) => unir([e.name, e.presentation, e.brand]),
+  },
+
   'api::marketing.campaign-metric': {
     populate: ['campaign'],
     build: (e) => unir([e.campaign?.name, soloFecha(e.createdAt)]),

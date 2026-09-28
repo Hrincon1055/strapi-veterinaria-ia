@@ -47,9 +47,9 @@ const HISTORIA = {
       vet: { fields: ['firstname', 'lastname'] },
       appointment: { populate: ['room'] },
       sections: { on: SECCIONES },
-      // Las líneas de servicio son un componente desde la migración: si no se
-      // piden, la historia sale sin lo que se cobró en cada visita.
-      services: { populate: ['service'] },
+      // Servicios y productos de cada visita (componente repetible): si no se
+      // piden, la historia sale sin lo que se aplicó o recomendó.
+      items: { populate: ['service', 'product'] },
     },
   },
   vaccinations: {

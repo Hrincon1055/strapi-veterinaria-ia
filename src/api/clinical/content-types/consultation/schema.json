@@ -57,10 +57,10 @@
       "repeatable": true,
       "component": "clinical.attachment"
     },
-    "services": {
+    "items": {
       "type": "component",
       "repeatable": true,
-      "component": "scheduling.consultation-service"
+      "component": "clinical.consultation-item"
     },
     "archivedAt": {
       "type": "datetime"

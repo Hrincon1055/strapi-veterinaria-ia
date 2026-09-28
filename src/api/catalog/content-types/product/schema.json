@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Producto",
+    "description": "Todo lo vendible que no es un servicio: medicamentos, vacunas, alimentos, juguetes, accesorios, higiene, insumos."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "maxLength": 150 },
+    "productType": {
+      "type": "enumeration",
+      "enum": ["medication", "vaccine", "food", "toy", "accessory", "hygiene", "supply", "other"],
+      "required": true
+    },
+    "category": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product-category", "inversedBy": "products" },
+    "brand": { "type": "string", "maxLength": 100 },
+    "presentation": { "type": "string", "maxLength": 120 },
+    "saleUnit": {
+      "type": "enumeration",
+      "enum": ["unit", "box", "bottle", "vial", "bag", "tablet", "dose", "ml", "g", "kg"],
+      "default": "unit",
+      "required": true
+    },
+    "sku": { "type": "string", "unique": true, "maxLength": 40 },
+    "barcode": { "type": "string", "unique": true, "maxLength": 40 },
+    "description": { "type": "text" },
+    "image": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "targetSpecies": { "type": "relation", "relation": "manyToMany", "target": "api::pet.species" },
+
+    "salePrice": { "type": "integer", "min": 0 },
+    "currency": { "type": "string", "default": "COP", "regex": "^[A-Z]{3}$" },
+    "tax": { "type": "component", "repeatable": false, "component": "billing.tax-profile" },
+    "referenceCost": { "type": "integer", "min": 0, "private": true },
+    "preferredSupplier": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.supplier", "inversedBy": "products" },
+
+    "tracksInventory": { "type": "boolean", "default": true },
+    "tracksBatches": { "type": "boolean" },
+    "minStock": { "type": "integer", "min": 0 },
+
+    "details": {
+      "type": "dynamiczone",
+      "components": ["catalog.medication-details", "catalog.vaccine-details", "catalog.food-details", "catalog.accessory-details"]
+    },
+
+    "searchLabel": { "type": "string", "maxLength": 255 },
+    "isActive": { "type": "boolean", "default": true }
+  }
+}

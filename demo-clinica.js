@@ -9,7 +9,7 @@
  *
  * Cada visita se modela igual que en la vida real: una cita (`appointment`)
  * que se completó, y la consulta (`consultation`) que quedó de ella con los
- * servicios prestados. La vacunación añade además el registro `pet-vaccination`,
+ * servicios y productos (`items`): lo aplicado, lo entregado y lo recomendado. La vacunación añade además el registro `pet-vaccination`,
  * que alimenta el carné de vacunas y los recordatorios.
  *
  * El contenido clínico va en la dynamic zone `sections`: cada visita compone
@@ -17,10 +17,11 @@
  * cirugía usa las siete.
  *
  * La veterinaria es una cuenta del panel (`admin::user`, rol Veterinario):
- * `vet`, `responsible` y `performedBy` apuntan ahí, no a users-permissions.
+ * `vet` y `responsible` apuntan ahí, no a users-permissions.
  */
 
 const { cuentaDelPanel, borrarCuentaDelPanel, perfilDeCuenta, RECEPCION } = require('./demo-staff');
+const { crearCatalogo, borrarCatalogo } = require('./demo-productos');
 
 const MASCOTA = 'Kira';
 
@@ -127,6 +128,12 @@ const VISITAS = [
         'Se aplican refuerzos de rabia y polivalente. Próximo refuerzo en doce meses.'
       ),
     ],
+    // El servicio es aplicar; el biológico es un producto aparte.
+    productos: [
+      { nombre: 'Nobivac Rabies', cantidad: 1, estado: 'applied' },
+      { nombre: 'Vanguard Plus 5 L4', cantidad: 1, estado: 'applied' },
+      { nombre: 'Alimento seco adulto raza grande', cantidad: 1, estado: 'recommended', notas: 'Ración controlada por sobrepeso leve' },
+    ],
     vacunas: [
       { nombre: 'Rabia', dosis: 3, lote: 'RB-2024-0417', vence: '2025-08-31', proxima: '2025-04-18' },
       { nombre: 'Polivalente DHPPi+L', dosis: 3, lote: 'PV-2024-1120', vence: '2025-10-31', proxima: '2025-04-18' },
@@ -155,6 +162,10 @@ const VISITAS = [
         },
         'Baño con champú hidratante, corte tipo verano, corte de uñas y limpieza de oídos.'
       ),
+    ],
+    productos: [
+      { nombre: 'Omega 3 para perros', cantidad: 1, estado: 'dispensed' },
+      { nombre: 'Champú hidratante', cantidad: 1, estado: 'recommended', notas: 'Un baño cada 3 semanas' },
     ],
   },
   {
@@ -225,6 +236,10 @@ const VISITAS = [
         'Antibioterapia y analgesia posquirúrgica según pauta. Control a los 7 días.'
       ),
     ],
+    productos: [
+      { nombre: 'Meloxicam suspensión oral', cantidad: 1, estado: 'dispensed' },
+      { nombre: 'Collar isabelino', cantidad: 1, estado: 'dispensed' },
+    ],
   },
   {
     etiqueta: 'Control posquirúrgico',
@@ -283,6 +298,10 @@ const VISITAS = [
       diagnostico('Paciente sana', 'definitive', 'Apta para vacunación. Recordar alergia a penicilinas registrada en la ficha.'),
       plan({ followUpOn: '2027-04-18' }, 'Se aplican refuerzos anuales de rabia y polivalente.'),
     ],
+    productos: [
+      { nombre: 'Nobivac Rabies', cantidad: 1, estado: 'applied' },
+      { nombre: 'Vanguard Plus 5 L4', cantidad: 1, estado: 'applied' },
+    ],
     vacunas: [
       { nombre: 'Rabia', dosis: 4, lote: 'RB-2026-0330', vence: '2027-06-30', proxima: '2027-04-18' },
       { nombre: 'Polivalente DHPPi+L', dosis: 4, lote: 'PV-2026-0215', vence: '2027-09-30', proxima: '2027-04-18' },
@@ -300,6 +319,9 @@ const VISITAS = [
       anamnesis(null, 'Cita de estética de rutina. Sin novedades reportadas por la propietaria.'),
       diagnostico('Piel y manto en buen estado', 'definitive', 'Sin parásitos externos ni lesiones.'),
       plan({}, 'Baño, corte, corte de uñas y limpieza de oídos. Sin incidencias.'),
+    ],
+    productos: [
+      { nombre: 'Pelota de caucho macizo', cantidad: 1, estado: 'recommended', notas: 'Sustituye los juguetes de goma blanda' },
     ],
   },
 ];
@@ -366,6 +388,10 @@ async function crearHistoria(app) {
     );
   }
 
+  // Los productos, después de las vacunas clínicas: las vacunas del catálogo
+  // apuntan a ellas.
+  const productos = await crearCatalogo(app);
+
   // La veterinaria: cuenta del panel + perfil, sin customer.
   const vet = await cuentaDelPanel(app, {
     email: VETERINARIO.email,
@@ -412,13 +438,22 @@ async function crearHistoria(app) {
         reason: v.reason,
         weightKg: v.weightKg,
         sections: v.secciones,
-        // Las líneas de servicio son ahora un componente repetible: se crean
-        // con la consulta, no como documentos aparte. Solo servicio y
-        // cantidad: sin precio (será de la facturación); quien lo prestó es `vet`.
-        services: v.servicios.map((s) => ({
-          service: servicios[s.nombre].documentId,
-          quantity: s.cantidad,
-        })),
+        // Servicios y productos en el mismo componente repetible: cada línea
+        // apunta a un servicio O a un producto. Sin precio (será de la
+        // facturación, desde el catálogo); quien lo hizo es `vet`.
+        items: [
+          ...v.servicios.map((s) => ({
+            service: servicios[s.nombre].documentId,
+            quantity: s.cantidad,
+            state: 'applied',
+          })),
+          ...(v.productos ?? []).map((p) => ({
+            product: productos[p.nombre].documentId,
+            quantity: p.cantidad,
+            state: p.estado,
+            ...(p.notas ? { notes: p.notas } : {}),
+          })),
+        ],
         ...(v.nextControlOn ? { nextControlOn: v.nextControlOn } : {}),
       },
     });
@@ -484,6 +519,8 @@ async function borrarHistoria(app) {
       n++;
     }
   }
+
+  n += await borrarCatalogo(app);
 
   for (const v of VACUNAS) {
     for (const r of await d('api::clinical.vaccine').findMany({ filters: { name: v.name } })) {

@@ -1,0 +1,11 @@
+{
+  "collectionName": "components_catalog_sanitary_registrations",
+  "info": { "displayName": "Registro sanitario", "icon": "file", "description": "Registro ICA (uso veterinario) o INVIMA (uso humano) que autoriza la venta." },
+  "options": {},
+  "attributes": {
+    "authority": { "type": "enumeration", "enum": ["ica", "invima", "other"], "default": "ica", "required": true },
+    "number": { "type": "string", "required": true, "maxLength": 60 },
+    "holder": { "type": "string", "maxLength": 150 },
+    "expiresOn": { "type": "date" }
+  }
+}

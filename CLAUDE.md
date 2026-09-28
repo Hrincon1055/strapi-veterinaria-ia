@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 32 content types (uno es single type) across 12 API domains, 30 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
+Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 37 content types (uno es single type) across 13 API domains, 38 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
 Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
@@ -22,7 +22,7 @@ npm run upgrade:dry  # preview a Strapi version upgrade (then `npm run upgrade`)
 ```bash
 npx strapi ts:generate-types      # regenerate types/generated/ after a schema change, without a full boot
 npx tsc --noEmit                  # typecheck server code
-node smoke-validations.js         # 27 live assertions against the business rules (boots Strapi, self-cleaning)
+node smoke-validations.js         # 40 live assertions against the business rules (boots Strapi, self-cleaning)
 node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda (idempotent; --reset also sweeps pet-less leftovers)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
@@ -30,6 +30,7 @@ node audit-orphans.js             # duplicate names + tables/dist left behind by
 #  GET /api/availability?staff=…&desde=…&hasta=…  huecos libres de un profesional
 node vincular-admin.js [correo doc|correo --quitar]   # enlaza una cuenta del panel con un perfil (sin argumentos, lista)
 node migrate-staff-to-admin.js --export|--import      # ya ejecutada: staff de users-permissions al panel (ver abajo)
+node migrate-consultation-items.js [--dry]            # ya ejecutada: consultation.services -> consultation.items (ver abajo)
 node demo-agenda.js [--reset]     # solo las 7 citas de la semana en curso (demo-data.js ya las crea); útil al cambiar de semana
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
@@ -120,6 +121,7 @@ La ruta de búsqueda declara el handler completo (`api::clinical.consultation.se
 | `api::clinical.populate-sections` | consultation | Rellena la dynamic zone de la historia |
 | `api::travel.populate-requirements` | travel-case | Rellena la zona de requisitos |
 | `api::marketing.populate-segment` | campaign | Rellena la zona de reglas de segmento |
+| `api::catalog.populate-details` | product | Rellena la zona de datos específicos del tipo de producto |
 | `api::pet.populate-history` | pet | Con `?historia=true`, la historia completa en una petición |
 
 Tres reglas que respetan todos: el valor por defecto solo se pone **si el cliente no mandó el suyo**; los filtros de los atajos se **combinan** con los que ya vengan; y el parámetro del atajo se **borra** de la query antes de seguir — con `strictParams: true` una clave que Strapi no conoce hace fallar la petición entera.
@@ -140,7 +142,7 @@ No es cosmético. Desde que el staff está en el panel, por la API solo llegan c
 
 Antes de depurar un middleware por un campo que falta, mira los permisos del rol.
 
-**Hay tres dynamic zones, no una.** `consultation.sections` (historia clínica), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad) y `campaign.segment` (6 reglas de segmentación). Las tres necesitan su middleware de populate y ninguna se puede filtrar con `filters`.
+**Hay cuatro dynamic zones, no una.** `consultation.sections` (historia clínica), `travel-case.requirements` (7 tipos de requisito de viaje, cada uno con sus datos: la titulación antirrábica tiene resultado en UI/ml y umbral, el permiso de importación tiene caducidad), `campaign.segment` (6 reglas de segmentación) y `product.details` (datos propios de cada tipo de producto). Las cuatro necesitan su middleware de populate y ninguna se puede filtrar con `filters`; por eso el producto lleva además `productType` como columna.
 
 `campaign.segment` sustituyó al campo `json` `segmentCriteria`, que se pasaba **tal cual** como filtro de Strapi — había que escribir filtros a mano en el panel. Ahora `src/api/marketing/services/campaign.ts` traduce cada regla. La regla de suscripción es la excepción: se resuelve con una consulta propia porque `customer` no tiene relación inversa `subscriptions` (solo existe `subscription.customer`, manyToOne sin `inversedBy`), así que no hay camino de cliente a sus suscripciones en los filtros.
 
@@ -153,6 +155,23 @@ Antes de depurar un middleware por un campo que falta, mira los permisos del rol
 3. **`strapi_database_schema` guarda una instantánea** contra la que Strapi compara. Si tocas tablas por fuera, queda desfasada; hay que vaciarla para forzar una resincronización.
 
 Y como el campo debía seguir llamándose `services`, la migración fue **exportar a un archivo, cambiar el esquema, importar** (`migrate-consultation-services.js --export|--import`): no se puede tener a la vez la relación y el componente con el mismo nombre, y renombrar pierde el contenido.
+
+**El catálogo comercial es un solo content type, `api::catalog.product`.** Medicamentos, vacunas, alimentos, juguetes, accesorios, higiene e insumos comparten tabla. Lo que los distingue es `productType` (filtrable, decide el comportamiento) y un bloque de datos propios en la dynamic zone `details` (`catalog.medication-details`, `vaccine-details`, `food-details`, `accessory-details`). `src/validations/catalog.ts` exige que ese bloque corresponda al tipo (`DETALLE_POR_TIPO`); es obligatorio en medicamentos y vacunas. Añadir un tipo de producto = un valor del enum y, si tiene datos propios, un componente + una entrada en `DETALLE_POR_TIPO` y en `api::catalog.populate-details`. Ni la consulta ni la futura facturación cambian. Decisiones que no conviene revertir:
+
+- **Los servicios siguen siendo `api::scheduling.service`**, no un tipo de producto: tienen duración, agenda y huecos. Lo que comparten con el producto es el perfil tributario, `billing.tax-profile` (gravado exige tarifa 5 o 19; exento y excluido quedan en 0), para que la factura trate igual cualquier concepto.
+- **Una vacuna del catálogo es una presentación comercial de la vacuna clínica** (`vaccine-details.vaccine` → `api::clinical.vaccine`), no un duplicado. El carné (`pet-vaccination`) sigue apuntando a la clínica.
+- **Las existencias no se guardan en el producto.** Solo están las banderas (`tracksInventory`, `tracksBatches`, `minStock`), `referenceCost` (`private`, verificado que no sale por la API) y `preferredSupplier`. El stock saldrá de movimientos por lote, que es lo que da vencimientos y costo real; un campo `stock` editable se desincronizaría el primer día.
+- **Proveedores (`supplier`) solo los ve el rol Administrador de clínica.** Sí se leen por API `product` y `product-category`: el cliente tiene que ver en su consulta lo que se le recomendó, y sin leer `product` el saneado lo quitaría de la línea.
+
+**La consulta tiene `items`, no `services`.** Es un componente repetible (`clinical.consultation-item`) donde cada línea apunta a **un** servicio **o** a **un** producto, con su cantidad (decimal) y su `state`: `applied`, `dispensed` (solo productos) o `recommended`. Sin precio: la facturación cobrará `applied` + `dispensed` con el precio del catálogo. Se migró con `migrate-consultation-items.js` en dos fases, igual que `sections`.
+
+**El panel manda las relaciones de un componente como diferencia.** En una línea que ya existía y cuya relación no se tocó llega `{ connect: [], disconnect: [] }`, y `toDocumentId` lo interpreta como "se está limpiando". Una regla que exija la relación rechazaría así cualquier edición hecha desde el panel. `relacionDeComponente()` + `porId()`/`previaDe()` (en `helpers.ts`) toman en ese caso la relación del componente guardado con el mismo `id`. Úsalos en cualquier regla sobre relaciones dentro de componentes o dynamic zones; las pruebas de humo lo cubren con ese mismo payload.
+
+**Un campo nuevo no aparece para los roles del panel aunque tengan el permiso.** El permiso del Content Manager guarda la *lista de campos*, y `addPermissions` solo añade los permisos que faltan, no campos a los que ya existen. Así, `consultation.items` habría quedado invisible para Veterinario, sin ningún error. `admin-roles.ts` ahora amplía la lista de campos de los permisos existentes en cada arranque. Por la misma razón, `main-fields.ts` recorre también los componentes (`components::<uid>`): el selector de producto de una línea de consulta lee su main field de la configuración del componente, no de la de la consulta.
+
+**No uses `status` como nombre de atributo.** Está en la lista de reservados del documento de modelo (sección 11) y choca con el parámetro de Draft & Publish. Aquí el estado siempre es `state`. `verify-model-doc.js` lo comprueba.
+
+**Los scripts de Python en Windows escriben CRLF.** Un `open(p, 'w')` convierte `\n` en `\r\n`, y con eso el documento de modelo dejó de encajar con las expresiones de `verify-model-doc.js`: el script dijo "coherente" comparando 0 bloques. Si parcheas con Python, abre con `newline=''` o `newline='\n'`.
 
 **`api::clinic.clinic` es el único single type**: datos de la veterinaria, obligaciones tributarias y resoluciones de facturación DIAN. Lo leen el cliente por la API y todo el staff en el panel (la app necesita nombre, logo y horarios); solo el rol del panel Administrador de clínica puede modificarlo.
 

@@ -40,6 +40,7 @@ const ZONAS = [
   ['src/api/clinical/content-types/consultation/schema.json', 'sections'],
   ['src/api/travel/content-types/travel-case/schema.json', 'requirements'],
   ['src/api/marketing/content-types/campaign/schema.json', 'segment'],
+  ['src/api/catalog/content-types/product/schema.json', 'details'],
 ];
 
 for (const [archivo, campo] of ZONAS) {
@@ -66,6 +67,39 @@ for (const campo of ['"anamnesis": { "type": "blocks" }', '"diagnosis": { "type"
   if (doc.includes(campo)) mal(`el documento todavía declara ${campo}`);
 }
 if (doc.includes('"segmentCriteria"')) mal('el documento todavía declara segmentCriteria');
+// Las líneas de la consulta pasaron a `clinical.consultation-item` (`items`).
+if (doc.includes('"component": "scheduling.consultation-service"')) {
+  mal('el documento todavía declara consultation.services');
+}
+if (fs.existsSync('src/components/scheduling/consultation-service.json')) {
+  mal('el componente scheduling.consultation-service sigue en src/');
+}
+
+// --- 3b. ningún atributo usa un nombre reservado (sección 11) ---------------
+// Strapi no siempre falla al arrancar con ellos: `status` choca con el
+// parámetro de Draft & Publish de la API y se descubre tarde.
+const RESERVADOS = ['status', 'locale', 'meta', 'localizations'];
+const esquemas = [];
+(function recorrer(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const ruta = `${dir}/${e.name}`;
+    if (e.isDirectory()) recorrer(ruta);
+    else if (e.name.endsWith('.json') && (dir.startsWith('src/components') || e.name === 'schema.json')) esquemas.push(ruta);
+  }
+})('src/api');
+(function recorrer(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const ruta = `${dir}/${e.name}`;
+    if (e.isDirectory()) recorrer(ruta);
+    else if (e.name.endsWith('.json')) esquemas.push(ruta);
+  }
+})('src/components');
+for (const ruta of esquemas) {
+  const attrs = JSON.parse(fs.readFileSync(ruta, 'utf8')).attributes ?? {};
+  for (const nombre of Object.keys(attrs)) {
+    if (RESERVADOS.includes(nombre)) mal(`${ruta} usa el nombre reservado "${nombre}"`);
+  }
+}
 
 // --- 4. los totales cuadran con los archivos en disco ----------------------
 const componentes = fs.readdirSync('src/components')

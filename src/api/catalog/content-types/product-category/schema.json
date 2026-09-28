@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "product_categories",
+  "info": {
+    "singularName": "product-category",
+    "pluralName": "product-categories",
+    "displayName": "Categoría de producto",
+    "description": "Clasificación comercial libre (Antiparasitarios, Concentrados, Juguetes de cuerda…). El comportamiento lo decide el tipo de producto, no la categoría."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 100 },
+    "description": { "type": "text" },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isActive": { "type": "boolean", "default": true },
+    "products": { "type": "relation", "relation": "oneToMany", "target": "api::catalog.product", "mappedBy": "category" }
+  }
+}

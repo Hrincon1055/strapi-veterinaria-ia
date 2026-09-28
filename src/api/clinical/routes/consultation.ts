@@ -19,12 +19,12 @@ const ownerOnly = { policies: ['global::is-owner'] };
 const PARA_STAFF = {
   vet: { fields: ['firstname', 'lastname'] },
   pet: { populate: { owner: { populate: ['profile'] } } },
-  services: { populate: ['service'] },
+  items: { populate: ['service', 'product'] },
 };
 
 const PARA_CLIENTE = {
   pet: true,
-  services: { populate: ['service'] },
+  items: { populate: ['service', 'product'] },
 };
 
 const lectura = {

@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_catalog_active_ingredients",
+  "info": { "displayName": "Principio activo", "icon": "layer", "description": "Principio activo y su concentración." },
+  "options": {},
+  "attributes": {
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "strength": { "type": "decimal", "min": 0 },
+    "strengthUnit": { "type": "enumeration", "enum": ["mg", "mcg", "g", "ui", "mg_ml", "mcg_ml", "ui_ml", "percent"] }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_catalog_medication_details",
+  "info": { "displayName": "Datos de medicamento", "icon": "doctor", "description": "Registro, principios activos, forma farmacéutica y condiciones de venta." },
+  "options": {},
+  "attributes": {
+    "registration": { "type": "component", "repeatable": false, "component": "catalog.sanitary-registration" },
+    "activeIngredients": { "type": "component", "repeatable": true, "component": "catalog.active-ingredient" },
+    "pharmaceuticalForm": {
+      "type": "enumeration",
+      "enum": ["tablet", "capsule", "oral_suspension", "oral_solution", "injectable", "ointment", "cream", "drops", "spray", "pour_on", "collar", "shampoo", "powder", "other"],
+      "required": true
+    },
+    "route": { "type": "enumeration", "enum": ["oral", "sc", "im", "iv", "topical", "otic", "ophthalmic", "other"], "default": "oral" },
+    "laboratory": { "type": "string", "maxLength": 150 },
+    "cumCode": { "type": "string", "maxLength": 30 },
+    "atcVetCode": { "type": "string", "maxLength": 20 },
+    "requiresPrescription": { "type": "boolean", "default": true },
+    "isControlled": { "type": "boolean", "default": false },
+    "storage": { "type": "enumeration", "enum": ["ambient", "refrigerated", "frozen"], "default": "ambient" }
+  }
+}

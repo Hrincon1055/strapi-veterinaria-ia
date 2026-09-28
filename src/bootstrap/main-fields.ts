@@ -28,6 +28,7 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::pet.pet': 'searchLabel',
   'api::pet.breed': 'searchLabel',
   'api::clinical.consultation': 'searchLabel',
+  'api::catalog.product': 'searchLabel',
   'api::billing.subscription': 'searchLabel',
   'api::shared.contact': 'searchLabel',
   'api::notification.notification-recipient': 'searchLabel',
@@ -75,14 +76,21 @@ const PREFIJO = 'content_types::';
 export default async (strapi: Core.Strapi): Promise<void> => {
   const store = strapi.store({ type: 'plugin', name: 'content_manager_configuration' });
 
-  // Qué campo de relación de cada content type apunta a un destino que cambia.
-  const aCorregir: Array<{ uid: string; campo: string; mainField: string }> = [];
-  for (const [uid, schema] of Object.entries(strapi.contentTypes)) {
+  // Qué campo de relación de cada content type —y de cada componente— apunta
+  // a un destino que cambia. Los componentes cuentan: el selector de producto
+  // de una línea de consulta vive en `clinical.consultation-item`, y su
+  // configuración está en `components::<uid>`, no en la de la consulta.
+  const aCorregir: Array<{ key: string; campo: string; mainField: string }> = [];
+  const origenes = [
+    ...Object.entries(strapi.contentTypes).map(([uid, s]) => [`${PREFIJO}${uid}`, s] as const),
+    ...Object.entries(strapi.components).map(([uid, s]) => [`components::${uid}`, s] as const),
+  ];
+  for (const [key, schema] of origenes) {
     for (const [campo, attr] of Object.entries((schema as any).attributes ?? {})) {
       const a = attr as any;
       if (a.type !== 'relation') continue;
       const deseado = MAIN_FIELDS[a.target];
-      if (deseado) aCorregir.push({ uid, campo, mainField: deseado });
+      if (deseado) aCorregir.push({ key, campo, mainField: deseado });
     }
   }
 
@@ -100,14 +108,13 @@ export default async (strapi: Core.Strapi): Promise<void> => {
   }
 
   // 2. metadatas.<campo>.edit.mainField de cada origen que apunte a ellos.
-  const porUid = new Map<string, Array<{ campo: string; mainField: string }>>();
+  const porClave = new Map<string, Array<{ campo: string; mainField: string }>>();
   for (const r of aCorregir) {
-    if (!porUid.has(r.uid)) porUid.set(r.uid, []);
-    porUid.get(r.uid)!.push({ campo: r.campo, mainField: r.mainField });
+    if (!porClave.has(r.key)) porClave.set(r.key, []);
+    porClave.get(r.key)!.push({ campo: r.campo, mainField: r.mainField });
   }
 
-  for (const [uid, campos] of porUid) {
-    const key = `${PREFIJO}${uid}`;
+  for (const [key, campos] of porClave) {
     const config: any = await store.get({ key });
     if (!config?.metadatas) continue;
 

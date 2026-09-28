@@ -54,6 +54,47 @@ export function toDocumentId(value: unknown): string | null | undefined {
 }
 
 /**
+ * Relación de un componente (línea repetible o bloque de dynamic zone), como
+ * documentId, teniendo en cuenta cómo la manda el panel.
+ *
+ * El panel envía las relaciones como diferencia (`{ connect, disconnect }`):
+ * en un componente que ya existía y cuya relación no se tocó llegan las dos
+ * listas vacías, y `toDocumentId` lo leería como "se está limpiando". En ese
+ * caso, y cuando la relación ni siquiera viene, vale la del componente
+ * guardado con el mismo `id` (`previa`).
+ */
+export function relacionDeComponente(valor: any, previa: any, campo: string): string | null | undefined {
+  const guardado = previa?.[campo]?.documentId ?? null;
+  if (valor === undefined) return guardado;
+  if (
+    valor &&
+    typeof valor === 'object' &&
+    !Array.isArray(valor) &&
+    Array.isArray(valor.connect) &&
+    valor.connect.length === 0 &&
+    (!Array.isArray(valor.disconnect) || valor.disconnect.length === 0) &&
+    valor.set === undefined
+  ) {
+    return guardado;
+  }
+  return toDocumentId(valor);
+}
+
+/**
+ * Componentes guardados indexados por `id`, para emparejarlos con los que
+ * llegan en una actualización. En una dynamic zone los ids son por tabla de
+ * componente, así que la clave incluye `__component` cuando existe.
+ */
+export function porId(componentes: any[] | null | undefined): Map<string, any> {
+  return new Map(
+    (componentes ?? []).map((c: any) => [`${c.__component ?? ''}#${c.id}`, c])
+  );
+}
+
+export const previaDe = (guardadas: Map<string, any>, entrante: any): any =>
+  entrante?.id != null ? guardadas.get(`${entrante.__component ?? ''}#${entrante.id}`) : undefined;
+
+/**
  * En `update` hay que validar el resultado de fusionar lo que llega con lo que
  * ya está guardado: una regla que compare dos campos no puede fiarse solo de
  * los datos entrantes.

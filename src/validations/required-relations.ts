@@ -23,9 +23,9 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::clinical.allergy': ['pet'],
   'api::scheduling.appointment': ['pet', 'responsible'],
   'api::scheduling.service': ['category'],
-  // `consultation-service` pasó a ser el componente
-  // `scheduling.consultation-service`: su pertenencia a la consulta es
-  // estructural y `service` se valida en el middleware de la consulta.
+  // Las líneas de la consulta son el componente `clinical.consultation-item`:
+  // su pertenencia a la consulta es estructural, y "servicio o producto" se
+  // valida en el middleware de la consulta (una tabla no expresa "uno de dos").
   'api::billing.plan-benefit': ['plan'],
   'api::billing.subscription': ['customer', 'pet', 'plan'],
   'api::billing.benefit-usage': ['subscription', 'benefit'],

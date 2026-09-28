@@ -15,6 +15,8 @@ const { createStrapi } = require('@strapi/strapi');
 
 const NOMBRE = process.argv[2] ?? 'Kira';
 
+const ESTADOS = { applied: 'aplicado', dispensed: 'entregado', recommended: 'recomendado' };
+
 const fecha = (v) => (v ? String(v).slice(0, 10) : '—');
 
 /** Extrae el texto plano de un campo `blocks`. */
@@ -180,7 +182,7 @@ function resumenSeccion(s) {
     populate: {
       vet: true,
       appointment: { populate: ['room'] },
-      services: { populate: ['service'] },
+      items: { populate: ['service', 'product'] },
       sections: {
         on: {
           'clinical.anamnesis': true,
@@ -199,9 +201,10 @@ function resumenSeccion(s) {
   console.log(seccion(`  CONSULTAS  (${consultas.length})`));
 
   for (const c of consultas) {
-    // Ya no hay que pedirlas aparte: vienen en el populate de la consulta.
-    // Sin precios: la línea solo dice qué se hizo y cuántas veces.
-    const servicios = c.services ?? [];
+    // Servicios y productos: vienen en el populate de la consulta. Sin
+    // precios: la línea solo dice qué, cuánto y si se aplicó, se entregó o
+    // se recomendó.
+    const lineas = c.items ?? [];
 
     console.log(`\n  ${fecha(c.consultedAt)}  ·  ${c.appointment?.title ?? c.reason ?? 'Consulta'}`);
     console.log(`  ${'-'.repeat(72)}`);
@@ -222,11 +225,13 @@ function resumenSeccion(s) {
       }
     }
 
-    if (servicios.length > 0) {
-      console.log(`\n    Servicios`);
-      for (const s of servicios) {
-        console.log(`      ${(s.service?.name ?? '—').padEnd(34)} ×${s.quantity}`);
-        if (s.notes) console.log(envolver(s.notes, 66, '        '));
+    if (lineas.length > 0) {
+      console.log(`\n    Servicios y productos`);
+      for (const l of lineas) {
+        const nombre = l.service?.name ?? l.product?.name ?? '—';
+        const clase = l.service ? 'servicio' : 'producto';
+        console.log(`      ${nombre.padEnd(34)} ×${String(Number(l.quantity)).padEnd(4)} ${clase.padEnd(9)} ${ESTADOS[l.state] ?? l.state}`);
+        if (l.notes) console.log(envolver(l.notes, 66, '        '));
       }
     }
   }

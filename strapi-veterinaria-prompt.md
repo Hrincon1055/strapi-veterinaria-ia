@@ -55,14 +55,16 @@ src/
     marketing/content-types/{campaign,campaign-metric}/schema.json
     notification/content-types/{notification,notification-recipient,notification-delivery}/schema.json
     clinic/content-types/clinic/schema.json          ← single type
+    catalog/content-types/{product,product-category,supplier}/schema.json
   components/
     clinic/opening-hours.json
     shared/address.json
     customer/consents.json
-    billing/{dian-resolution,fiscal-responsibility}.json
-    clinical/attachment.json
+    billing/{dian-resolution,fiscal-responsibility,tax-profile}.json
+    clinical/{attachment,consultation-item}.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
-    scheduling/{appointment-service,consultation-service,work-shift}.json
+    scheduling/{appointment-service,work-shift}.json
+    catalog/{medication-details,vaccine-details,food-details,accessory-details,sanitary-registration,active-ingredient}.json
     travel/{health-certificate,rabies-titer,microchip-check,antiparasitic,import-permit,crate,other-requirement}.json
     marketing/{rule-species,rule-last-visit,rule-subscription,rule-vaccination-due,rule-city,rule-referral}.json
     documents/document-file.json
@@ -71,12 +73,12 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **34 content types (uno de ellos single type), 31 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **37 content types (uno de ellos single type), 38 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
 1. Componentes.
-2. Catálogos: `country`, `species`, `breed`, `service-category`, `service`, `clinic-room`, `vaccine`, `plan`, `plan-benefit`.
+2. Catálogos: `country`, `species`, `breed`, `service-category`, `service`, `clinic-room`, `vaccine`, `plan`, `plan-benefit`, `product-category`, `supplier`, `product`.
 3. Personas: `profile`, extensión de `user`, `contact`, `verification-code`, `customer`, `customer-note`.
 4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`.
 5. Facturación: `subscription`, `benefit-usage`, `invoice`.
@@ -177,18 +179,17 @@ Las relaciones bidireccionales deben declararse en **ambos** lados con `inversed
 }
 ```
 
-### `src/components/scheduling/consultation-service.json`
+### `src/components/clinical/consultation-item.json`
 
-Servicio o procedimiento prestado durante una consulta.
-Fue un content type (`api::scheduling.consultation-service`) hasta que se comprobó que nadie lo referenciaba: es una línea de detalle que solo existe dentro de su consulta, igual que `appointment-service` dentro de su cita.
-El veterinario registra qué hizo mientras atendía: servicio y cantidad, una línea por cada cosa distinta (dos vacunas distintas = dos líneas). No lleva precio ni duración — el procedimiento ocurre dentro del tiempo de la consulta, y el precio lo resolverá la facturación desde el catálogo (pendiente). Tampoco `performedBy`: quien lo presta es el `vet` de la consulta.
+Servicio o producto del catálogo aplicado, entregado o recomendado en una consulta (campo `consultation.items`).
+Sustituye a `scheduling.consultation-service`, que solo admitía servicios (migrado con `migrate-consultation-items.js`, en dos fases). Cada línea apunta a **un** servicio **o** a **un** producto —nunca a los dos— con su cantidad (decimal: media tableta, 2,5 ml) y su estado: `applied` (aplicado o realizado en la consulta), `dispensed` (entregado para llevar; solo productos) o `recommended` (recomendado, no entregado). Sin precio ni duración: la futura facturación convertirá en cargo las líneas `applied` y `dispensed` con el precio y el impuesto del catálogo. Sin `performedBy`: quien lo hace es el `vet` de la consulta.
 ```json
 {
-  "collectionName": "components_scheduling_consultation_services",
+  "collectionName": "components_clinical_consultation_items",
   "info": {
-    "displayName": "Servicio prestado",
-    "icon": "priceTag",
-    "description": "Servicio o procedimiento prestado durante una consulta."
+    "displayName": "Servicio o producto",
+    "icon": "shoppingCart",
+    "description": "Servicio o producto del catálogo aplicado, entregado o recomendado en la consulta."
   },
   "options": {},
   "attributes": {
@@ -197,11 +198,26 @@ El veterinario registra qué hizo mientras atendía: servicio y cantidad, una l�
       "relation": "manyToOne",
       "target": "api::scheduling.service"
     },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.product"
+    },
     "quantity": {
-      "type": "integer",
+      "type": "decimal",
       "required": true,
       "default": 1,
-      "min": 1
+      "min": 0.01
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "applied",
+        "dispensed",
+        "recommended"
+      ],
+      "default": "applied",
+      "required": true
     },
     "notes": {
       "type": "text"
@@ -1250,6 +1266,368 @@ Franja de atención de un día. Alimenta el portal y la agenda en línea.
 
 ---
 
+## 5.3 Catálogo comercial (productos)
+
+Todo lo vendible que no es un servicio vive en **un solo** content type, `api::catalog.product`: medicamentos, vacunas, alimentos, juguetes, accesorios, higiene, insumos. Lo que distingue un tipo de otro es `productType` (columna filtrable, decide el comportamiento) y un bloque de datos propios en la dynamic zone `details`. Las categorías (`product-category`) son clasificación comercial libre y no cambian el comportamiento.
+
+Añadir un tipo de producto = un valor del enum `productType` y, si tiene datos propios, un componente en `details` y una entrada en `DETALLE_POR_TIPO` (`src/validations/catalog.ts`) y en `populate-details`. La consulta y la futura facturación no cambian: solo ven "un producto".
+
+| `productType` | bloque de `details` | obligatorio |
+| --- | --- | --- |
+| `medication` | `catalog.medication-details` | sí |
+| `vaccine` | `catalog.vaccine-details` | sí (enlaza la vacuna clínica) |
+| `food` | `catalog.food-details` | no |
+| `toy`, `accessory` | `catalog.accessory-details` | no |
+| `hygiene`, `supply`, `other` | ninguno | — |
+
+Preparado para inventario sin implementarlo todavía: `tracksInventory`, `tracksBatches` (por defecto sí en medicamentos, vacunas y alimentos), `minStock`, `referenceCost` (privado) y `preferredSupplier`. Las **existencias no se guardan en el producto**: saldrán de los movimientos de entrada y salida por lote (`product-batch`, `stock-movement`, pendientes), que es lo que da lotes, vencimientos y costo real.
+
+El perfil tributario (`billing.tax-profile`) lo comparten `product` y `service`, para que la factura trate igual cualquier concepto.
+
+### `src/components/billing/tax-profile.json`
+
+Tratamiento de IVA de un concepto vendible. Gravado exige tarifa 5 o 19; exento y excluido llevan tarifa 0.
+```json
+{
+  "collectionName": "components_billing_tax_profiles",
+  "info": {
+    "displayName": "Perfil tributario",
+    "icon": "hashtag",
+    "description": "Tratamiento de IVA de lo que se vende; lo leerá la factura electrónica."
+  },
+  "options": {},
+  "attributes": {
+    "ivaTreatment": {
+      "type": "enumeration",
+      "enum": [
+        "gravado",
+        "exento",
+        "excluido"
+      ],
+      "default": "gravado",
+      "required": true
+    },
+    "ivaRate": {
+      "type": "integer",
+      "min": 0,
+      "max": 100
+    }
+  }
+}
+```
+
+### `src/components/catalog/sanitary-registration.json`
+
+Registro que autoriza la venta: ICA para uso veterinario (medicamentos, biológicos, alimentos), INVIMA para medicamentos de uso humano.
+```json
+{
+  "collectionName": "components_catalog_sanitary_registrations",
+  "info": {
+    "displayName": "Registro sanitario",
+    "icon": "file",
+    "description": "Registro ICA (uso veterinario) o INVIMA (uso humano) que autoriza la venta."
+  },
+  "options": {},
+  "attributes": {
+    "authority": {
+      "type": "enumeration",
+      "enum": [
+        "ica",
+        "invima",
+        "other"
+      ],
+      "default": "ica",
+      "required": true
+    },
+    "number": {
+      "type": "string",
+      "required": true,
+      "maxLength": 60
+    },
+    "holder": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "expiresOn": {
+      "type": "date"
+    }
+  }
+}
+```
+
+### `src/components/catalog/active-ingredient.json`
+
+Principio activo y su concentración.
+```json
+{
+  "collectionName": "components_catalog_active_ingredients",
+  "info": {
+    "displayName": "Principio activo",
+    "icon": "layer",
+    "description": "Principio activo y su concentración."
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "strength": {
+      "type": "decimal",
+      "min": 0
+    },
+    "strengthUnit": {
+      "type": "enumeration",
+      "enum": [
+        "mg",
+        "mcg",
+        "g",
+        "ui",
+        "mg_ml",
+        "mcg_ml",
+        "ui_ml",
+        "percent"
+      ]
+    }
+  }
+}
+```
+
+### `src/components/catalog/medication-details.json`
+
+Datos propios de un medicamento. `cumCode` solo aplica a medicamentos de uso humano; `isControlled` marca los de control especial.
+```json
+{
+  "collectionName": "components_catalog_medication_details",
+  "info": {
+    "displayName": "Datos de medicamento",
+    "icon": "doctor",
+    "description": "Registro, principios activos, forma farmacéutica y condiciones de venta."
+  },
+  "options": {},
+  "attributes": {
+    "registration": {
+      "type": "component",
+      "repeatable": false,
+      "component": "catalog.sanitary-registration"
+    },
+    "activeIngredients": {
+      "type": "component",
+      "repeatable": true,
+      "component": "catalog.active-ingredient"
+    },
+    "pharmaceuticalForm": {
+      "type": "enumeration",
+      "enum": [
+        "tablet",
+        "capsule",
+        "oral_suspension",
+        "oral_solution",
+        "injectable",
+        "ointment",
+        "cream",
+        "drops",
+        "spray",
+        "pour_on",
+        "collar",
+        "shampoo",
+        "powder",
+        "other"
+      ],
+      "required": true
+    },
+    "route": {
+      "type": "enumeration",
+      "enum": [
+        "oral",
+        "sc",
+        "im",
+        "iv",
+        "topical",
+        "otic",
+        "ophthalmic",
+        "other"
+      ],
+      "default": "oral"
+    },
+    "laboratory": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "cumCode": {
+      "type": "string",
+      "maxLength": 30
+    },
+    "atcVetCode": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "requiresPrescription": {
+      "type": "boolean",
+      "default": true
+    },
+    "isControlled": {
+      "type": "boolean",
+      "default": false
+    },
+    "storage": {
+      "type": "enumeration",
+      "enum": [
+        "ambient",
+        "refrigerated",
+        "frozen"
+      ],
+      "default": "ambient"
+    }
+  }
+}
+```
+
+### `src/components/catalog/vaccine-details.json`
+
+Presentación comercial de una vacuna clínica (`api::clinical.vaccine`), que sigue siendo la que usa el carné (`pet-vaccination`).
+```json
+{
+  "collectionName": "components_catalog_vaccine_details",
+  "info": {
+    "displayName": "Datos de vacuna",
+    "icon": "shield",
+    "description": "Vacuna clínica que contiene este producto, registro y cadena de frío."
+  },
+  "options": {},
+  "attributes": {
+    "vaccine": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinical.vaccine"
+    },
+    "registration": {
+      "type": "component",
+      "repeatable": false,
+      "component": "catalog.sanitary-registration"
+    },
+    "laboratory": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "dosesPerUnit": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "route": {
+      "type": "enumeration",
+      "enum": [
+        "sc",
+        "im",
+        "intranasal",
+        "oral",
+        "other"
+      ],
+      "default": "sc"
+    },
+    "storage": {
+      "type": "enumeration",
+      "enum": [
+        "ambient",
+        "refrigerated",
+        "frozen"
+      ],
+      "default": "refrigerated"
+    }
+  }
+}
+```
+
+### `src/components/catalog/food-details.json`
+
+Datos propios de un alimento o suplemento.
+```json
+{
+  "collectionName": "components_catalog_food_details",
+  "info": {
+    "displayName": "Datos de alimento",
+    "icon": "restaurant",
+    "description": "Tipo de alimento, etapa de vida, peso neto y registro ICA."
+  },
+  "options": {},
+  "attributes": {
+    "registration": {
+      "type": "component",
+      "repeatable": false,
+      "component": "catalog.sanitary-registration"
+    },
+    "foodType": {
+      "type": "enumeration",
+      "enum": [
+        "dry",
+        "wet",
+        "treat",
+        "supplement",
+        "therapeutic_diet"
+      ],
+      "required": true
+    },
+    "lifeStage": {
+      "type": "enumeration",
+      "enum": [
+        "puppy_kitten",
+        "adult",
+        "senior",
+        "all_stages"
+      ],
+      "default": "all_stages"
+    },
+    "netWeightGrams": {
+      "type": "integer",
+      "min": 1
+    },
+    "requiresPrescription": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
+```
+
+### `src/components/catalog/accessory-details.json`
+
+Datos propios de un juguete o accesorio.
+```json
+{
+  "collectionName": "components_catalog_accessory_details",
+  "info": {
+    "displayName": "Datos de juguete o accesorio",
+    "icon": "puzzle",
+    "description": "Material, talla y color."
+  },
+  "options": {},
+  "attributes": {
+    "material": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "size": {
+      "type": "enumeration",
+      "enum": [
+        "xs",
+        "s",
+        "m",
+        "l",
+        "xl",
+        "unique"
+      ],
+      "default": "unique"
+    },
+    "color": {
+      "type": "string",
+      "maxLength": 40
+    }
+  }
+}
+```
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -1494,7 +1872,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "weightKg": { "type": "decimal", "min": 0 },
     "nextControlOn": { "type": "date" },
     "attachments": { "type": "component", "repeatable": true, "component": "clinical.attachment" },
-    "services": { "type": "component", "repeatable": true, "component": "scheduling.consultation-service" },
+    "items": { "type": "component", "repeatable": true, "component": "clinical.consultation-item" },
     "archivedAt": { "type": "datetime" }
   }
 }
@@ -1632,6 +2010,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
     "defaultDurationMinutes": { "type": "integer", "required": true, "default": 30, "min": 5 },
     "basePrice": { "type": "integer", "min": 0 },
     "currency": { "type": "string", "default": "COP", "regex": "^[A-Z]{3}$" },
+    "tax": { "type": "component", "repeatable": false, "component": "billing.tax-profile" },
     "colorHex": { "type": "string", "regex": "^#[0-9A-Fa-f]{6}$" },
     "isActive": { "type": "boolean", "default": true }
   }
@@ -1987,6 +2366,280 @@ Es una cola de trabajo. El worker la consume con `strapi.db.connection` usando `
 
 ---
 
+### 7.12 Catalog
+
+#### `api::catalog.product`
+
+Ver sección 5.3. Main field `searchLabel` (nombre · presentación · marca). La API lo sirve con `?tipo=` y `?categoria=`, y rellena `details` con `populate-details`.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Producto",
+    "description": "Todo lo vendible que no es un servicio: medicamentos, vacunas, alimentos, juguetes, accesorios, higiene, insumos."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 150
+    },
+    "productType": {
+      "type": "enumeration",
+      "enum": [
+        "medication",
+        "vaccine",
+        "food",
+        "toy",
+        "accessory",
+        "hygiene",
+        "supply",
+        "other"
+      ],
+      "required": true
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.product-category",
+      "inversedBy": "products"
+    },
+    "brand": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "presentation": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "saleUnit": {
+      "type": "enumeration",
+      "enum": [
+        "unit",
+        "box",
+        "bottle",
+        "vial",
+        "bag",
+        "tablet",
+        "dose",
+        "ml",
+        "g",
+        "kg"
+      ],
+      "default": "unit",
+      "required": true
+    },
+    "sku": {
+      "type": "string",
+      "unique": true,
+      "maxLength": 40
+    },
+    "barcode": {
+      "type": "string",
+      "unique": true,
+      "maxLength": 40
+    },
+    "description": {
+      "type": "text"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "targetSpecies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::pet.species"
+    },
+    "salePrice": {
+      "type": "integer",
+      "min": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "COP",
+      "regex": "^[A-Z]{3}$"
+    },
+    "tax": {
+      "type": "component",
+      "repeatable": false,
+      "component": "billing.tax-profile"
+    },
+    "referenceCost": {
+      "type": "integer",
+      "min": 0,
+      "private": true
+    },
+    "preferredSupplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.supplier",
+      "inversedBy": "products"
+    },
+    "tracksInventory": {
+      "type": "boolean",
+      "default": true
+    },
+    "tracksBatches": {
+      "type": "boolean"
+    },
+    "minStock": {
+      "type": "integer",
+      "min": 0
+    },
+    "details": {
+      "type": "dynamiczone",
+      "components": [
+        "catalog.medication-details",
+        "catalog.vaccine-details",
+        "catalog.food-details",
+        "catalog.accessory-details"
+      ]
+    },
+    "searchLabel": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}
+```
+
+#### `api::catalog.product-category`
+
+Clasificación comercial libre (Antiparasitarios, Concentrados…).
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "product_categories",
+  "info": {
+    "singularName": "product-category",
+    "pluralName": "product-categories",
+    "displayName": "Categoría de producto",
+    "description": "Clasificación comercial libre (Antiparasitarios, Concentrados, Juguetes de cuerda…). El comportamiento lo decide el tipo de producto, no la categoría."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "text"
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::catalog.product",
+      "mappedBy": "category"
+    }
+  }
+}
+```
+
+#### `api::catalog.supplier`
+
+Proveedor. El dígito de verificación del NIT se valida con el módulo 11 de la DIAN, igual que el de la clínica.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "suppliers",
+  "info": {
+    "singularName": "supplier",
+    "pluralName": "suppliers",
+    "displayName": "Proveedor",
+    "description": "Laboratorio, distribuidor o comercializadora a quien se le compra."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "documentType": {
+      "type": "enumeration",
+      "enum": [
+        "nit",
+        "cc",
+        "ce"
+      ],
+      "default": "nit",
+      "required": true
+    },
+    "documentNumber": {
+      "type": "string",
+      "required": true,
+      "maxLength": 20
+    },
+    "verificationDigit": {
+      "type": "string",
+      "maxLength": 1,
+      "regex": "^[0-9]$"
+    },
+    "contactName": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "phone": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "email": {
+      "type": "email"
+    },
+    "address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.address"
+    },
+    "paymentTermDays": {
+      "type": "integer",
+      "min": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::catalog.product",
+      "mappedBy": "preferredSupplier"
+    }
+  }
+}
+```
+
 ## 8. Validaciones de negocio (middleware del Document Service)
 
 En Strapi 5 las relaciones viven en tablas de enlace (`*_lnk`), por lo que **ninguna regla que combine una relación con otro campo puede ser un índice de base de datos**. Implementa estas reglas en `src/index.(ts|js)` → `register()` con `strapi.documents.use(...)`, lanzando `errors.ValidationError` de `@strapi/utils`. Aplican a las acciones `create` y `update` salvo que se indique otra cosa.
@@ -2035,7 +2688,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::clinical.allergy` | `pet` |
 | `api::scheduling.appointment` | `pet`, `responsible` |
 | `api::scheduling.service` | `category` |
-| componente `scheduling.consultation-service` | `service` (la pertenencia a la consulta es estructural) |
+| componente `clinical.consultation-item` | `service` **o** `product`, exactamente uno (la pertenencia a la consulta es estructural) |
 | `api::billing.plan-benefit` | `plan` |
 | `api::billing.subscription` | `customer`, `pet`, `plan` |
 | `api::billing.benefit-usage` | `subscription`, `benefit` |
@@ -2058,6 +2711,8 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::pet.breed` | `(species, name)` único |
 | `api::scheduling.service` | `(category, name)` único |
 | `api::clinical.vaccine` | `(species, name)` único |
+| `api::catalog.supplier` | `(documentType, documentNumber)` único |
+| `api::catalog.product` | `sku` y `barcode` únicos (en el esquema) |
 | `api::documents.signed-document` | `version` única por el mismo destinatario (`consultation`, `customer` o `pet`) |
 | `api::documents.signed-document-signer` | `(signedDocument, signer)` único |
 | `api::notification.notification-recipient` | `(notification, recipient)` único |
@@ -2078,7 +2733,10 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
-| componente `scheduling.consultation-service` | cada línea debe indicar `service` (en el middleware de `consultation`; una línea existente cuyo servicio no cambia lo conserva aunque el panel envíe la relación vacía) |
+| componente `clinical.consultation-item` | exactamente uno de `service` o `product`; `state = dispensed` solo con producto; una línea existente conserva su relación aunque el panel la envíe como diferencia vacía (`{ connect: [], disconnect: [] }`) |
+| `api::catalog.product` | como mucho un bloque en `details`, y del componente que corresponde a `productType`; obligatorio para `medication` y `vaccine`; `catalog.vaccine-details.vaccine` obligatorio; si no se indica `tracksBatches` al crear, `true` para `medication`/`vaccine`/`food` |
+| `api::catalog.product`, `api::scheduling.service` | `tax`: `gravado` exige `ivaRate` 5 o 19; `exento`/`excluido` fijan `ivaRate = 0` |
+| `api::catalog.supplier` | si `documentType = nit`, `verificationDigit` debe cuadrar con el módulo 11 de la DIAN |
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
 | `api::billing.invoice` | exactamente uno de `subscription` o `consultation`; si `state` ≠ `draft`, rechazar cualquier `update` salvo cambios de `state`, `dianState`, `pdfUrl`, `xmlUrl` |
@@ -2138,16 +2796,16 @@ Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógi
 
 | Rol (users-permissions) | Permisos |
 | --- | --- |
-| Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`; `register`/`callback` nativos |
+| Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`, `product-category`, `product` (sin `referenceCost`, que es privado); `register`/`callback` nativos |
 | Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `subscription`, `invoice`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
 
 **Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda.
 
 | Rol del panel | Permisos |
 | --- | --- |
-| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos, `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar |
+| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar |
 | Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia |
-| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar |
 
 Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
@@ -2162,7 +2820,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 34 content types y 31 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 37 content types y 38 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import actor from './actor';
 import archived from './archived';
 import billing from './billing';
+import catalog from './catalog';
 import clinic from './clinic';
 import clinical from './clinical';
 import customer from './customer';
@@ -45,6 +46,7 @@ export default (strapi: Core.Strapi): void => {
   scheduling(strapi);
   staffSchedule(strapi);
   billing(strapi);
+  catalog(strapi);
   travel(strapi);
   documents(strapi);
   notification(strapi);

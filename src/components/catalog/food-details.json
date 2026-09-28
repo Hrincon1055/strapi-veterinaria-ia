@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_catalog_food_details",
+  "info": { "displayName": "Datos de alimento", "icon": "restaurant", "description": "Tipo de alimento, etapa de vida, peso neto y registro ICA." },
+  "options": {},
+  "attributes": {
+    "registration": { "type": "component", "repeatable": false, "component": "catalog.sanitary-registration" },
+    "foodType": { "type": "enumeration", "enum": ["dry", "wet", "treat", "supplement", "therapeutic_diet"], "required": true },
+    "lifeStage": { "type": "enumeration", "enum": ["puppy_kitten", "adult", "senior", "all_stages"], "default": "all_stages" },
+    "netWeightGrams": { "type": "integer", "min": 1 },
+    "requiresPrescription": { "type": "boolean", "default": false }
+  }
+}

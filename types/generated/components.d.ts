@@ -53,6 +53,230 @@ export interface BillingFiscalResponsibility extends Struct.ComponentSchema {
   };
 }
 
+export interface BillingTaxProfile extends Struct.ComponentSchema {
+  collectionName: 'components_billing_tax_profiles';
+  info: {
+    description: 'Tratamiento de IVA de lo que se vende; lo leer\u00E1 la factura electr\u00F3nica.';
+    displayName: 'Perfil tributario';
+    icon: 'hashtag';
+  };
+  attributes: {
+    ivaRate: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
+    ivaTreatment: Schema.Attribute.Enumeration<
+      ['gravado', 'exento', 'excluido']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'gravado'>;
+  };
+}
+
+export interface CatalogAccessoryDetails extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_accessory_details';
+  info: {
+    description: 'Material, talla y color.';
+    displayName: 'Datos de juguete o accesorio';
+    icon: 'puzzle';
+  };
+  attributes: {
+    color: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    material: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    size: Schema.Attribute.Enumeration<['xs', 's', 'm', 'l', 'xl', 'unique']> &
+      Schema.Attribute.DefaultTo<'unique'>;
+  };
+}
+
+export interface CatalogActiveIngredient extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_active_ingredients';
+  info: {
+    description: 'Principio activo y su concentraci\u00F3n.';
+    displayName: 'Principio activo';
+    icon: 'layer';
+  };
+  attributes: {
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    strength: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    strengthUnit: Schema.Attribute.Enumeration<
+      ['mg', 'mcg', 'g', 'ui', 'mg_ml', 'mcg_ml', 'ui_ml', 'percent']
+    >;
+  };
+}
+
+export interface CatalogFoodDetails extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_food_details';
+  info: {
+    description: 'Tipo de alimento, etapa de vida, peso neto y registro ICA.';
+    displayName: 'Datos de alimento';
+    icon: 'restaurant';
+  };
+  attributes: {
+    foodType: Schema.Attribute.Enumeration<
+      ['dry', 'wet', 'treat', 'supplement', 'therapeutic_diet']
+    > &
+      Schema.Attribute.Required;
+    lifeStage: Schema.Attribute.Enumeration<
+      ['puppy_kitten', 'adult', 'senior', 'all_stages']
+    > &
+      Schema.Attribute.DefaultTo<'all_stages'>;
+    netWeightGrams: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    registration: Schema.Attribute.Component<
+      'catalog.sanitary-registration',
+      false
+    >;
+    requiresPrescription: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+  };
+}
+
+export interface CatalogMedicationDetails extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_medication_details';
+  info: {
+    description: 'Registro, principios activos, forma farmac\u00E9utica y condiciones de venta.';
+    displayName: 'Datos de medicamento';
+    icon: 'doctor';
+  };
+  attributes: {
+    activeIngredients: Schema.Attribute.Component<
+      'catalog.active-ingredient',
+      true
+    >;
+    atcVetCode: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    cumCode: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    isControlled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    laboratory: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    pharmaceuticalForm: Schema.Attribute.Enumeration<
+      [
+        'tablet',
+        'capsule',
+        'oral_suspension',
+        'oral_solution',
+        'injectable',
+        'ointment',
+        'cream',
+        'drops',
+        'spray',
+        'pour_on',
+        'collar',
+        'shampoo',
+        'powder',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    registration: Schema.Attribute.Component<
+      'catalog.sanitary-registration',
+      false
+    >;
+    requiresPrescription: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    route: Schema.Attribute.Enumeration<
+      ['oral', 'sc', 'im', 'iv', 'topical', 'otic', 'ophthalmic', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'oral'>;
+    storage: Schema.Attribute.Enumeration<
+      ['ambient', 'refrigerated', 'frozen']
+    > &
+      Schema.Attribute.DefaultTo<'ambient'>;
+  };
+}
+
+export interface CatalogSanitaryRegistration extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_sanitary_registrations';
+  info: {
+    description: 'Registro ICA (uso veterinario) o INVIMA (uso humano) que autoriza la venta.';
+    displayName: 'Registro sanitario';
+    icon: 'file';
+  };
+  attributes: {
+    authority: Schema.Attribute.Enumeration<['ica', 'invima', 'other']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'ica'>;
+    expiresOn: Schema.Attribute.Date;
+    holder: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+  };
+}
+
+export interface CatalogVaccineDetails extends Struct.ComponentSchema {
+  collectionName: 'components_catalog_vaccine_details';
+  info: {
+    description: 'Vacuna cl\u00EDnica que contiene este producto, registro y cadena de fr\u00EDo.';
+    displayName: 'Datos de vacuna';
+    icon: 'shield';
+  };
+  attributes: {
+    dosesPerUnit: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    laboratory: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    registration: Schema.Attribute.Component<
+      'catalog.sanitary-registration',
+      false
+    >;
+    route: Schema.Attribute.Enumeration<
+      ['sc', 'im', 'intranasal', 'oral', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'sc'>;
+    storage: Schema.Attribute.Enumeration<
+      ['ambient', 'refrigerated', 'frozen']
+    > &
+      Schema.Attribute.DefaultTo<'refrigerated'>;
+    vaccine: Schema.Attribute.Relation<'manyToOne', 'api::clinical.vaccine'>;
+  };
+}
+
 export interface ClinicOpeningHours extends Struct.ComponentSchema {
   collectionName: 'components_clinic_opening_hours';
   info: {
@@ -123,6 +347,34 @@ export interface ClinicalAttachment extends Struct.ComponentSchema {
       }>;
     file: Schema.Attribute.Media<'images' | 'files'> &
       Schema.Attribute.Required;
+  };
+}
+
+export interface ClinicalConsultationItem extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_consultation_items';
+  info: {
+    description: 'Servicio o producto del cat\u00E1logo aplicado, entregado o recomendado en la consulta.';
+    displayName: 'Servicio o producto';
+    icon: 'shoppingCart';
+  };
+  attributes: {
+    notes: Schema.Attribute.Text;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
+    state: Schema.Attribute.Enumeration<
+      ['applied', 'dispensed', 'recommended']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'applied'>;
   };
 }
 
@@ -508,28 +760,6 @@ export interface SchedulingAppointmentService extends Struct.ComponentSchema {
   };
 }
 
-export interface SchedulingConsultationService extends Struct.ComponentSchema {
-  collectionName: 'components_scheduling_consultation_services';
-  info: {
-    description: 'Servicio o procedimiento prestado durante una consulta.';
-    displayName: 'Servicio prestado';
-    icon: 'priceTag';
-  };
-  attributes: {
-    notes: Schema.Attribute.Text;
-    quantity: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 1;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<1>;
-    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
-  };
-}
-
 export interface SchedulingWorkShift extends Struct.ComponentSchema {
   collectionName: 'components_scheduling_work_shifts';
   info: {
@@ -799,9 +1029,17 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'billing.dian-resolution': BillingDianResolution;
       'billing.fiscal-responsibility': BillingFiscalResponsibility;
+      'billing.tax-profile': BillingTaxProfile;
+      'catalog.accessory-details': CatalogAccessoryDetails;
+      'catalog.active-ingredient': CatalogActiveIngredient;
+      'catalog.food-details': CatalogFoodDetails;
+      'catalog.medication-details': CatalogMedicationDetails;
+      'catalog.sanitary-registration': CatalogSanitaryRegistration;
+      'catalog.vaccine-details': CatalogVaccineDetails;
       'clinic.opening-hours': ClinicOpeningHours;
       'clinical.anamnesis': ClinicalAnamnesis;
       'clinical.attachment': ClinicalAttachment;
+      'clinical.consultation-item': ClinicalConsultationItem;
       'clinical.diagnosis': ClinicalDiagnosis;
       'clinical.imaging': ClinicalImaging;
       'clinical.lab-result': ClinicalLabResult;
@@ -818,7 +1056,6 @@ declare module '@strapi/strapi' {
       'marketing.rule-subscription': MarketingRuleSubscription;
       'marketing.rule-vaccination-due': MarketingRuleVaccinationDue;
       'scheduling.appointment-service': SchedulingAppointmentService;
-      'scheduling.consultation-service': SchedulingConsultationService;
       'scheduling.work-shift': SchedulingWorkShift;
       'shared.address': SharedAddress;
       'travel.antiparasitic': TravelAntiparasitic;

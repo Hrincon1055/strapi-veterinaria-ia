@@ -146,7 +146,87 @@
       "sections": "Historia clínica",
       "nextControlOn": "Próximo control",
       "attachments": "Adjuntos",
-      "services": "Servicios prestados"
+      "items": "Servicios y productos"
+    },
+    "clinical.consultation-item": {
+      "service": "Servicio (o bien un producto)",
+      "product": "Producto (o bien un servicio)",
+      "state": "Aplicado, entregado o recomendado"
+    },
+    "api::catalog.product": {
+      "productType": "Tipo de producto",
+      "category": "Categoría",
+      "brand": "Marca",
+      "presentation": "Presentación",
+      "saleUnit": "Unidad de venta",
+      "sku": "Código interno (SKU)",
+      "barcode": "Código de barras",
+      "image": "Imagen",
+      "targetSpecies": "Especies",
+      "salePrice": "Precio de venta (antes de IVA)",
+      "tax": "Impuestos",
+      "referenceCost": "Costo de referencia",
+      "preferredSupplier": "Proveedor habitual",
+      "tracksInventory": "Controla inventario",
+      "tracksBatches": "Controla lotes y vencimientos",
+      "minStock": "Existencia mínima",
+      "details": "Datos específicos del tipo"
+    },
+    "api::catalog.product-category": {
+      "sortOrder": "Orden",
+      "products": "Productos"
+    },
+    "api::catalog.supplier": {
+      "name": "Razón social",
+      "verificationDigit": "Dígito de verificación",
+      "contactName": "Persona de contacto",
+      "address": "Dirección",
+      "paymentTermDays": "Plazo de pago (días)",
+      "products": "Productos que suministra"
+    },
+    "billing.tax-profile": {
+      "ivaTreatment": "Tratamiento de IVA",
+      "ivaRate": "Tarifa de IVA (%)"
+    },
+    "catalog.sanitary-registration": {
+      "authority": "Autoridad (ICA / INVIMA)",
+      "number": "Número de registro",
+      "holder": "Titular del registro",
+      "expiresOn": "Vence el"
+    },
+    "catalog.active-ingredient": {
+      "name": "Principio activo",
+      "strength": "Concentración",
+      "strengthUnit": "Unidad"
+    },
+    "catalog.medication-details": {
+      "registration": "Registro sanitario",
+      "activeIngredients": "Principios activos",
+      "pharmaceuticalForm": "Forma farmacéutica",
+      "route": "Vía de administración",
+      "cumCode": "Código CUM (uso humano)",
+      "atcVetCode": "Código ATCvet",
+      "requiresPrescription": "Venta bajo fórmula veterinaria",
+      "isControlled": "Medicamento de control especial",
+      "storage": "Almacenamiento"
+    },
+    "catalog.vaccine-details": {
+      "registration": "Registro sanitario",
+      "dosesPerUnit": "Dosis por unidad",
+      "route": "Vía de administración",
+      "storage": "Almacenamiento"
+    },
+    "catalog.food-details": {
+      "registration": "Registro ICA",
+      "foodType": "Tipo de alimento",
+      "lifeStage": "Etapa de vida",
+      "netWeightGrams": "Peso neto (g)",
+      "requiresPrescription": "Requiere fórmula (dieta terapéutica)"
+    },
+    "catalog.accessory-details": {
+      "material": "Material",
+      "size": "Talla",
+      "color": "Color"
     },
     "api::clinical.pet-vaccination": {
       "doseNumber": "Número de dosis",
@@ -291,6 +371,7 @@
       "category": "Categoría",
       "defaultDurationMinutes": "Duración por defecto (min)",
       "basePrice": "Precio base",
+      "tax": "Impuestos",
       "colorHex": "Color"
     },
     "api::scheduling.service-category": {

@@ -65,7 +65,12 @@ async function limpiar(app) {
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
     ['api::billing.plan-benefit', { name: 'Baño SMOKE' }],
     ['api::billing.plan', { name: 'Plan SMOKE' }],
-    ['api::scheduling.service', { name: 'Consulta SMOKE' }],    ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
+    ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
+    ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
+    ['api::scheduling.service', { name: 'Consulta SMOKE' }],
+    ['api::catalog.product', { name: { $endsWith: 'SMOKE' } }],
+    ['api::catalog.supplier', { name: { $endsWith: 'SMOKE' } }],
+    ['api::clinical.vaccine', { name: 'Rabia SMOKE' }],
     ['api::scheduling.clinic-room', { name: 'Consultorio SMOKE' }],
     ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
     ['api::pet.pet', { name: 'Fido SMOKE' }],
@@ -152,19 +157,105 @@ async function limpiar(app) {
   const categoria = await d('api::scheduling.service-category').findFirst({});
   const servicio = await d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30, basePrice: 50000 } });
   await rechaza('servicio duplicado en la misma categoría', () => d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30 } }), 'ya existe');
-  // Las líneas de servicio son ahora el componente repetible
-  // `scheduling.consultation-service`: se escriben dentro de la consulta y el
-  // veterinario solo dice qué hizo y cuántas veces; sin precios (eso será de
-  // la facturación).
-  const conLinea = await acepta(
-    'línea de servicio con cantidad',
+  console.log('\n--- catálogo de productos ---');
+  const vacunaClinica = await d('api::clinical.vaccine').create({ data: { name: 'Rabia SMOKE', species: especie.documentId } });
+  await rechaza(
+    'medicamento sin sus datos de medicamento',
+    () => d('api::catalog.product').create({ data: { name: 'Meloxicam SMOKE', productType: 'medication' } }),
+    'necesita'
+  );
+  await rechaza(
+    'bloque de datos que no corresponde al tipo',
+    () =>
+      d('api::catalog.product').create({
+        data: { name: 'Juguete SMOKE', productType: 'toy', details: [{ __component: 'catalog.food-details', foodType: 'dry' }] },
+      }),
+    'lleva'
+  );
+  await rechaza(
+    'vacuna del catálogo sin vacuna clínica',
+    () =>
+      d('api::catalog.product').create({
+        data: { name: 'Vacuna SMOKE', productType: 'vaccine', details: [{ __component: 'catalog.vaccine-details', dosesPerUnit: 1 }] },
+      }),
+    'qué vacuna'
+  );
+  await rechaza(
+    'producto gravado sin tarifa de IVA válida',
+    () =>
+      d('api::catalog.product').create({
+        data: { name: 'Champú SMOKE', productType: 'hygiene', tax: { ivaTreatment: 'gravado', ivaRate: 7 } },
+      }),
+    'tarifa'
+  );
+  const medicamento = await acepta(
+    'medicamento válido; lleva lotes por defecto',
+    () =>
+      d('api::catalog.product').create({
+        data: {
+          name: 'Meloxicam SMOKE',
+          productType: 'medication',
+          salePrice: 42000,
+          tax: { ivaTreatment: 'excluido' },
+          details: [{ __component: 'catalog.medication-details', pharmaceuticalForm: 'oral_suspension', activeIngredients: [{ name: 'Meloxicam', strength: 1.5, strengthUnit: 'mg_ml' }] }],
+        },
+        populate: ['tax'],
+      }),
+    (r) => r.tracksBatches === true && r.tax?.ivaRate === 0
+  );
+  const vacunaProducto = await acepta(
+    'vacuna del catálogo enlazada a la vacuna clínica',
+    () =>
+      d('api::catalog.product').create({
+        data: { name: 'Nobivac SMOKE', productType: 'vaccine', details: [{ __component: 'catalog.vaccine-details', vaccine: vacunaClinica.documentId }] },
+        populate: { details: { on: { 'catalog.vaccine-details': { populate: ['vaccine'] } } } },
+      }),
+    (r) => r.details?.[0]?.vaccine?.documentId === vacunaClinica.documentId
+  );
+  // El panel reenvía el bloque con la relación sin tocar: no debe perderse.
+  await acepta(
+    'editar la vacuna desde el panel sin tocar la vacuna clínica',
+    () =>
+      d('api::catalog.product').update({
+        documentId: vacunaProducto?.documentId,
+        data: { details: [{ __component: 'catalog.vaccine-details', id: vacunaProducto?.details?.[0]?.id, vaccine: { connect: [], disconnect: [] }, dosesPerUnit: 2 }] },
+        populate: { details: { on: { 'catalog.vaccine-details': { populate: ['vaccine'] } } } },
+      }),
+    (r) => r.details?.[0]?.dosesPerUnit === 2 && r.details?.[0]?.vaccine?.documentId === vacunaClinica.documentId
+  );
+  await acepta(
+    'juguete sin datos específicos (son opcionales)',
+    () => d('api::catalog.product').create({ data: { name: 'Pelota SMOKE', productType: 'toy' } }),
+    (r) => r.tracksBatches === false
+  );
+  await rechaza(
+    'proveedor con dígito de verificación errado',
+    () => d('api::catalog.supplier').create({ data: { name: 'Distribuidora SMOKE', documentType: 'nit', documentNumber: '900456789', verificationDigit: '0' } }),
+    'dígito de verificación'
+  );
+
+  console.log('\n--- servicios y productos de la consulta ---');
+  // Una línea = un servicio O un producto, con cantidad y estado. Sin precios:
+  // eso será de la facturación, desde el catálogo.
+  const conLineas = await acepta(
+    'servicio aplicado + producto entregado + producto recomendado',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { services: [{ service: servicio.documentId, quantity: 2 }] },
-        populate: { services: { populate: ['service'] } },
+        data: {
+          items: [
+            { service: servicio.documentId, quantity: 1, state: 'applied' },
+            { product: medicamento?.documentId, quantity: 2, state: 'dispensed' },
+            { product: vacunaProducto?.documentId, quantity: 1, state: 'recommended' },
+          ],
+        },
+        populate: { items: { populate: ['service', 'product'] } },
       }),
-    (r) => r.services?.[0]?.quantity === 2 && r.services?.[0]?.service?.documentId === servicio.documentId
+    (r) =>
+      r.items?.length === 3 &&
+      r.items[0].service?.documentId === servicio.documentId &&
+      r.items[1].product?.documentId === medicamento?.documentId &&
+      Number(r.items[1].quantity) === 2
   );
   // El panel manda la relación de una línea sin tocar como `{ connect: [], disconnect: [] }`.
   await acepta(
@@ -172,19 +263,41 @@ async function limpiar(app) {
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { services: [{ id: conLinea?.services?.[0]?.id, service: { connect: [], disconnect: [] }, quantity: 3 }] },
-        populate: { services: { populate: ['service'] } },
+        data: {
+          items: (conLineas?.items ?? []).map((l, i) => ({
+            id: l.id,
+            service: { connect: [], disconnect: [] },
+            product: { connect: [], disconnect: [] },
+            quantity: i === 0 ? 3 : Number(l.quantity),
+            state: l.state,
+          })),
+        },
+        populate: { items: { populate: ['service', 'product'] } },
       }),
-    (r) => r.services?.[0]?.quantity === 3 && r.services?.[0]?.service?.documentId === servicio.documentId
+    (r) => Number(r.items?.[0]?.quantity) === 3 && r.items?.[0]?.service?.documentId === servicio.documentId && r.items?.length === 3
   );
   await rechaza(
-    'línea de servicio sin servicio',
+    'línea sin servicio ni producto',
+    () => d('api::clinical.consultation').update({ documentId: consulta.documentId, data: { items: [{ quantity: 1 }] } }),
+    'debe indicar un servicio o un producto'
+  );
+  await rechaza(
+    'línea con servicio y producto a la vez',
     () =>
       d('api::clinical.consultation').update({
         documentId: consulta.documentId,
-        data: { services: [{ quantity: 1 }] },
+        data: { items: [{ service: servicio.documentId, product: medicamento?.documentId, quantity: 1 }] },
       }),
-    'debe indicar un servicio'
+    'no los dos'
+  );
+  await rechaza(
+    'servicio marcado como entregado',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: { items: [{ service: servicio.documentId, quantity: 1, state: 'dispensed' }] },
+      }),
+    'solo para productos'
   );
 
   console.log('\n--- facturas ---');

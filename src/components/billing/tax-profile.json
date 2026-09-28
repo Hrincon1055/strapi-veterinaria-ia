@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_billing_tax_profiles",
+  "info": { "displayName": "Perfil tributario", "icon": "hashtag", "description": "Tratamiento de IVA de lo que se vende; lo leerá la factura electrónica." },
+  "options": {},
+  "attributes": {
+    "ivaTreatment": { "type": "enumeration", "enum": ["gravado", "exento", "excluido"], "default": "gravado", "required": true },
+    "ivaRate": { "type": "integer", "min": 0, "max": 100 }
+  }
+}

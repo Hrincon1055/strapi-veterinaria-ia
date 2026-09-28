@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_catalog_accessory_details",
+  "info": { "displayName": "Datos de juguete o accesorio", "icon": "puzzle", "description": "Material, talla y color." },
+  "options": {},
+  "attributes": {
+    "material": { "type": "string", "maxLength": 80 },
+    "size": { "type": "enumeration", "enum": ["xs", "s", "m", "l", "xl", "unique"], "default": "unique" },
+    "color": { "type": "string", "maxLength": 40 }
+  }
+}

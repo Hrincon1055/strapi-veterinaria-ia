@@ -23,6 +23,11 @@ const CATALOGS = [
   'api::scheduling.service',
   'api::billing.plan',
   'api::billing.plan-benefit',
+  // El cliente ve en su consulta lo que se le recomendó; sin leer el
+  // producto, el saneado lo quitaría de la línea. `referenceCost` es
+  // privado y los proveedores no están aquí.
+  'api::catalog.product-category',
+  'api::catalog.product',
 ];
 
 /** Acciones `uid.accion` a partir de una lista de UIDs. */

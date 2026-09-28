@@ -39,6 +39,11 @@
       "default": "COP",
       "regex": "^[A-Z]{3}$"
     },
+    "tax": {
+      "type": "component",
+      "repeatable": false,
+      "component": "billing.tax-profile"
+    },
     "colorHex": {
       "type": "customField",
       "customField": "plugin::color-picker.color",

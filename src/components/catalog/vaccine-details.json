@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_catalog_vaccine_details",
+  "info": { "displayName": "Datos de vacuna", "icon": "shield", "description": "Vacuna clínica que contiene este producto, registro y cadena de frío." },
+  "options": {},
+  "attributes": {
+    "vaccine": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.vaccine" },
+    "registration": { "type": "component", "repeatable": false, "component": "catalog.sanitary-registration" },
+    "laboratory": { "type": "string", "maxLength": 150 },
+    "dosesPerUnit": { "type": "integer", "default": 1, "min": 1 },
+    "route": { "type": "enumeration", "enum": ["sc", "im", "intranasal", "oral", "other"], "default": "sc" },
+    "storage": { "type": "enumeration", "enum": ["ambient", "refrigerated", "frozen"], "default": "refrigerated" }
+  }
+}

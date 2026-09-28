@@ -31,6 +31,8 @@ const CATALOGOS = [
   'api::billing.plan-benefit',
   'api::scheduling.clinic-room',
   'api::clinical.vaccine',
+  'api::catalog.product-category',
+  'api::catalog.product',
 ];
 
 const RECEPCION_CRUD = [
@@ -106,6 +108,8 @@ const administracion: Concesion[] = [
   },
   // La configuración fiscal la cambia solo la administración de la clínica.
   { subjects: ['api::clinic.clinic'], verbos: ['update'] },
+  // Proveedores: costos y condiciones de compra, no son cosa del mostrador.
+  { subjects: ['api::catalog.supplier'], verbos: CRUD },
 ];
 
 type RolPanel = { name: string; description: string; concesiones: Concesion[]; otras: string[] };
@@ -181,6 +185,30 @@ export default async (strapi: Core.Strapi): Promise<void> => {
     if (faltan.length > 0) {
       await roleService.addPermissions(rol.id, faltan);
       strapi.log.info(`[admin-roles] ${spec.name}: ${faltan.length} permisos añadidos`);
+    }
+
+    // Un permiso del Content Manager guarda la LISTA de campos que deja ver y
+    // editar. Si el esquema gana un campo (`consultation.items`,
+    // `service.tax`), el permiso ya existe y el filtro de arriba no lo toca:
+    // el campo quedaría invisible en el formulario para ese rol, sin error.
+    // Aquí se añaden los campos que falten a los permisos que ya había.
+    const porClave = new Map(actuales.map((p: any) => [`${p.action}|${p.subject ?? ''}`, p]));
+    let ampliados = 0;
+    for (const deseado of deContenido as any[]) {
+      const actual: any = porClave.get(`${deseado.action}|${deseado.subject ?? ''}`);
+      const quiere: string[] | undefined = deseado.properties?.fields;
+      const tieneCampos: string[] | undefined = actual?.properties?.fields;
+      if (!actual || !Array.isArray(quiere) || !Array.isArray(tieneCampos)) continue;
+      const nuevos = quiere.filter((f) => !tieneCampos.includes(f));
+      if (nuevos.length === 0) continue;
+      await strapi.db.query('admin::permission').update({
+        where: { id: actual.id },
+        data: { properties: { ...actual.properties, fields: [...tieneCampos, ...nuevos] } },
+      });
+      ampliados++;
+    }
+    if (ampliados > 0) {
+      strapi.log.info(`[admin-roles] ${spec.name}: ${ampliados} permisos con campos nuevos`);
     }
   }
 };
