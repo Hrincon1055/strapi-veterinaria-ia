@@ -1,15 +1,30 @@
 import * as React from 'react';
-import { Box, Flex, Grid, Typography, Divider } from '@strapi/design-system';
+import { Box, Flex, Typography, Divider } from '@strapi/design-system';
 import { fechasDeSemana, hoy, rangoVisible } from '../../domain/semana';
 import { ColumnaDia, PX_POR_MINUTO } from './ColumnaDia';
 
-/** Eje de horas a la izquierda, una marca por hora. */
+/**
+ * Columnas de la rejilla: la de horas mide lo que su texto y los siete días se
+ * reparten el resto. `minmax(0, 1fr)` y no `1fr`: con `1fr` una tarjeta de
+ * texto largo ensancharía su día y descuadraría la semana.
+ */
+const COLUMNAS = 'max-content repeat(7, minmax(0, 1fr))';
+
+/**
+ * Eje de horas a la izquierda, una marca por hora.
+ *
+ * Las marcas van en posición absoluta y no dan ancho a la columna; lo da un
+ * "00:00" invisible en el flujo, que mide exactamente lo que una hora.
+ */
 function EjeHoras({ rango }) {
   const horas = [];
   for (let m = rango.min; m <= rango.max; m += 60) horas.push(m);
 
   return (
-    <Box position="relative" style={{ width: '56px', height: `${(rango.max - rango.min) * PX_POR_MINUTO}px` }}>
+    <Box position="relative" paddingRight={2} style={{ height: `${(rango.max - rango.min) * PX_POR_MINUTO}px` }}>
+      <Box aria-hidden style={{ visibility: 'hidden', height: 0, overflow: 'hidden' }}>
+        <Typography variant="pi">00:00</Typography>
+      </Box>
       {horas.map((m) => (
         <Box key={m} position="absolute" style={{ top: `${(m - rango.min) * PX_POR_MINUTO - 8}px`, right: '8px' }}>
           <Typography variant="pi" textColor="neutral500">
@@ -73,10 +88,10 @@ export function RejillaSemana({ semana, onAbrirCita, onAgendar }) {
 
           <Divider />
 
-          <Grid.Root gridCols={8} gap={0} paddingTop={2}>
-            <Grid.Item col={1} alignItems="stretch" direction="column" />
+          <Box paddingTop={2} style={{ display: 'grid', gridTemplateColumns: COLUMNAS }}>
+            <Box />
             {dias.map((d) => (
-              <Grid.Item key={d.fecha} col={1} alignItems="stretch" direction="column">
+              <Box key={d.fecha}>
                 <Box
                   padding={1}
                   background={d.fecha === fechaHoy ? 'primary100' : 'neutral0'}
@@ -86,14 +101,12 @@ export function RejillaSemana({ semana, onAbrirCita, onAgendar }) {
                     {d.etiqueta} {Number(d.fecha.slice(8, 10))}
                   </Typography>
                 </Box>
-              </Grid.Item>
+              </Box>
             ))}
 
-            <Grid.Item col={1} alignItems="stretch" direction="column">
-              <EjeHoras rango={rango} />
-            </Grid.Item>
+            <EjeHoras rango={rango} />
             {dias.map((d) => (
-              <Grid.Item key={d.fecha} col={1} alignItems="stretch" direction="column">
+              <Box key={d.fecha}>
                 <ColumnaDia
                   dia={(col.dias ?? []).find((x) => x.fecha === d.fecha)}
                   citas={(col.citas ?? []).filter((c) => String(c.startAt).slice(0, 10) === d.fecha)}
@@ -102,9 +115,9 @@ export function RejillaSemana({ semana, onAbrirCita, onAgendar }) {
                   onAbrirCita={onAbrirCita}
                   onAgendar={agendarEnEstaColumna}
                 />
-              </Grid.Item>
+              </Box>
             ))}
-          </Grid.Root>
+          </Box>
         </Box>
         );
       })}
