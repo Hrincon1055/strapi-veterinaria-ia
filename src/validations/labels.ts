@@ -48,6 +48,13 @@ async function cascadaDesdePerfil(strapi: Core.Strapi, profileDocumentId: string
 
   if (await refrescarEtiqueta(strapi, 'api::customer.customer', customerId)) n++;
 
+  const facturas = await strapi.documents('api::billing.invoice').findMany({
+    filters: { customer: { documentId: customerId }, ...includeArchived('api::billing.invoice') } as any,
+  });
+  for (const factura of facturas) {
+    if (await refrescarEtiqueta(strapi, 'api::billing.invoice', factura.documentId)) n++;
+  }
+
   const mascotas = await strapi.documents('api::pet.pet').findMany({
     filters: { owner: { documentId: customerId }, ...includeArchived('api::pet.pet') } as any,
   });

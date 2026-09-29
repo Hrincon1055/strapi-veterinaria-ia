@@ -49,7 +49,7 @@ src/
     pet/content-types/{pet,species,breed}/schema.json
     clinical/content-types/{consultation,vaccine,pet-vaccination,allergy}/schema.json
     scheduling/content-types/{appointment,service-category,service,clinic-room,staff-schedule,schedule-exception}/schema.json
-    billing/content-types/{plan,plan-benefit,subscription,benefit-usage,invoice}/schema.json
+    billing/content-types/{plan,plan-benefit,subscription,benefit-usage,invoice,invoice-item}/schema.json
     travel/content-types/travel-case/schema.json
     documents/content-types/{signed-document,signed-document-signer,signed-document-event}/schema.json
     marketing/content-types/{campaign,campaign-metric}/schema.json
@@ -73,7 +73,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **37 content types (uno de ellos single type), 39 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **38 content types (uno de ellos single type), 40 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -81,7 +81,7 @@ Cada content type necesita además sus archivos estándar de `controllers`, `rou
 2. Catálogos: `country`, `species`, `breed`, `service-category`, `service`, `clinic-room`, `vaccine`, `plan`, `plan-benefit`, `product-category`, `supplier`, `product`.
 3. Personas: `profile`, extensión de `user`, `contact`, `verification-code`, `customer`, `customer-note`.
 4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`.
-5. Facturación: `subscription`, `benefit-usage`, `invoice`.
+5. Facturación: `subscription`, `benefit-usage`, `invoice`, `invoice-item`.
 6. Viajes, documentos, marketing, notificaciones.
 7. Middlewares de validación, migración de índices, roles y permisos, seed de catálogos.
 8. Arrancar Strapi y verificar los criterios de aceptación (sección 11).
@@ -1082,7 +1082,7 @@ Decisiones que conviene no revertir:
 - **`fiscalResponsibilities` es un componente repetible** porque un contribuyente puede tener varias, y Strapi no tiene enumeración múltiple.
 - **`fiscalAddress` reutiliza `shared.address`** en lugar de repetir los campos.
 
-Reglas en `src/validations/clinic.ts`, todas verificadas: DV coherente con el NIT; una sola resolución activa; rango final mayor que el inicial; consecutivo dentro del rango; vigencia coherente; la resolución activa no puede estar vencida ni con el rango agotado (con aviso por log a menos de 100 números); y los horarios no pueden cerrar antes de abrir ni repetir día.
+Reglas en `src/validations/clinic.ts`, todas verificadas: DV coherente con el NIT; una sola resolución activa; rango final mayor que el inicial; consecutivo dentro del rango; vigencia coherente; la resolución activa no puede estar vencida ni con el rango agotado (con aviso por log a menos de 100 números); y los horarios no pueden cerrar antes de abrir ni repetir día. Además, `currentNumber` ("último número usado") lo lleva el servidor: en una resolución ya guardada se conserva el valor almacenado aunque el formulario mande otro (así guardar Clínica mientras se factura no hace retroceder el consecutivo), y solo se acepta al crear la resolución; una resolución ya usada —con facturas emitidas que la citan, no con `currentNumber` puesto, porque una resolución puede arrancar a mitad de rango— no cambia de número, prefijo ni rango, y no se puede quitar de la lista (se desactiva).
 
 ### `src/components/billing/dian-resolution.json`
 
@@ -1589,6 +1589,10 @@ Sustituye al componente repetible `clinical.consultation-item` (una línea con d
 
 `label` lo rellena siempre el servidor con el nombre del servicio o producto, y es el main field de la tarjeta: con el bloque cerrado, el panel pinta en la cabecera el valor de un campo de texto del componente, y una relación no sirve para eso.
 
+`lineKey` (UUID) es la identidad de la línea como concepto facturable (ver 5.5). La pone el servidor en la primera escritura y la conserva en las siguientes, emparejando por `id` del componente; una clave entrante solo se respeta si ya pertenecía a una línea de esa consulta, y un bloque duplicado en el panel recibe una nueva. Se muestra sin poder editarse. Las líneas anteriores al campo la reciben al arrancar (`src/bootstrap/backfill-line-keys.ts`).
+
+Al abrir la consulta desde la agenda, los servicios de la cita se copian como líneas `applied` (decisión D3).
+
 Consecuencia aceptada: los filtros de Strapi no atraviesan una dynamic zone, así que "consultas que recomendaron el producto X" necesitaría un endpoint propio, como `/consultations/search` para las secciones.
 
 ### `src/components/clinical/service-line.json`
@@ -1630,6 +1634,10 @@ Tarjeta Servicio: un servicio del catálogo realizado (`applied`) o recomendado 
     "label": {
       "type": "string",
       "maxLength": 255
+    },
+    "lineKey": {
+      "type": "string",
+      "maxLength": 36
     }
   }
 }
@@ -1675,7 +1683,68 @@ Tarjeta Producto: un producto del catálogo aplicado en la consulta (`applied`),
     "label": {
       "type": "string",
       "maxLength": 255
+    },
+    "lineKey": {
+      "type": "string",
+      "maxLength": 36
     }
+  }
+}
+```
+
+## 5.5 Facturación: diseño y decisiones
+
+Flujo: **consulta → líneas de `consultation.lines` → elegir las facturables → borrador → emitir (consecutivo DIAN) → PDF**. Se implementa por fases; cada una actualiza este documento junto con su código, para que `verify-model-doc.js` no se desincronice.
+
+**La línea de la consulta ES el concepto facturable.** No hay entidad "concepto" aparte. La consulta como cargo es su línea del servicio "Consulta general". Es facturable una línea de servicio `applied` y una de producto `applied` o `dispensed`; `recommended` nunca.
+
+**Trazabilidad.** Cada línea lleva un `lineKey` (UUID) que pone y conserva el servidor. Cada renglón de factura (`api::billing.invoice-item`, colección) guarda `sourceConsultation` + `sourceLineKey` para siempre, y `lockKey` = `sourceLineKey` mientras su factura no esté anulada. Un índice único parcial sobre `lock_key` impide en base de datos que dos facturas vivas cobren la misma línea. Anular libera `lockKey`.
+
+**Precios e impuestos** se copian (snapshot) al renglón desde el catálogo (`service.basePrice`, `product.salePrice`, `billing.tax-profile`); cambiar el catálogo no altera facturas existentes.
+
+**Emisor = `api::clinic.clinic`.** No se duplica en el módulo. La numeración sale de la resolución activa de `clinic.resolutions`: `currentNumber` es "último número usado", lo incrementa el servidor de forma atómica al emitir y nunca puede bajar. Un borrador no consume consecutivo.
+
+Decisiones (aprobadas 2026-09-29):
+
+| # | Decisión |
+| --- | --- |
+| D1 | Una factura puede cubrir varias consultas del mismo cliente. `invoice.consultation` desaparece: la consulta la lleva cada renglón. |
+| D2 | Al emitir se congelan los datos del emisor (`issuerSnapshot`) y del receptor (`buyer`): una reimpresión muestra los datos vigentes en la fecha de emisión. Se escriben una vez y no se editan. |
+| D3 | Al abrir la consulta desde la cita, los servicios de la cita se copian como líneas `applied`. |
+| D4 | Todas las facturas usan la resolución DIAN; no hay documento interno por ahora. |
+| D5 | En borrador: descuento por renglón; precio manual solo con el permiso de emitir. |
+| D6 | Una cortesía se factura con descuento del 100 %; no hay marca "no cobrar" en la línea clínica. |
+| D7 | El copago de los planes se pospone. |
+| D8 | Recepción puede emitir. |
+
+El PDF se genera con PDFKit bajo demanda y no se guarda en la Media Library (sus archivos son públicos por URL y el documento tiene datos personales). Servicio `api::billing.invoice-pdf` → `generar(factura)` devuelve `{ pdf, nombreArchivo }`: una factura emitida, anulada o con error DIAN se pinta con lo congelado al emitir (`issuerSnapshot`, `buyer`, resolución), así que regenerarla da siempre el mismo documento; un borrador es una vista previa con los datos actuales de Clínica y del perfil y marca de agua "BORRADOR" (la anulada lleva "ANULADA"). Lleva emisor con NIT-DV, régimen y responsabilidades; cliente; renglones con la consulta y mascota de origen; desglose de IVA por tarifa; totales; texto de la resolución DIAN y `invoiceFooterNotes`. No es la factura electrónica: la cabecera dice "Ambiente de habilitación DIAN: sin validez fiscal" o "pendiente de validación DIAN" hasta que exista la integración, que añadirá CUFE y QR al mismo generador (`src/api/billing/domain/documento-pdf.ts`).
+
+**Plugin de panel `veterinaria-facturacion`** (`src/plugins/veterinaria-facturacion/`), misma arquitectura que la agenda. Páginas: bandeja con pendientes de cobro y listado de facturas (filtros por estado, pago, fechas y número o cliente), consulta → elegir conceptos → borrador, y detalle de factura (descuentos, precio manual solo con `emitir` (D5), añadir conceptos del catálogo o de otras consultas del cliente, observaciones, vista previa y descarga del PDF, emitir, registrar pago, anular). Además, un panel lateral "Facturación" en la ficha de la consulta del Content Manager y un botón "Facturar" en el modal de cita de la agenda. Permisos propios: `facturacion.ver`, `facturacion.preparar`, `facturacion.emitir`, `facturacion.anular` (tabla de la sección 10). El plugin no tiene lógica de negocio: delega en los servicios de abajo.
+
+**Servicio `api::billing.invoicing`** (`src/api/billing/services/invoicing.ts`). No valida por su cuenta: crea por el Document Service y las reglas de la sección 8 deciden, así que el panel, este servicio y cualquier integración aplican la misma regla.
+
+- `estadoDeConsulta(consulta)`: cada línea como `pendiente`, `facturada` (con su factura) o `no_facturable` (con el motivo), un precio estimado con el catálogo de hoy y las facturas anuladas que la cobraron antes; resumen `sin_conceptos`, `sin_facturar`, `parcial` o `facturada`.
+- `pendientes({ desde, hasta, cliente })`: consultas con algún concepto pendiente, la más reciente primero.
+- `crearBorrador({ cliente?, conceptos: [{ consulta, lineKey, discountAmount? }], notas? })`: todo o nada, en una transacción. El cliente, si no se indica, es el dueño de la primera consulta.
+- `crearVacia({ cliente })`, `agregarConceptos(factura, conceptos)`, `agregarDirecto(factura, { relacion, documentId, quantity })`: venta sin consulta y ampliar un borrador.
+- `emitir(factura, { dueOn? })`: exige una resolución activa y vigente; sube el consecutivo con un único `UPDATE … WHERE COALESCE(current_number, range_from - 1) < range_to` dentro de la transacción que escribe la factura (dos emisiones simultáneas no toman el mismo número y, si la factura falla, el número no se pierde); `fullNumber` = prefijo + número; congela `buyer` (perfil del cliente), `issuerSnapshot` (Clínica, sin credenciales) y la resolución. Es la **única** vía para pasar una factura a emitida: la regla lo exige con un contexto (`domain/emision.ts`), así que numerar a mano desde el panel o la API se rechaza.
+
+### `src/components/billing/party-snapshot.json`
+
+Datos del receptor tal como salen en la factura, copiados del perfil del cliente al emitir (D2). Texto libre a propósito: es una copia, no una segunda ficha donde administrar al cliente.
+```json
+{
+  "collectionName": "components_billing_party_snapshots",
+  "info": { "displayName": "Datos del receptor", "icon": "user", "description": "Copia congelada al emitir de los datos del cliente que aparecen en la factura. No se edita." },
+  "options": {},
+  "attributes": {
+    "name": { "type": "string", "maxLength": 200 },
+    "documentType": { "type": "string", "maxLength": 20 },
+    "documentNumber": { "type": "string", "maxLength": 30 },
+    "address": { "type": "string", "maxLength": 255 },
+    "city": { "type": "string", "maxLength": 100 },
+    "email": { "type": "string", "maxLength": 255 },
+    "phone": { "type": "string", "maxLength": 30 }
   }
 }
 ```
@@ -2166,24 +2235,101 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
 {
   "kind": "collectionType",
   "collectionName": "invoices",
-  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Factura" },
+  "info": {
+    "singularName": "invoice",
+    "pluralName": "invoices",
+    "displayName": "Factura",
+    "description": "Cabecera de la factura. Los conceptos cobrados son sus renglones (invoice-item); el emisor y la numeración salen de Clínica."
+  },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
-    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
-    "amount": { "type": "integer", "required": true, "min": 0 },
+    "items": { "type": "relation", "relation": "oneToMany", "target": "api::billing.invoice-item", "mappedBy": "invoice" },
+
+    "documentKind": { "type": "enumeration", "enum": ["invoice", "credit_note"], "default": "invoice", "required": true },
+    "correctsInvoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice" },
+    "state": { "type": "enumeration", "enum": ["draft", "issued", "voided", "dian_error"], "default": "draft", "required": true },
+    "paymentState": { "type": "enumeration", "enum": ["unpaid", "partial", "paid"], "default": "unpaid", "required": true },
+
+    "prefix": { "type": "string", "maxLength": 10 },
+    "number": { "type": "biginteger" },
+    "fullNumber": { "type": "string", "unique": true, "maxLength": 30 },
+    "resolutionNumber": { "type": "string", "maxLength": 40 },
+    "resolutionDate": { "type": "date" },
+    "resolutionRangeFrom": { "type": "biginteger" },
+    "resolutionRangeTo": { "type": "biginteger" },
+    "resolutionValidUntil": { "type": "date" },
+
+    "issuedAt": { "type": "datetime" },
+    "dueOn": { "type": "date" },
+    "voidedAt": { "type": "datetime" },
+    "voidReason": { "type": "text" },
+
+    "buyer": { "type": "component", "repeatable": false, "component": "billing.party-snapshot" },
+    "issuerSnapshot": { "type": "json" },
+
+    "subtotal": { "type": "integer", "default": 0, "min": 0 },
+    "discountTotal": { "type": "integer", "default": 0, "min": 0 },
+    "taxTotal": { "type": "integer", "default": 0, "min": 0 },
+    "amount": { "type": "integer", "required": true, "default": 0, "min": 0 },
     "currency": { "type": "string", "required": true, "default": "COP", "regex": "^[A-Z]{3}$" },
-    "state": { "type": "enumeration", "enum": ["draft", "issued", "paid", "voided", "dian_error"], "default": "draft", "required": true },
+    "notes": { "type": "text" },
+
     "dataicoInvoiceId": { "type": "string", "unique": true },
     "dianState": { "type": "string" },
     "pdfUrl": { "type": "string" },
     "xmlUrl": { "type": "string" },
+
+    "searchLabel": { "type": "string", "maxLength": 255 },
     "archivedAt": { "type": "datetime" }
   }
 }
 ```
-`pdfUrl` y `xmlUrl` son URLs alojadas por Dataico (proveedor de facturación electrónica), por eso son texto.
+Cabecera. Ya no tiene `consultation` (D1): la consulta la lleva cada renglón, y así una factura cubre varias consultas del mismo cliente. `paid` salió de `state` y pasó a `paymentState`: el ciclo del documento (borrador, emitida, error DIAN, anulada) y el cobro son cosas distintas. Los totales, la numeración, la resolución, `buyer` e `issuerSnapshot` los escribe solo el servidor. `pdfUrl` y `xmlUrl` son URLs alojadas por Dataico (proveedor de facturación electrónica), por eso son texto; el PDF propio (PDFKit) se genera bajo demanda y no se guarda.
+
+#### `api::billing.invoice-item`
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "invoice_items",
+  "info": {
+    "singularName": "invoice-item",
+    "pluralName": "invoice-items",
+    "displayName": "Renglón de factura",
+    "description": "Un concepto cobrado. Si viene de una consulta, señala su línea por lineKey; lockKey impide que dos facturas vivas cobren la misma."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice", "inversedBy": "items" },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom"],
+      "required": true
+    },
+    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
+    "sourceConsultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "sourceLineKey": { "type": "string", "maxLength": 36 },
+    "lockKey": { "type": "string", "maxLength": 36 },
+
+    "description": { "type": "string", "required": true, "maxLength": 255 },
+    "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "unit": { "type": "string", "maxLength": 20 },
+    "unitPrice": { "type": "integer", "min": 0 },
+    "discountAmount": { "type": "integer", "default": 0, "min": 0 },
+    "taxTreatment": { "type": "enumeration", "enum": ["gravado", "exento", "excluido"] },
+    "taxRate": { "type": "integer", "default": 0, "min": 0, "max": 100 },
+    "lineSubtotal": { "type": "integer", "default": 0, "min": 0 },
+    "lineTax": { "type": "integer", "default": 0, "min": 0 },
+    "lineTotal": { "type": "integer", "default": 0, "min": 0 },
+    "unitCost": { "type": "integer", "min": 0, "private": true },
+    "sortOrder": { "type": "integer", "default": 0 }
+  }
+}
+```
+Colección y no componente: necesita índice único (`lock_key`), responder "¿qué factura cobra esta línea?" y, en el futuro, que un movimiento de inventario apunte a él. `kind` es el punto de extensión (`src/api/billing/domain/fuentes.ts`). Precio, impuesto, unidad, descripción y `unitCost` se copian del catálogo al crear el renglón; los importes los calcula el servidor (`src/api/billing/domain/calculo.ts`): IVA por renglón sobre la base descontada, redondeado al peso.
 
 ### 7.8 Travel
 
@@ -2745,6 +2891,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::billing.subscription` | `customer`, `pet`, `plan` |
 | `api::billing.benefit-usage` | `subscription`, `benefit` |
 | `api::billing.invoice` | `customer` |
+| `api::billing.invoice-item` | `invoice` |
 | `api::travel.travel-case` | `pet`, `destinationCountry` |
 | `api::documents.signed-document-signer` | `signedDocument`, `signer` |
 | `api::documents.signed-document-event` | `signedDocument` |
@@ -2779,7 +2926,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | --- | --- |
 | `api::shared.contact` | `value` debe ser email válido si `contactType` es `email`/`email_work`; teléfono E.164 (`^\+[1-9][0-9]{7,14}$`) en los demás |
 | `api::pet.pet` | `breed.species` = `species`; `birthDate` no futura; `sterilizedOn` solo si `sterilizationState = sterilized` |
-| `api::clinical.consultation` | si falta `consultedAt`, asignar la fecha actual; `nextControlOn` posterior a `consultedAt`; si llega `weightKg`, actualizar `pet.weightKg` |
+| `api::clinical.consultation` | si falta `consultedAt`, asignar la fecha actual; `nextControlOn` posterior a `consultedAt`; si llega `weightKg`, actualizar `pet.weightKg`; cada línea de `lines` lleva `lineKey` (5.4); una línea cobrada por un renglón vivo no se quita, no cambia de servicio/producto ni de cantidad y no deja de ser facturable (sus notas sí cambian); una consulta con renglones vivos no se borra, no se archiva y no cambia de mascota |
 | `api::clinical.pet-vaccination` | `vaccine.species` = `pet.species`; `appliedOn` no futura; `nextDueOn` > `appliedOn` |
 | `api::clinical.allergy` | `resolvedOn` obligatorio si `isActive = false` |
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
@@ -2791,7 +2938,8 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::catalog.supplier` | si `documentType = nit`, `verificationDigit` debe cuadrar con el módulo 11 de la DIAN |
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
-| `api::billing.invoice` | exactamente uno de `subscription` o `consultation`; si `state` ≠ `draft`, rechazar cualquier `update` salvo cambios de `state`, `dianState`, `pdfUrl`, `xmlUrl` |
+| `api::billing.invoice` | nace en `draft`; transiciones `draft → issued/dian_error`, `issued ↔ dian_error`, `issued/dian_error → voided` (con `voidReason`); fuera de borrador solo cambian `state`, `paymentState`, `dianState`, `pdfUrl`, `xmlUrl`, `dataicoInvoiceId`, `voidedAt`, `voidReason`, `searchLabel`, `archivedAt` (se compara con lo guardado: reenviar el formulario sin cambios no cuenta); numeración, resolución, `buyer`, `issuerSnapshot` e `issuedAt` solo en el paso de emisión, y ese paso solo dentro del servicio de emisión; no se emite sin renglones; solo se borra un borrador (y con él sus renglones); anular pone `lockKey = null` en sus renglones; una emitida con `dataicoInvoiceId` (ya enviada a la DIAN) no se anula, requiere nota crédito; `paymentState` ≠ `unpaid` solo si está emitida (o anulada); archivar solo anuladas o borradores sin renglones; la suscripción, si la hay, es del mismo cliente; notas crédito aún no admitidas |
+| `api::billing.invoice-item` | solo en una factura en borrador (en una anulada solo se admite liberar `lockKey`); no cambia de factura; la relación coincide con `kind`; en `consultation_*`: la línea `sourceLineKey` existe en `sourceConsultation`, es de la tarjeta que corresponde, es facturable (`applied`/`dispensed`), su mascota es del cliente de la factura, la consulta no está archivada y ninguna otra factura viva la cobra; su servicio/producto y cantidad salen de la línea; el catálogo debe tener precio y perfil tributario; gravado lleva tarifa 5 o 19; el descuento no supera el bruto |
 | `api::travel.travel-case` | cada requisito con `isCompleted = true` exige `verifiedBy`; asignar `verifiedAt` al completarlo |
 | `api::documents.signed-document` | exactamente uno de `consultation`, `customer`, `pet`; `voidedAt` y `voidReason` obligatorios si `state = voided`; si `state = signed`, solo se permite pasar a `voided` |
 | `api::documents.signed-document-signer` | `signOrder` obligatorio si el documento es secuencial; `signatureMethod` y `signedAt` obligatorios si `state = signed` |
@@ -2818,6 +2966,12 @@ module.exports = {
       ON pets (microchip) WHERE microchip IS NOT NULL AND archived_at IS NULL`);
     await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_dataico
       ON invoices (dataico_invoice_id) WHERE dataico_invoice_id IS NOT NULL`);
+    await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_items_lock
+      ON invoice_items (lock_key) WHERE lock_key IS NOT NULL`);
+    await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_full_number
+      ON invoices (full_number) WHERE full_number IS NOT NULL`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_invoices_issued_at
+      ON invoices (issued_at, state)`);
     await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_notifications_dedupe
       ON notifications (dedupe_key) WHERE dedupe_key IS NOT NULL`);
     await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_deliveries_idempotency
@@ -2849,15 +3003,15 @@ Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógi
 | Rol (users-permissions) | Permisos |
 | --- | --- |
 | Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`, `product-category`, `product` (sin `referenceCost`, que es privado); `register`/`callback` nativos |
-| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `subscription`, `invoice`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
+| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `subscription`, `invoice`, `invoice-item`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
 
 **Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda.
 
 | Rol del panel | Permisos |
 | --- | --- |
-| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar |
-| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia |
-| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar |
+| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye cambiar precios y registrar pagos) |
+| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula) |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluido anular |
 
 Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
@@ -2872,7 +3026,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 37 content types y 39 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 38 content types y 40 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

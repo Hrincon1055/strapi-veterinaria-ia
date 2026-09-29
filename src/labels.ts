@@ -83,6 +83,18 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
     build: (e) => unir([e.plan?.name, e.pet?.name, e.state]),
   },
 
+  // Antes el main field era `dataicoInvoiceId`, vacío hasta que exista la
+  // factura electrónica: todas las facturas se veían iguales en un selector.
+  'api::billing.invoice': {
+    populate: { customer: { populate: ['profile'] } },
+    build: (e) =>
+      unir([
+        e.fullNumber ?? (e.state === 'draft' ? 'Borrador' : e.state),
+        nombrePersona(e.customer?.profile),
+        soloFecha(e.issuedAt ?? e.createdAt),
+      ]),
+  },
+
   'api::shared.contact': {
     populate: ['profile'],
     build: (e) => unir([unir([e.value, e.contactType]), nombrePersona(e.profile)], ' — '),

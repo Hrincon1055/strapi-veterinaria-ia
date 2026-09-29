@@ -490,6 +490,7 @@ export interface ApiBillingBenefitUsage extends Struct.CollectionTypeSchema {
 export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
   collectionName: 'invoices';
   info: {
+    description: 'Cabecera de la factura. Los conceptos cobrados son sus renglones (invoice-item); el emisor y la numeraci\u00F3n salen de Cl\u00EDnica.';
     displayName: 'Factura';
     pluralName: 'invoices';
     singularName: 'invoice';
@@ -505,11 +506,13 @@ export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
           min: 0;
         },
         number
-      >;
+      > &
+      Schema.Attribute.DefaultTo<0>;
     archivedAt: Schema.Attribute.DateTime;
-    consultation: Schema.Attribute.Relation<
+    buyer: Schema.Attribute.Component<'billing.party-snapshot', false>;
+    correctsInvoice: Schema.Attribute.Relation<
       'manyToOne',
-      'api::clinical.consultation'
+      'api::billing.invoice'
     >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -520,16 +523,57 @@ export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
     customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     dataicoInvoiceId: Schema.Attribute.String & Schema.Attribute.Unique;
     dianState: Schema.Attribute.String;
+    discountTotal: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    documentKind: Schema.Attribute.Enumeration<['invoice', 'credit_note']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'invoice'>;
+    dueOn: Schema.Attribute.Date;
+    fullNumber: Schema.Attribute.String &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    issuedAt: Schema.Attribute.DateTime;
+    issuerSnapshot: Schema.Attribute.JSON;
+    items: Schema.Attribute.Relation<'oneToMany', 'api::billing.invoice-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::billing.invoice'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    number: Schema.Attribute.BigInteger;
+    paymentState: Schema.Attribute.Enumeration<['unpaid', 'partial', 'paid']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'unpaid'>;
     pdfUrl: Schema.Attribute.String;
+    prefix: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 10;
+      }>;
     publishedAt: Schema.Attribute.DateTime;
+    resolutionDate: Schema.Attribute.Date;
+    resolutionNumber: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    resolutionRangeFrom: Schema.Attribute.BigInteger;
+    resolutionRangeTo: Schema.Attribute.BigInteger;
+    resolutionValidUntil: Schema.Attribute.Date;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     state: Schema.Attribute.Enumeration<
-      ['draft', 'issued', 'paid', 'voided', 'dian_error']
+      ['draft', 'issued', 'voided', 'dian_error']
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'draft'>;
@@ -537,10 +581,164 @@ export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::billing.subscription'
     >;
+    subtotal: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    taxTotal: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    voidedAt: Schema.Attribute.DateTime;
+    voidReason: Schema.Attribute.Text;
     xmlUrl: Schema.Attribute.String;
+  };
+}
+
+export interface ApiBillingInvoiceItem extends Struct.CollectionTypeSchema {
+  collectionName: 'invoice_items';
+  info: {
+    description: 'Un concepto cobrado. Si viene de una consulta, se\u00F1ala su l\u00EDnea por lineKey; lockKey impide que dos facturas vivas cobren la misma.';
+    displayName: 'Rengl\u00F3n de factura';
+    pluralName: 'invoice-items';
+    singularName: 'invoice-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    discountAmount: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::billing.invoice'>;
+    kind: Schema.Attribute.Enumeration<
+      [
+        'consultation_service',
+        'consultation_product',
+        'subscription',
+        'direct_service',
+        'direct_product',
+        'custom',
+      ]
+    > &
+      Schema.Attribute.Required;
+    lineSubtotal: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    lineTax: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    lineTotal: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::billing.invoice-item'
+    > &
+      Schema.Attribute.Private;
+    lockKey: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 36;
+      }>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    service: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.service'>;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    sourceConsultation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::clinical.consultation'
+    >;
+    sourceLineKey: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 36;
+      }>;
+    subscription: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::billing.subscription'
+    >;
+    taxRate: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    taxTreatment: Schema.Attribute.Enumeration<
+      ['gravado', 'exento', 'excluido']
+    >;
+    unit: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    unitCost: Schema.Attribute.Integer &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    unitPrice: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -3041,6 +3239,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::billing.benefit-usage': ApiBillingBenefitUsage;
       'api::billing.invoice': ApiBillingInvoice;
+      'api::billing.invoice-item': ApiBillingInvoiceItem;
       'api::billing.plan': ApiBillingPlan;
       'api::billing.plan-benefit': ApiBillingPlanBenefit;
       'api::billing.subscription': ApiBillingSubscription;

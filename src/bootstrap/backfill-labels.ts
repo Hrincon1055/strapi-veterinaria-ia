@@ -21,6 +21,7 @@ const ORDEN = [
   'api::pet.pet',
   'api::clinical.consultation',
   'api::billing.subscription',
+  'api::billing.invoice',
   'api::catalog.product',
 
   'api::notification.notification-recipient',

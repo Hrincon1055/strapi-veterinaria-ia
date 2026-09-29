@@ -44,6 +44,7 @@ const RECEPCION_CRUD = [
   'api::scheduling.appointment',
   'api::billing.subscription',
   'api::billing.invoice',
+  'api::billing.invoice-item',
   'api::travel.travel-case',
   'api::scheduling.staff-schedule',
   'api::scheduling.schedule-exception',
@@ -86,6 +87,18 @@ const AGENDA = {
   agendar: 'plugin::veterinaria-agenda.agenda.agendar',
 };
 
+/**
+ * Facturación (plugin `veterinaria-facturacion`). Recepción prepara, emite y
+ * cobra; el veterinario solo consulta qué se cobró; anular una factura
+ * emitida es de la administración.
+ */
+const FACTURACION = {
+  ver: 'plugin::veterinaria-facturacion.facturacion.ver',
+  preparar: 'plugin::veterinaria-facturacion.facturacion.preparar',
+  emitir: 'plugin::veterinaria-facturacion.facturacion.emitir',
+  anular: 'plugin::veterinaria-facturacion.facturacion.anular',
+};
+
 const recepcion: Concesion[] = [
   { subjects: RECEPCION_CRUD, verbos: CRUD },
   { subjects: [...CATALOGOS, 'api::clinical.consultation', 'api::clinic.clinic'], verbos: READ },
@@ -120,20 +133,20 @@ export const ROLES_PANEL: RolPanel[] = [
     description: 'Front desk: agenda, clientes, mascotas, facturación y viajes.',
     concesiones: recepcion,
     // Recepción mira la agenda de todos y es quien reserva en los huecos.
-    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar],
+    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar, FACTURACION.ver, FACTURACION.preparar, FACTURACION.emitir],
   },
   {
     name: 'Veterinario',
     description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
     concesiones: veterinario,
     // El veterinario atiende lo que ya tiene agendado: ve su agenda, no reserva.
-    otras: [...COMUNES_PANEL, AGENDA.propia],
+    otras: [...COMUNES_PANEL, AGENDA.propia, FACTURACION.ver],
   },
   {
     name: 'Administrador de clínica',
     description: 'Todo lo anterior más catálogos, campañas, notificaciones y datos de la clínica.',
     concesiones: administracion,
-    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.todas, AGENDA.agendar],
+    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.todas, AGENDA.agendar, ...Object.values(FACTURACION)],
   },
 ];
 

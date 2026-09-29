@@ -3,7 +3,8 @@
 /**
  * Datos de muestra para ver el modelo funcionando: 3 clientes con sus
  * mascotas, el personal (cuentas del panel con horario), la historia clínica
- * de Kira, la ficha de la clínica y las citas de la semana en curso.
+ * de Kira, la ficha de la clínica, las citas de la semana en curso y tres
+ * facturas de muestra (emitida y pagada, anulada, borrador).
  *
  *   node demo-data.js           crea los datos (idempotente, se puede repetir)
  *   node demo-data.js --reset   los borra, y además los restos sin mascota que
@@ -21,6 +22,7 @@ const { crearHistoria, borrarHistoria } = require('./demo-clinica');
 const { crearClinica, borrarClinica } = require('./demo-clinic');
 const { crearHorarios, borrarHorarios } = require('./demo-horarios');
 const { crearAgenda, borrarAgenda } = require('./demo-agenda');
+const { crearFacturas, borrarFacturas } = require('./demo-facturas');
 
 /**
  * Registros que no pueden existir sin mascota (la relación es obligatoria).
@@ -341,7 +343,9 @@ async function borrar(app) {
   // Primero lo que cuelga de las mascotas que se borran abajo: la agenda de
   // la semana y la historia clínica. Si las mascotas se borraran antes, esas
   // citas y consultas quedarían huérfanas y ya no se podrían encontrar.
-  let n = await borrarAgenda(app);
+  // Las facturas, lo primero: una consulta cobrada no se puede borrar.
+  let n = await borrarFacturas(app);
+  n += await borrarAgenda(app);
   n += await borrarHistoria(app);
   n += await borrarClinica(app);
   n += await borrarHorarios(app);
@@ -417,6 +421,7 @@ async function borrar(app) {
   const historia = await crearHistoria(app);
   const clinica = await crearClinica(app);
   await crearAgenda(app);
+  const facturas = await crearFacturas(app, { password: 'Clinica12345' });
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
   for (const { perfil, cliente, usuario, mascotas } of resumen) {
@@ -434,6 +439,10 @@ async function borrar(app) {
   console.log(`Clínica: ${clinica.nombre}${clinica.nit ? ' · NIT ' + clinica.nit : ''}`);
   console.log(`Historia clínica de ${historia.mascota}: ${historia.visitas} visitas nuevas`);
   console.log(`Personal: entra al panel (/admin) con su correo / Clinica12345 — p. ej. ${historia.vet}`);
+  console.log(`Administración (puede anular facturas): ${facturas.admin}`);
+  console.log(facturas.creadas
+    ? `Facturas de muestra: ${facturas.numeros.join(' (pagada), ')} (anulada) y un borrador — panel → Facturación`
+    : 'Facturas de muestra: ya existían');
   console.log(`\nVer la historia:  node demo-historia.js ${historia.mascota}\n`);
 
   await app.destroy();

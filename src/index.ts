@@ -2,6 +2,7 @@ import type { Core } from '@strapi/strapi';
 
 import registerValidations from './validations';
 import backfillLabels from './bootstrap/backfill-labels';
+import backfillLineKeys from './bootstrap/backfill-line-keys';
 import ensureIndexes from './bootstrap/indexes';
 import setupAdminRoles from './bootstrap/admin-roles';
 import setFieldLabels from './bootstrap/field-labels';
@@ -32,6 +33,7 @@ export default {
     await setupAdminRoles(strapi);
     await seedCatalogs(strapi);
     await backfillLabels(strapi);
+    await backfillLineKeys(strapi);
     await setMainFields(strapi);
     await setFieldLabels(strapi);
   },

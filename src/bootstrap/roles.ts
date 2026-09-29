@@ -42,6 +42,7 @@ const CLIENT_READ = [
   'api::clinical.allergy',
   'api::billing.subscription',
   'api::billing.invoice',
+  'api::billing.invoice-item',
   'api::documents.signed-document',
   'api::notification.notification-recipient',
 ];

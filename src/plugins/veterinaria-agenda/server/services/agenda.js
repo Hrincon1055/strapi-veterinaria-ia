@@ -286,7 +286,12 @@ module.exports = ({ strapi }) => ({
   async abrirConsulta(documentId) {
     const cita = await strapi.documents('api::scheduling.appointment').findOne({
       documentId,
-      populate: { pet: true, responsible: true, consultation: true },
+      populate: {
+        pet: true,
+        responsible: true,
+        consultation: true,
+        services: { populate: { service: { fields: ['documentId'] } } },
+      },
     });
 
     if (!cita) throw new Error('La cita no existe');
@@ -297,6 +302,19 @@ module.exports = ({ strapi }) => ({
       throw new Error('La cita necesita mascota y responsable para abrir la consulta');
     }
 
+    // Los servicios agendados pasan a ser líneas `applied` de la consulta: el
+    // cargo de "Consulta general" no depende de que el veterinario se acuerde
+    // de añadirlo. Si no se prestó, lo quita o lo pasa a `recommended`.
+    // El precio de la cita no se copia: la factura toma el del catálogo.
+    const lines = (cita.services ?? [])
+      .filter((s) => s.service?.documentId)
+      .map((s) => ({
+        __component: 'clinical.service-line',
+        service: s.service.documentId,
+        quantity: 1,
+        state: 'applied',
+      }));
+
     const consulta = await strapi.documents('api::clinical.consultation').create({
       data: {
         pet: cita.pet.documentId,
@@ -304,6 +322,7 @@ module.exports = ({ strapi }) => ({
         appointment: cita.documentId,
         consultedAt: cita.startAt,
         reason: cita.title ?? null,
+        ...(lines.length > 0 ? { lines } : {}),
       },
     });
 

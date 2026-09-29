@@ -53,6 +53,45 @@ export interface BillingFiscalResponsibility extends Struct.ComponentSchema {
   };
 }
 
+export interface BillingPartySnapshot extends Struct.ComponentSchema {
+  collectionName: 'components_billing_party_snapshots';
+  info: {
+    description: 'Copia congelada al emitir de los datos del cliente que aparecen en la factura. No se edita.';
+    displayName: 'Datos del receptor';
+    icon: 'user';
+  };
+  attributes: {
+    address: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    city: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    documentNumber: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    documentType: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    email: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    name: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    phone: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+  };
+}
+
 export interface BillingTaxProfile extends Struct.ComponentSchema {
   collectionName: 'components_billing_tax_profiles';
   info: {
@@ -567,6 +606,10 @@ export interface ClinicalProductLine extends Struct.ComponentSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
+    lineKey: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 36;
+      }>;
     notes: Schema.Attribute.Text;
     product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
     quantity: Schema.Attribute.Decimal &
@@ -597,6 +640,10 @@ export interface ClinicalServiceLine extends Struct.ComponentSchema {
     label: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
+      }>;
+    lineKey: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 36;
       }>;
     notes: Schema.Attribute.Text;
     quantity: Schema.Attribute.Decimal &
@@ -1061,6 +1108,7 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'billing.dian-resolution': BillingDianResolution;
       'billing.fiscal-responsibility': BillingFiscalResponsibility;
+      'billing.party-snapshot': BillingPartySnapshot;
       'billing.tax-profile': BillingTaxProfile;
       'catalog.accessory-details': CatalogAccessoryDetails;
       'catalog.active-ingredient': CatalogActiveIngredient;

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Core } from '@strapi/strapi';
 import {
   ValidationError,
@@ -12,6 +13,8 @@ import {
   relacionDeComponente,
   today,
 } from './helpers';
+import { includeArchived } from './archived';
+import { LINEAS_FACTURABLES } from '../api/billing/domain/fuentes';
 
 /**
  * Tarjetas de la zona `lines` (Servicios y productos): qué relación lleva cada
@@ -33,6 +36,102 @@ const POPULATE_LINEAS = {
     'clinical.product-line': { populate: ['product'] },
   },
 };
+
+/**
+ * `lineKey` es la identidad de la línea como concepto facturable: el renglón
+ * de factura que la cobra la guarda para siempre. No puede ser el `id` del
+ * componente, que no sobrevive a una migración ni a recrear la zona.
+ *
+ * La pone el servidor y se ignora lo que llegue, con una excepción: una clave
+ * que ya pertenece a una línea guardada de ESTA consulta se respeta, para que
+ * un cliente de la API que reenvía la zona sin `id` no rompa la trazabilidad.
+ *
+ * Dos pasadas porque el panel puede duplicar un bloque: la copia llega sin
+ * `id` pero con la clave del original, y el original (que sí trae `id`) tiene
+ * prioridad sobre ella.
+ */
+function asignarClaves(lineas: any[], guardadasLista: any[] | undefined, guardadas: Map<string, any>): void {
+  const existentes = new Set((guardadasLista ?? []).map((l: any) => l?.lineKey).filter(Boolean));
+  const usadas = new Set<string>();
+  const pendientes: any[] = [];
+
+  for (const linea of lineas) {
+    if (!linea || !LINEAS[linea.__component]) continue;
+    const clave = previaDe(guardadas, linea)?.lineKey;
+    if (clave && !usadas.has(clave)) {
+      linea.lineKey = clave;
+      usadas.add(clave);
+    } else {
+      pendientes.push(linea);
+    }
+  }
+
+  for (const linea of pendientes) {
+    const pedida = typeof linea.lineKey === 'string' ? linea.lineKey : null;
+    const clave = pedida && existentes.has(pedida) && !usadas.has(pedida) ? pedida : randomUUID();
+    linea.lineKey = clave;
+    usadas.add(clave);
+  }
+}
+
+/** Renglones de factura viva (con `lockKey`) que cobran líneas de la consulta. */
+async function renglonesVivos(strapi: Core.Strapi, consultaDocumentId: string): Promise<any[]> {
+  return strapi.documents('api::billing.invoice-item').findMany({
+    filters: { sourceConsultation: { documentId: consultaDocumentId }, lockKey: { $notNull: true } } as any,
+    populate: {
+      invoice: { fields: ['documentId', 'fullNumber', 'state'], filters: includeArchived('api::billing.invoice') },
+      service: { fields: ['documentId'] },
+      product: { fields: ['documentId'] },
+    } as any,
+  } as any);
+}
+
+const nombreDeFactura = (f: any): string => (f?.fullNumber ? `la factura ${f.fullNumber}` : 'un borrador de factura');
+
+/**
+ * Una línea que ya se está cobrando no puede cambiar lo que se cobra: ni
+ * desaparecer, ni cambiar de servicio o producto, ni de cantidad, ni dejar de
+ * ser facturable. Si la historia clínica y la factura divergen, ninguna de las
+ * dos es fiable. Para corregirla hay que quitarla del borrador o anular la
+ * factura; entonces la línea se libera.
+ *
+ * Lo demás de la línea (notas, el paso de `applied` a `dispensed`) sí se puede
+ * tocar: no cambia lo cobrado.
+ */
+async function exigirLineasFacturadasIntactas(
+  strapi: Core.Strapi,
+  consultaDocumentId: string,
+  lineas: any[],
+  destinoPorClave: Map<string, string>
+): Promise<void> {
+  const vivos = await renglonesVivos(strapi, consultaDocumentId);
+  if (vivos.length === 0) return;
+
+  const entrantes = new Map(lineas.filter((l) => l?.lineKey).map((l) => [l.lineKey, l]));
+
+  for (const r of vivos) {
+    const linea = entrantes.get(r.lockKey);
+    const donde = nombreDeFactura(r.invoice);
+    const nombre = `"${r.description}"`;
+    const pista = 'Quítala del borrador o anula la factura antes de cambiarla.';
+
+    if (!linea) {
+      throw new ValidationError(`La línea ${nombre} se está cobrando en ${donde} y no se puede quitar. ${pista}`);
+    }
+    // El renglón guarda el servicio o producto que tenía la línea al cobrarse.
+    const tipo = LINEAS[linea.__component];
+    const destinoCobrado = tipo ? r[tipo.campo]?.documentId : undefined;
+    if (!tipo || !destinoCobrado || destinoPorClave.get(linea.lineKey) !== destinoCobrado) {
+      throw new ValidationError(`La línea ${nombre} se está cobrando en ${donde}: no puede cambiar de ${tipo?.nombre ?? 'concepto'}. ${pista}`);
+    }
+    if (Number(linea.quantity) !== Number(r.quantity)) {
+      throw new ValidationError(`La línea ${nombre} se está cobrando en ${donde} por ${Number(r.quantity)}: no puede cambiar de cantidad. ${pista}`);
+    }
+    if (!LINEAS_FACTURABLES[linea.__component]?.facturable(linea)) {
+      throw new ValidationError(`La línea ${nombre} se está cobrando en ${donde}: no puede pasar a "${linea.state}". ${pista}`);
+    }
+  }
+}
 
 export default (strapi: Core.Strapi): void => {
   // ---- api::clinical.vaccine ----------------------------------------------
@@ -79,6 +178,8 @@ export default (strapi: Core.Strapi): void => {
     // padre, así que la regla vive aquí.
     if (Array.isArray(data.lines)) {
       const guardadas = porId(current?.lines);
+      asignarClaves(data.lines, current?.lines, guardadas);
+      const destinoPorClave = new Map<string, string>();
 
       for (const linea of data.lines) {
         const tipo = LINEAS[linea?.__component];
@@ -102,8 +203,30 @@ export default (strapi: Core.Strapi): void => {
           throw new ValidationError(`El ${tipo.nombre} indicado no existe`);
         }
         linea.label = String(destino[tipo.etiqueta] ?? destino.name ?? '').slice(0, 255) || null;
+        destinoPorClave.set(linea.lineKey, documentId);
       }
       ctx.params.data = data;
+
+      if (ctx.action === 'update') {
+        await exigirLineasFacturadasIntactas(strapi, ctx.params.documentId, data.lines, destinoPorClave);
+      }
+    }
+
+    // Una consulta con conceptos en una factura viva no cambia de mascota
+    // (la factura es del dueño) ni se archiva (la factura la sigue citando).
+    if (ctx.action === 'update') {
+      // `relacionDeComponente` trata la diferencia vacía del panel como "sin cambio".
+      const cambiaMascota = 'pet' in data && relacionDeComponente(data.pet, current, 'pet') !== current?.pet?.documentId;
+      const seArchiva = !!data.archivedAt && !current?.archivedAt;
+      if (cambiaMascota || seArchiva) {
+        const vivos = await renglonesVivos(strapi, ctx.params.documentId);
+        if (vivos.length > 0) {
+          throw new ValidationError(
+            `Esta consulta tiene conceptos en ${nombreDeFactura(vivos[0].invoice)}: no puede ` +
+              `${cambiaMascota ? 'cambiar de mascota' : 'archivarse'} mientras esa factura esté viva`
+          );
+        }
+      }
     }
 
     const consultedAt = effective<string>(data, current, 'consultedAt');
@@ -129,6 +252,20 @@ export default (strapi: Core.Strapi): void => {
     }
 
     return result;
+  });
+
+  // Borrar una consulta cobrada dejaría la factura citando una historia que
+  // ya no existe (y sus renglones sin línea de origen).
+  on(strapi, 'api::clinical.consultation', ['delete'], async (ctx, next) => {
+    if (ctx.params?.documentId) {
+      const vivos = await renglonesVivos(strapi, ctx.params.documentId);
+      if (vivos.length > 0) {
+        throw new ValidationError(
+          `Esta consulta tiene conceptos en ${nombreDeFactura(vivos[0].invoice)}: no se puede borrar mientras esa factura esté viva`
+        );
+      }
+    }
+    return next();
   });
 
   // ---- api::clinical.pet-vaccination --------------------------------------

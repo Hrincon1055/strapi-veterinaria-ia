@@ -66,6 +66,11 @@ export const OWNERSHIP_RULES: Record<string, OwnershipRule> = {
   'api::travel.travel-case': porMascota(),
   'api::billing.subscription': porCliente(),
   'api::billing.invoice': porCliente(),
+  'api::billing.invoice-item': {
+    populate: { invoice: { populate: ['customer'] } },
+    filter: (o) => ({ invoice: { customer: { documentId: o.customerId } } }),
+    owns: (e, o) => e?.invoice?.customer?.documentId === o.customerId,
+  },
   'api::documents.signed-document': {
     populate: { customer: true, pet: { populate: ['owner'] } },
     filter: (o) => ({

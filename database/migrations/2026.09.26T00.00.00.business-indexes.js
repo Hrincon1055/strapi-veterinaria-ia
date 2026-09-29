@@ -33,6 +33,30 @@ const INDEXES = [
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_dataico
             ON invoices (dataico_invoice_id) WHERE dataico_invoice_id IS NOT NULL`,
   },
+  // Facturación: que un concepto de consulta no se cobre dos veces. Un renglón
+  // lleva `lock_key` (= lineKey de la línea) mientras su factura no esté
+  // anulada; anular lo pone a NULL. Cubre la carrera que la validación no
+  // puede: dos personas creando a la vez borradores con la misma línea.
+  {
+    name: 'ux_invoice_items_lock',
+    table: 'invoice_items',
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_items_lock
+            ON invoice_items (lock_key) WHERE lock_key IS NOT NULL`,
+  },
+  // El consecutivo completo (prefijo + número) no se repite nunca, aunque el
+  // incremento atómico de la emisión fallara.
+  {
+    name: 'ux_invoices_full_number',
+    table: 'invoices',
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_full_number
+            ON invoices (full_number) WHERE full_number IS NOT NULL`,
+  },
+  {
+    name: 'idx_invoices_issued_at',
+    table: 'invoices',
+    sql: `CREATE INDEX IF NOT EXISTS idx_invoices_issued_at
+            ON invoices (issued_at, state)`,
+  },
   {
     name: 'ux_notifications_dedupe',
     table: 'notifications',

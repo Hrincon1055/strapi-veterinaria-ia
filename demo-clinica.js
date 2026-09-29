@@ -67,6 +67,13 @@ const CONSULTORIOS = [
   { name: 'Sala de estética', roomType: 'grooming' },
 ];
 
+/**
+ * IVA de los servicios de la clínica: gravados al 19 %, la regla general para
+ * servicios (decisión del 2026-09-29, pendiente de confirmar con el contador).
+ * Sin perfil tributario, la facturación no deja cobrar un servicio.
+ */
+const IVA_SERVICIOS = { ivaTreatment: 'gravado', ivaRate: 19 };
+
 const SERVICIOS = [
   { categoria: 'Consulta', name: 'Consulta general', defaultDurationMinutes: 30, basePrice: 60000, colorHex: '#2F80ED' },
   { categoria: 'Consulta', name: 'Control posquirúrgico', defaultDurationMinutes: 20, basePrice: 40000, colorHex: '#56CCF2' },
@@ -372,9 +379,22 @@ async function crearHistoria(app) {
         basePrice: s.basePrice,
         colorHex: s.colorHex,
         currency: 'COP',
+        tax: IVA_SERVICIOS,
         isActive: true,
       }
     );
+    // `asegurar` no toca lo que ya existe: a un servicio creado antes de que
+    // hubiera IVA se le completa aquí, sin pisar uno puesto a mano.
+    const conIva = await d('api::scheduling.service').findOne({
+      documentId: servicios[s.name].documentId,
+      populate: ['tax'],
+    });
+    if (!conIva?.tax?.ivaTreatment) {
+      await d('api::scheduling.service').update({
+        documentId: servicios[s.name].documentId,
+        data: { tax: IVA_SERVICIOS },
+      });
+    }
   }
 
   const perro = await d('api::pet.species').findFirst({ filters: { name: 'Perro' } });

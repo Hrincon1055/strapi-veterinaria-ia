@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoice_items",
+  "info": {
+    "singularName": "invoice-item",
+    "pluralName": "invoice-items",
+    "displayName": "Renglón de factura",
+    "description": "Un concepto cobrado. Si viene de una consulta, señala su línea por lineKey; lockKey impide que dos facturas vivas cobren la misma."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice", "inversedBy": "items" },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom"],
+      "required": true
+    },
+    "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
+    "sourceConsultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "sourceLineKey": { "type": "string", "maxLength": 36 },
+    "lockKey": { "type": "string", "maxLength": 36 },
+
+    "description": { "type": "string", "required": true, "maxLength": 255 },
+    "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "unit": { "type": "string", "maxLength": 20 },
+    "unitPrice": { "type": "integer", "min": 0 },
+    "discountAmount": { "type": "integer", "default": 0, "min": 0 },
+    "taxTreatment": { "type": "enumeration", "enum": ["gravado", "exento", "excluido"] },
+    "taxRate": { "type": "integer", "default": 0, "min": 0, "max": 100 },
+    "lineSubtotal": { "type": "integer", "default": 0, "min": 0 },
+    "lineTax": { "type": "integer", "default": 0, "min": 0 },
+    "lineTotal": { "type": "integer", "default": 0, "min": 0 },
+    "unitCost": { "type": "integer", "min": 0, "private": true },
+    "sortOrder": { "type": "integer", "default": 0 }
+  }
+}

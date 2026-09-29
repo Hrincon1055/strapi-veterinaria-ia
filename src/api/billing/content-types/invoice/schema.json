@@ -1,19 +1,53 @@
 {
   "kind": "collectionType",
   "collectionName": "invoices",
-  "info": { "singularName": "invoice", "pluralName": "invoices", "displayName": "Factura" },
+  "info": {
+    "singularName": "invoice",
+    "pluralName": "invoices",
+    "displayName": "Factura",
+    "description": "Cabecera de la factura. Los conceptos cobrados son sus renglones (invoice-item); el emisor y la numeración salen de Clínica."
+  },
   "options": { "draftAndPublish": false },
   "attributes": {
     "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
-    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
-    "amount": { "type": "integer", "required": true, "min": 0 },
+    "items": { "type": "relation", "relation": "oneToMany", "target": "api::billing.invoice-item", "mappedBy": "invoice" },
+
+    "documentKind": { "type": "enumeration", "enum": ["invoice", "credit_note"], "default": "invoice", "required": true },
+    "correctsInvoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice" },
+    "state": { "type": "enumeration", "enum": ["draft", "issued", "voided", "dian_error"], "default": "draft", "required": true },
+    "paymentState": { "type": "enumeration", "enum": ["unpaid", "partial", "paid"], "default": "unpaid", "required": true },
+
+    "prefix": { "type": "string", "maxLength": 10 },
+    "number": { "type": "biginteger" },
+    "fullNumber": { "type": "string", "unique": true, "maxLength": 30 },
+    "resolutionNumber": { "type": "string", "maxLength": 40 },
+    "resolutionDate": { "type": "date" },
+    "resolutionRangeFrom": { "type": "biginteger" },
+    "resolutionRangeTo": { "type": "biginteger" },
+    "resolutionValidUntil": { "type": "date" },
+
+    "issuedAt": { "type": "datetime" },
+    "dueOn": { "type": "date" },
+    "voidedAt": { "type": "datetime" },
+    "voidReason": { "type": "text" },
+
+    "buyer": { "type": "component", "repeatable": false, "component": "billing.party-snapshot" },
+    "issuerSnapshot": { "type": "json" },
+
+    "subtotal": { "type": "integer", "default": 0, "min": 0 },
+    "discountTotal": { "type": "integer", "default": 0, "min": 0 },
+    "taxTotal": { "type": "integer", "default": 0, "min": 0 },
+    "amount": { "type": "integer", "required": true, "default": 0, "min": 0 },
     "currency": { "type": "string", "required": true, "default": "COP", "regex": "^[A-Z]{3}$" },
-    "state": { "type": "enumeration", "enum": ["draft", "issued", "paid", "voided", "dian_error"], "default": "draft", "required": true },
+    "notes": { "type": "text" },
+
     "dataicoInvoiceId": { "type": "string", "unique": true },
     "dianState": { "type": "string" },
     "pdfUrl": { "type": "string" },
     "xmlUrl": { "type": "string" },
+
+    "searchLabel": { "type": "string", "maxLength": 255 },
     "archivedAt": { "type": "datetime" }
   }
 }

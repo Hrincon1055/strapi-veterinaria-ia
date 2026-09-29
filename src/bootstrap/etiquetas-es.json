@@ -8,7 +8,6 @@
     "createdBy": "Creado por",
     "updatedBy": "Actualizado por",
     "locale": "Idioma",
-
     "name": "Nombre",
     "title": "Título",
     "description": "Descripción",
@@ -29,7 +28,6 @@
     "files": "Archivos",
     "photo": "Foto",
     "photos": "Fotos",
-
     "pet": "Mascota",
     "pets": "Mascotas",
     "customer": "Cliente",
@@ -80,7 +78,6 @@
     "isCompleted": "Completado",
     "document": "Documento soporte"
   },
-
   "tipos": {
     "api::billing.benefit-usage": {
       "benefit": "Beneficio"
@@ -89,7 +86,29 @@
       "dataicoInvoiceId": "N.º de factura (Dataico)",
       "dianState": "Estado DIAN",
       "pdfUrl": "URL del PDF",
-      "xmlUrl": "URL del XML"
+      "xmlUrl": "URL del XML",
+      "items": "Renglones",
+      "documentKind": "Tipo de documento",
+      "correctsInvoice": "Factura que corrige",
+      "paymentState": "Estado de pago",
+      "prefix": "Prefijo",
+      "number": "Número",
+      "fullNumber": "Número de factura",
+      "resolutionNumber": "Resolución DIAN",
+      "resolutionDate": "Fecha de la resolución",
+      "resolutionRangeFrom": "Rango autorizado desde",
+      "resolutionRangeTo": "Rango autorizado hasta",
+      "resolutionValidUntil": "Resolución vigente hasta",
+      "issuedAt": "Emitida el",
+      "dueOn": "Vence el",
+      "voidedAt": "Anulada el",
+      "voidReason": "Motivo de anulación",
+      "buyer": "Datos del receptor (al emitir)",
+      "issuerSnapshot": "Datos del emisor (al emitir)",
+      "subtotal": "Subtotal",
+      "discountTotal": "Descuentos",
+      "taxTotal": "IVA",
+      "amount": "Total"
     },
     "api::billing.plan": {
       "priceMonthly": "Precio mensual",
@@ -150,12 +169,14 @@
     },
     "clinical.service-line": {
       "state": "Aplicado o recomendado",
-      "label": "Nombre (se rellena al guardar)"
+      "label": "Nombre (se rellena al guardar)",
+      "lineKey": "Clave de facturación (automática)"
     },
     "clinical.product-line": {
       "product": "Producto",
       "state": "Aplicado, entregado o recomendado",
-      "label": "Nombre (se rellena al guardar)"
+      "label": "Nombre (se rellena al guardar)",
+      "lineKey": "Clave de facturación (automática)"
     },
     "api::catalog.product": {
       "productType": "Tipo de producto",
@@ -413,14 +434,13 @@
       "blocked": "Bloqueado",
       "role": "Rol"
     },
-
     "billing.dian-resolution": {
       "resolutionNumber": "Número de resolución",
       "resolutionDate": "Fecha de resolución",
       "prefix": "Prefijo",
       "rangeFrom": "Rango desde",
       "rangeTo": "Rango hasta",
-      "currentNumber": "Consecutivo actual",
+      "currentNumber": "Último número usado (lo lleva el sistema)",
       "technicalKey": "Clave técnica",
       "isActive": "Activa"
     },
@@ -544,6 +564,27 @@
     "travel.rabies-titer": {
       "resultIuMl": "Resultado (UI/ml)",
       "thresholdIuMl": "Umbral (UI/ml)"
+    },
+    "api::billing.invoice-item": {
+      "invoice": "Factura",
+      "kind": "Tipo de concepto",
+      "product": "Producto",
+      "sourceConsultation": "Consulta de origen",
+      "sourceLineKey": "Línea de la consulta (clave)",
+      "lockKey": "Bloqueo de cobro (automático)",
+      "unit": "Unidad",
+      "unitPrice": "Precio unitario",
+      "discountAmount": "Descuento",
+      "taxTreatment": "Tratamiento de IVA",
+      "taxRate": "Tarifa de IVA (%)",
+      "lineSubtotal": "Subtotal del renglón",
+      "lineTax": "IVA del renglón",
+      "lineTotal": "Total del renglón",
+      "unitCost": "Costo unitario",
+      "sortOrder": "Orden"
+    },
+    "billing.party-snapshot": {
+      "address": "Dirección"
     }
   }
 }

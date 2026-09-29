@@ -62,8 +62,10 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::documents.signed-document-event': 'eventType',
   // `lockedBy` es privado; `idempotencyKey` es único y sí identifica el envío.
   'api::notification.notification-delivery': 'idempotencyKey',
-  // `currency` decía "COP" en todas las facturas.
-  'api::billing.invoice': 'dataicoInvoiceId',
+  // Número, cliente y fecha (ver src/labels.ts). Antes fue `currency` ("COP"
+  // en todas) y luego `dataicoInvoiceId`, vacío hasta la factura electrónica.
+  'api::billing.invoice': 'searchLabel',
+  'api::billing.invoice-item': 'description',
 };
 
 /**
@@ -80,6 +82,33 @@ const MAIN_FIELDS: Record<string, string> = {
 const MAIN_FIELDS_COMPONENTES: Record<string, string> = {
   'clinical.service-line': 'label',
   'clinical.product-line': 'label',
+};
+
+/**
+ * Otros campos de componente que escribe solo el servidor. `lineKey` es la
+ * clave con la que un renglón de factura señala la línea que cobra
+ * (`validations/clinical.ts`): se deja a la vista, sin editar, para poder
+ * cruzar una línea con su factura.
+ */
+const SOLO_LECTURA_COMPONENTES: Record<string, string[]> = {
+  'clinical.service-line': ['lineKey'],
+  'clinical.product-line': ['lineKey'],
+};
+
+/**
+ * Campos de content types que escribe solo el servidor
+ * (`validations/billing.ts`): totales, numeración y datos congelados al
+ * emitir, importes y claves de trazabilidad del renglón. Editarlos a mano
+ * sería inútil —el servidor los descarta o los recalcula— y confuso.
+ */
+const SOLO_LECTURA: Record<string, string[]> = {
+  'api::billing.invoice': [
+    'subtotal', 'discountTotal', 'taxTotal', 'amount',
+    'prefix', 'number', 'fullNumber', 'resolutionNumber', 'resolutionDate',
+    'resolutionRangeFrom', 'resolutionRangeTo', 'resolutionValidUntil',
+    'issuedAt', 'voidedAt', 'buyer', 'issuerSnapshot',
+  ],
+  'api::billing.invoice-item': ['lockKey', 'lineSubtotal', 'lineTax', 'lineTotal'],
 };
 
 /**
@@ -163,6 +192,29 @@ export default async (strapi: Core.Strapi): Promise<void> => {
     if (edit && edit.editable !== false) {
       edit.editable = false;
       tocado = true;
+    }
+    if (tocado) {
+      await store.set({ key, value: config });
+      cambios++;
+    }
+  }
+
+  // 4. campos que solo escribe el servidor, en componentes y content types.
+  const soloLectura = [
+    ...Object.entries(SOLO_LECTURA_COMPONENTES).map(([uid, c]) => [`components::${uid}`, c] as const),
+    ...Object.entries(SOLO_LECTURA).map(([uid, c]) => [`${PREFIJO}${uid}`, c] as const),
+  ];
+  for (const [key, campos] of soloLectura) {
+    const config: any = await store.get({ key });
+    if (!config?.metadatas) continue;
+
+    let tocado = false;
+    for (const campo of campos) {
+      const edit = config.metadatas[campo]?.edit;
+      if (edit && edit.editable !== false) {
+        edit.editable = false;
+        tocado = true;
+      }
     }
     if (tocado) {
       await store.set({ key, value: config });

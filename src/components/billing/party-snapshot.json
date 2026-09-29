@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_billing_party_snapshots",
+  "info": { "displayName": "Datos del receptor", "icon": "user", "description": "Copia congelada al emitir de los datos del cliente que aparecen en la factura. No se edita." },
+  "options": {},
+  "attributes": {
+    "name": { "type": "string", "maxLength": 200 },
+    "documentType": { "type": "string", "maxLength": 20 },
+    "documentNumber": { "type": "string", "maxLength": 30 },
+    "address": { "type": "string", "maxLength": 255 },
+    "city": { "type": "string", "maxLength": 100 },
+    "email": { "type": "string", "maxLength": 255 },
+    "phone": { "type": "string", "maxLength": 30 }
+  }
+}

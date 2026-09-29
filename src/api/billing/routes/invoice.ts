@@ -2,7 +2,8 @@ import { factories } from '@strapi/strapi';
 
 /**
  * Facturación. El cliente ve las suyas más recientes primero; el staff
- * necesita además de qué cliente es cada una para cobrar.
+ * necesita además de qué cliente es cada una para cobrar. Los renglones
+ * (`items`) dicen qué se cobró y de qué consulta sale cada concepto.
  *
  * `?estado=issued` y `?desde=/hasta=` cubren el cierre de caja y la
  * conciliación con el proveedor de facturación electrónica.
@@ -17,7 +18,7 @@ const lectura = {
       name: 'global::query-defaults',
       config: {
         sort: 'createdAt:desc',
-        populate: { customer: true, subscription: true, consultation: true },
+        populate: { customer: true, subscription: true, items: true },
         atajos: {
           estado: { campo: 'state' },
           cliente: { campo: 'customer', relacionPor: 'documentId' },
@@ -27,7 +28,7 @@ const lectura = {
         porRol: {
           // Poblar `customer` a un cliente es trabajo tirado: el saneado lo
           // descarta porque no puede leer ese content type.
-          client: { populate: { subscription: true, consultation: true } },
+          client: { populate: { subscription: true, items: true } },
         },
       },
     },

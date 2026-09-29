@@ -7,6 +7,7 @@
     "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
     "state": { "type": "enumeration", "enum": ["applied", "recommended"], "default": "applied", "required": true },
     "notes": { "type": "text" },
-    "label": { "type": "string", "maxLength": 255 }
+    "label": { "type": "string", "maxLength": 255 },
+    "lineKey": { "type": "string", "maxLength": 36 }
   }
 }

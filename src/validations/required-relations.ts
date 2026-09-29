@@ -31,6 +31,7 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::billing.subscription': ['customer', 'pet', 'plan'],
   'api::billing.benefit-usage': ['subscription', 'benefit'],
   'api::billing.invoice': ['customer'],
+  'api::billing.invoice-item': ['invoice'],
   'api::travel.travel-case': ['pet', 'destinationCountry'],
   'api::documents.signed-document-signer': ['signedDocument', 'signer'],
   'api::documents.signed-document-event': ['signedDocument'],

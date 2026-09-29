@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Page, Layouts } from '@strapi/strapi/admin';
+import { Page, Layouts, useAuth } from '@strapi/strapi/admin';
 import { Box, Flex, Typography, Alert, Loader, EmptyStateLayout } from '@strapi/design-system';
 import { useAgenda } from '../application/useAgenda';
 import { BarraSemana } from './components/BarraSemana';
@@ -21,6 +21,11 @@ export function AgendaPage() {
   // pintan como fondo inerte. El servidor lo comprueba igual: esto solo evita
   // ofrecer un botón que iba a dar 403.
   const puedeAgendar = Boolean(yo?.puedeAgendar);
+
+  // Facturar es del plugin de facturación: el botón solo sale a quien tenga
+  // alguno de sus permisos (sus rutas lo comprueban igual).
+  const permisos = useAuth('AgendaPage', (s) => s.permissions);
+  const puedeFacturar = (permisos ?? []).some((p) => String(p.action).startsWith('plugin::veterinaria-facturacion.'));
 
   const atender = async (documentId) => {
     const ruta = await abrirConsulta(documentId);
@@ -94,6 +99,9 @@ export function AgendaPage() {
         onCerrar={() => setCitaAbierta(null)}
         onCambiarEstado={(id, estado) => { cambiarEstado(id, estado); setCitaAbierta(null); }}
         onAtender={atender}
+        onFacturar={puedeFacturar
+          ? (consultaId) => navigate(`/plugins/veterinaria-facturacion/consultas/${consultaId}`)
+          : undefined}
       />
 
       <ModalNuevaCita

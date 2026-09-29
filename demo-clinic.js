@@ -101,8 +101,9 @@ async function crearClinica(app) {
       ],
       invoicingEnvironment: 'habilitacion',
       defaultCurrency: 'COP',
+      // Sin afirmar que es factura electrónica: mientras no haya integración
+      // con la DIAN no lo es, y el PDF ya lo dice en su cabecera.
       invoiceFooterNotes:
-        'Factura electrónica de venta generada conforme a la Resolución DIAN vigente. ' +
         'Los servicios veterinarios prestados no generan garantía de resultado.',
 
       openingHours: HORARIO,

@@ -12,6 +12,8 @@ const { createStrapi, compileStrapi } = require('@strapi/strapi');
 const { cuentaDelPanel, borrarCuentaDelPanel } = require('./demo-staff');
 
 let pass = 0;
+/** La fija la sección de facturas: devuelve el consecutivo de Clínica a donde estaba. */
+let restaurarConsecutivo = async () => {};
 let fail = 0;
 
 /** Espera que la operación falle con un mensaje que contenga `fragmento`. */
@@ -59,9 +61,23 @@ async function acepta(titulo, fn, comprueba) {
  */
 async function limpiar(app) {
   const d = (uid) => app.documents(uid);
+
+  // Las facturas emitidas o anuladas no se pueden borrar por el Document
+  // Service (es la regla que se prueba), así que se borran con el query engine.
+  // Primero los renglones: retienen las líneas de consulta.
+  let n = 0;
+  const facturas = await app.db.query('api::billing.invoice').findMany({
+    where: { customer: { profile: { documentNumber: { $startsWith: 'SMOKE-' } } } },
+    select: ['id'],
+  });
+  const ids = facturas.map((f) => f.id);
+  if (ids.length > 0) {
+    n += await app.db.query('api::billing.invoice-item').deleteMany({ where: { invoice: { id: { $in: ids } } } }).then((r) => r.count);
+    n += await app.db.query('api::billing.invoice').deleteMany({ where: { id: { $in: ids } } }).then((r) => r.count);
+  }
+
   const objetivos = [
     ['api::billing.benefit-usage', { benefit: { name: 'Baño SMOKE' } }],
-    ['api::billing.invoice', { subscription: { plan: { name: 'Plan SMOKE' } } }],
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
     ['api::billing.plan-benefit', { name: 'Baño SMOKE' }],
     ['api::billing.plan', { name: 'Plan SMOKE' }],
@@ -76,13 +92,12 @@ async function limpiar(app) {
     ['api::pet.pet', { name: 'Fido SMOKE' }],
     ['api::pet.pet', { name: 'Fido SMOKE', archivedAt: { $notNull: true } }],
     ['api::pet.breed', { name: 'Siamés SMOKE' }],
-    ['api::shared.contact', { profile: { documentNumber: 'SMOKE-1' } }],
-    ['api::customer.customer', { profile: { documentNumber: 'SMOKE-1' } }],
-    ['api::identity.profile', { documentNumber: 'SMOKE-1' }],
-    ['api::identity.profile', { documentNumber: 'SMOKE-1', archivedAt: { $notNull: true } }],
+    ['api::shared.contact', { profile: { documentNumber: { $startsWith: 'SMOKE-' } } }],
+    ['api::customer.customer', { profile: { documentNumber: { $startsWith: 'SMOKE-' } } }],
+    ['api::identity.profile', { documentNumber: { $startsWith: 'SMOKE-' } }],
+    ['api::identity.profile', { documentNumber: { $startsWith: 'SMOKE-' }, archivedAt: { $notNull: true } }],
   ];
 
-  let n = 0;
   for (const [uid, filters] of objetivos) {
     const items = await d(uid).findMany({ filters });
     for (const item of items) {
@@ -281,6 +296,60 @@ async function limpiar(app) {
       r.lines?.[1]?.product?.documentId === medicamento?.documentId &&
       r.lines?.length === 3
   );
+  // `lineKey`: la identidad de la línea para la facturación. La pone el
+  // servidor, se conserva al editar y nunca se repite dentro de la consulta.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  const claves = (r) => (r?.lines ?? []).map((l) => l.lineKey);
+  const leer = () => d('api::clinical.consultation').findOne({ documentId: consulta.documentId, populate: POP_LINEAS });
+  const base = await leer();
+  await acepta('cada línea recibe una clave UUID distinta', () => Promise.resolve(base), (r) =>
+    claves(r).length === 3 && claves(r).every((k) => UUID.test(k)) && new Set(claves(r)).size === 3);
+  await acepta(
+    'la clave sobrevive a una edición desde el panel e ignora la que llegue',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: {
+          lines: base.lines.map((l) => {
+            const campo = l.__component === 'clinical.service-line' ? 'service' : 'product';
+            return { __component: l.__component, id: l.id, [campo]: { connect: [], disconnect: [] }, quantity: Number(l.quantity), state: l.state, lineKey: 'FALSA' };
+          }),
+        },
+        populate: POP_LINEAS,
+      }),
+    (r) => JSON.stringify(claves(r)) === JSON.stringify(claves(base))
+  );
+  await acepta(
+    'un bloque duplicado (sin id, con la clave del original) recibe clave nueva',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: {
+          lines: [
+            ...base.lines.map((l) => ({ __component: l.__component, id: l.id, quantity: Number(l.quantity), state: l.state })),
+            { __component: 'clinical.service-line', service: servicio.documentId, quantity: 1, state: 'applied', lineKey: base.lines[0].lineKey },
+          ],
+        },
+        populate: POP_LINEAS,
+      }),
+    (r) => claves(r).length === 4 && claves(r)[0] === base.lines[0].lineKey && new Set(claves(r)).size === 4 && UUID.test(claves(r)[3])
+  );
+  await acepta(
+    'reenviar la zona por API sin ids pero con las claves guardadas las conserva',
+    () =>
+      d('api::clinical.consultation').update({
+        documentId: consulta.documentId,
+        data: {
+          lines: base.lines.map((l) => {
+            const campo = l.__component === 'clinical.service-line' ? 'service' : 'product';
+            return { __component: l.__component, [campo]: l[campo].documentId, quantity: Number(l.quantity), state: l.state, lineKey: l.lineKey };
+          }),
+        },
+        populate: POP_LINEAS,
+      }),
+    (r) => JSON.stringify(claves(r)) === JSON.stringify(claves(base))
+  );
+
   await rechaza(
     'tarjeta de servicio sin servicio',
     () =>
@@ -310,14 +379,233 @@ async function limpiar(app) {
   );
 
   console.log('\n--- facturas ---');
-  await rechaza('factura sin suscripción ni consulta', () => d('api::billing.invoice').create({ data: { customer: cliente.documentId, amount: 1000, currency: 'COP' } }), 'exactamente a una');
+  // Las líneas de la consulta SMOKE en este punto (ver arriba): servicio
+  // "Consulta SMOKE" 50 000 × 3 aplicado, Meloxicam 42 000 × 2 entregado
+  // (excluido de IVA) y Nobivac recomendado.
+  const F = 'api::billing.invoice';
+  const R = 'api::billing.invoice-item';
+  const fact = app.service('api::billing.invoicing');
+
+  // Emitir consume números de la resolución activa de Clínica (la de la
+  // demo). Se anota dónde estaba y se devuelve ahí al terminar.
+  const clinica = await d('api::clinic.clinic').findFirst({ populate: ['resolutions'] });
+  const resolucion = clinica?.resolutions?.find((r) => r.isActive);
+  if (!resolucion) throw new Error('la prueba necesita Clínica con una resolución activa: ejecuta node demo-data.js');
+  const TABLA_RES = app.db.metadata.get('billing.dian-resolution').tableName;
+  const consecutivo = async () => {
+    const f = await app.db.connection(TABLA_RES).where({ id: resolucion.id }).first('current_number', 'range_from');
+    return f.current_number == null ? Number(f.range_from) - 1 : Number(f.current_number);
+  };
+  const consecutivoInicial = await consecutivo();
+  const valorOriginal = (await app.db.connection(TABLA_RES).where({ id: resolucion.id }).first('current_number')).current_number;
+  restaurarConsecutivo = () => app.db.connection(TABLA_RES).where({ id: resolucion.id }).update({ current_number: valorOriginal });
+  const [lineaServicio, lineaMedicamento, lineaRecomendada] = base.lines;
+  const renglonDe = (factura, linea, extra = {}) => ({
+    invoice: factura.documentId,
+    kind: linea.__component === 'clinical.service-line' ? 'consultation_service' : 'consultation_product',
+    sourceConsultation: consulta.documentId,
+    sourceLineKey: linea.lineKey,
+    ...extra,
+  });
+
   const plan = await d('api::billing.plan').create({ data: { name: 'Plan SMOKE', priceMonthly: 1000 } });
   const suscripcion = await d('api::billing.subscription').create({ data: { customer: cliente.documentId, pet: mascota.documentId, plan: plan.documentId, startOn: '2026-01-01', endOn: '2026-12-31' } });
-  await rechaza('factura con suscripción y consulta a la vez', () => d('api::billing.invoice').create({ data: { customer: cliente.documentId, subscription: suscripcion.documentId, consultation: consulta.documentId, amount: 1000 } }), 'exactamente a una');
 
-  const factura = await acepta('factura válida en borrador', () => d('api::billing.invoice').create({ data: { customer: cliente.documentId, subscription: suscripcion.documentId, amount: 1000, state: 'draft' } }));
-  await d('api::billing.invoice').update({ documentId: factura.documentId, data: { state: 'issued' } });
-  await rechaza('cambiar el importe de una factura ya emitida', () => d('api::billing.invoice').update({ documentId: factura.documentId, data: { amount: 99999 } }), 'solo admite cambios');
+  await rechaza('una factura no nace emitida', () => d(F).create({ data: { customer: cliente.documentId, state: 'issued' } }), 'nace en borrador');
+  const borrador = await acepta('borrador sin renglones, total 0', () => d(F).create({ data: { customer: cliente.documentId } }), (r) => r.state === 'draft' && r.amount === 0);
+
+  await rechaza('cobrar un servicio sin perfil tributario en el catálogo', () => d(R).create({ data: renglonDe(borrador, lineaServicio) }), 'perfil tributario');
+  await d('api::scheduling.service').update({ documentId: servicio.documentId, data: { tax: { ivaTreatment: 'gravado', ivaRate: 19 } } });
+
+  const rServicio = await acepta(
+    'renglón de la consulta: precio, IVA y cantidad salen del catálogo y de la línea',
+    () => d(R).create({ data: renglonDe(borrador, lineaServicio, { quantity: 99, unitPrice: undefined }) }),
+    (r) => r.unitPrice === 50000 && Number(r.quantity) === 3 && r.lineSubtotal === 150000 && r.lineTax === 28500 &&
+      r.lineTotal === 178500 && r.lockKey === lineaServicio.lineKey && r.description === 'Consulta SMOKE'
+  );
+  await acepta(
+    'renglón de producto entregado con descuento',
+    () => d(R).create({ data: renglonDe(borrador, lineaMedicamento, { discountAmount: 4000 }) }),
+    (r) => r.unitPrice === 42000 && r.lineSubtotal === 80000 && r.lineTax === 0 && r.unit === 'unit'
+  );
+  await acepta('la factura suma sus renglones', () => d(F).findOne({ documentId: borrador.documentId }), (r) =>
+    r.subtotal === 234000 && r.discountTotal === 4000 && r.taxTotal === 28500 && r.amount === 258500);
+
+  await acepta('PDF de un borrador: vista previa con los datos actuales', () => app.service('api::billing.invoice-pdf').generar(borrador.documentId),
+    (r) => Buffer.isBuffer(r.pdf) && r.pdf.subarray(0, 5).toString() === '%PDF-' && r.pdf.length > 2000 && r.nombreArchivo === `Borrador-${borrador.documentId}.pdf`);
+  await rechaza('cobrar una línea recomendada', () => d(R).create({ data: renglonDe(borrador, lineaRecomendada) }), 'no es facturable');
+  await rechaza('renglón de consulta sin línea', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'consultation_service', sourceConsultation: consulta.documentId } }), 'sourceLineKey');
+  await rechaza('renglón de un tipo que no lleva esa relación', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'X', unitPrice: 1, taxTreatment: 'excluido', product: medicamento.documentId } }), 'no lleva product');
+  await rechaza('cargo libre sin precio', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'Cargo SMOKE', taxTreatment: 'excluido' } }), 'precio unitario');
+  await rechaza('descuento mayor que el renglón', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'Cargo SMOKE', unitPrice: 1000, discountAmount: 2000, taxTreatment: 'excluido' } }), 'supera');
+
+  // --- no se cobra dos veces ---
+  const otroBorrador = await d(F).create({ data: { customer: cliente.documentId } });
+  await rechaza('la misma línea en otro borrador', () => d(R).create({ data: renglonDe(otroBorrador, lineaServicio) }), 'ya se está cobrando');
+  await rechaza(
+    'la base de datos también lo impide (índice único parcial sobre lock_key)',
+    () => app.db.query(R).create({ data: { kind: 'custom', description: 'Salto SMOKE', quantity: 1, lockKey: lineaServicio.lineKey } }),
+    'unique'
+  );
+  const perfil2 = await d('api::identity.profile').create({ data: { firstName: 'Otro', lastName: 'Cliente', documentType: 'cc', documentNumber: 'SMOKE-2' } });
+  const cliente2 = await d('api::customer.customer').create({ data: { profile: perfil2.documentId, consents: { marketing: false, sms: false, email: false, dataProcessing: true } } });
+  const deOtro = await d(F).create({ data: { customer: cliente2.documentId } });
+  await rechaza('cobrar la consulta de la mascota de otro cliente', () => d(R).create({ data: renglonDe(deOtro, lineaMedicamento) }), 'otro cliente');
+
+  // --- la cabecera ---
+  await acepta('los totales no se escriben a mano', () => d(F).update({ documentId: borrador.documentId, data: { amount: 1 } }), (r) => r.amount === 258500);
+  await rechaza('numerar a mano un borrador', () => d(F).update({ documentId: borrador.documentId, data: { fullNumber: 'X-1' } }), 'al emitir');
+  await rechaza('emitir sin pasar por el módulo, aunque traiga numeración',
+    () => d(F).update({ documentId: borrador.documentId, data: { state: 'issued', prefix: 'X', number: 1, fullNumber: 'X1', issuedAt: new Date().toISOString() } }),
+    'módulo de facturación');
+  await rechaza('emitir un borrador vacío', () => fact.emitir(otroBorrador.documentId), 'sin renglones');
+  await acepta('…y el consecutivo no se consume', () => consecutivo(), (n) => n === consecutivoInicial);
+  await rechaza('un borrador no se anula', () => d(F).update({ documentId: borrador.documentId, data: { state: 'voided', voidReason: 'x' } }), 'se borra');
+  await rechaza('pagar un borrador', () => d(F).update({ documentId: borrador.documentId, data: { paymentState: 'paid' } }), 'pagada');
+
+  const esperado = `${resolucion.prefix ?? ''}${consecutivoInicial + 1}`;
+  const emitida = await acepta(
+    'emitir: siguiente consecutivo de la resolución y datos congelados',
+    async () => {
+      await fact.emitir(borrador.documentId);
+      // La etiqueta se recalcula después de la escritura: se relee.
+      return d(F).findOne({ documentId: borrador.documentId, populate: ['buyer'] });
+    },
+    (r) => r.state === 'issued' && r.fullNumber === esperado && Number(r.number) === consecutivoInicial + 1 &&
+      r.resolutionNumber === resolucion.resolutionNumber && Number(r.resolutionRangeTo) === Number(resolucion.rangeTo) &&
+      r.buyer?.name === 'Ana Ruiz' && r.buyer?.documentNumber === 'SMOKE-1' &&
+      r.issuerSnapshot?.legalName === clinica.legalName && !('technicalKey' in r.issuerSnapshot) &&
+      r.searchLabel?.startsWith(`${esperado} · Ana Ruiz`)
+  );
+  await acepta('la resolución de Clínica avanzó un número', () => consecutivo(), (n) => n === consecutivoInicial + 1);
+  await rechaza('emitir otra vez una emitida', () => fact.emitir(borrador.documentId), 'solo se emite un borrador');
+  await acepta('PDF de la emitida, con sus datos congelados', () => app.service('api::billing.invoice-pdf').generar(borrador.documentId),
+    (r) => Buffer.isBuffer(r.pdf) && r.pdf.subarray(0, 5).toString() === '%PDF-' && r.pdf.length > 2000 && r.nombreArchivo === `Factura-${esperado}.pdf`);
+  await rechaza('cambiar a mano los datos congelados de una emitida',
+    () => d(F).update({ documentId: borrador.documentId, data: { buyer: { name: 'Otro' } } }), 'solo admite cambios');
+  await rechaza('añadir un renglón a una emitida', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'Cargo SMOKE', unitPrice: 1000, taxTreatment: 'excluido' } }), 'ya no es un borrador');
+  await rechaza('quitar un renglón de una emitida', () => d(R).delete({ documentId: rServicio.documentId }), 'ya no es un borrador');
+  await rechaza('cambiar las notas de una emitida', () => d(F).update({ documentId: borrador.documentId, data: { notes: 'cambio' } }), 'solo admite cambios');
+  await acepta(
+    'guardar desde el panel una emitida sin tocar nada y marcarla pagada',
+    () => d(F).update({
+      documentId: borrador.documentId,
+      data: {
+        currency: emitida.currency, notes: emitida.notes, amount: emitida.amount, fullNumber: emitida.fullNumber,
+        issuedAt: emitida.issuedAt, number: emitida.number, paymentState: 'paid',
+      },
+    }),
+    (r) => r.paymentState === 'paid' && r.amount === 258500
+  );
+  await rechaza('borrar una emitida', () => d(F).delete({ documentId: borrador.documentId }), 'se anula');
+  await rechaza('archivar una emitida', () => d(F).update({ documentId: borrador.documentId, data: { archivedAt: new Date().toISOString() } }), 'se anula');
+  await rechaza('anular una factura ya enviada a la DIAN (requiere nota crédito)', async () => {
+    await d(F).update({ documentId: borrador.documentId, data: { dataicoInvoiceId: 'SMOKE-DIAN-1' } });
+    try {
+      return await d(F).update({ documentId: borrador.documentId, data: { state: 'voided', voidReason: 'x' } });
+    } finally {
+      await d(F).update({ documentId: borrador.documentId, data: { dataicoInvoiceId: null } });
+    }
+  }, 'nota crédito');
+  await rechaza('anular sin motivo', () => d(F).update({ documentId: borrador.documentId, data: { state: 'voided' } }), 'motivo');
+
+  // --- anular libera los conceptos ---
+  await acepta('anular con motivo', () => d(F).update({ documentId: borrador.documentId, data: { state: 'voided', voidReason: 'Prueba SMOKE' } }), (r) => r.state === 'voided' && !!r.voidedAt);
+  await acepta('PDF de la anulada', () => app.service('api::billing.invoice-pdf').generar(borrador.documentId), (r) => Buffer.isBuffer(r.pdf) && r.pdf.subarray(0, 5).toString() === '%PDF-' && r.pdf.length > 2000);
+  await acepta('los renglones de la anulada ya no retienen sus líneas', () => d(R).findMany({ filters: { invoice: { documentId: borrador.documentId } } }), (rs) =>
+    rs.length === 2 && rs.every((r) => r.lockKey === null && !!r.sourceLineKey));
+  await rechaza('una anulada no vuelve a emitida', () => d(F).update({ documentId: borrador.documentId, data: { state: 'issued' } }), 'no puede pasar');
+  const reCobro = await acepta('la línea liberada se puede cobrar en otra factura', () => d(R).create({ data: renglonDe(otroBorrador, lineaServicio) }), (r) => r.lockKey === lineaServicio.lineKey);
+  await acepta('borrar un borrador borra sus renglones y libera sus líneas', async () => {
+    await d(F).delete({ documentId: otroBorrador.documentId });
+    return d(R).findMany({ filters: { lockKey: lineaServicio.lineKey } });
+  }, (rs) => rs.length === 0 && !!reCobro);
+
+  await rechaza('factura con la suscripción de otro cliente', () => d(F).create({ data: { customer: cliente2.documentId, subscription: suscripcion.documentId } }), 'no es del cliente');
+  await acepta('renglón de suscripción con su precio', async () => {
+    const f = await d(F).create({ data: { customer: cliente.documentId, subscription: suscripcion.documentId } });
+    return d(R).create({ data: { invoice: f.documentId, kind: 'subscription', subscription: suscripcion.documentId, unitPrice: 1000, taxTreatment: 'gravado', taxRate: 19 } });
+  }, (r) => r.lineTotal === 1190 && r.lockKey === null);
+
+
+  console.log('\n--- facturar desde la consulta ---');
+  const facturasDelCliente = () => d(F).count({ filters: { customer: { documentId: cliente.documentId } } });
+
+  await acepta('estado de la consulta: dos pendientes, una recomendada, y la factura anulada como antecedente',
+    () => fact.estadoDeConsulta(consulta.documentId),
+    (e) => {
+      const [a, b, c] = e.lineas;
+      return e.resumen === 'sin_facturar' && e.pendientes === 2 && e.valorPendiente === 178500 + 84000 &&
+        a.estado === 'pendiente' && a.estimado?.lineTotal === 178500 && a.anteriores.length === 1 && a.anteriores[0].state === 'voided' &&
+        b.estado === 'pendiente' && c.estado === 'no_facturable' && /recommended/.test(c.motivo) &&
+        e.cliente?.documentId === cliente.documentId;
+    });
+  await acepta('la bandeja de pendientes incluye la consulta',
+    () => fact.pendientes({ cliente: cliente.documentId }),
+    (p) => p.length === 1 && p[0].consulta.documentId === consulta.documentId && p[0].pendientes === 2 && !('lineas' in p[0]));
+
+  const antes = await facturasDelCliente();
+  await rechaza('crear un borrador con una línea recomendada no deja nada a medias',
+    () => fact.crearBorrador({ conceptos: [
+      { consulta: consulta.documentId, lineKey: lineaServicio.lineKey },
+      { consulta: consulta.documentId, lineKey: lineaRecomendada.lineKey },
+    ] }),
+    'no es facturable');
+  await acepta('…ni factura ni renglones sueltos', () => facturasDelCliente(), (n) => n === antes);
+
+  const desdeConsulta = await acepta('crear el borrador con las dos pendientes; el cliente sale de la consulta',
+    () => fact.crearBorrador({ conceptos: [
+      { consulta: consulta.documentId, lineKey: lineaServicio.lineKey },
+      { consulta: consulta.documentId, lineKey: lineaMedicamento.lineKey, discountAmount: 2000 },
+    ] }),
+    (f) => f.state === 'draft' && f.items.length === 2 && f.items[0].sortOrder === 0 &&
+      f.customer?.documentId === cliente.documentId && f.amount === 178500 + 84000 - 2000);
+  await acepta('la consulta queda facturada y sale de la bandeja', async () => ({
+    e: await fact.estadoDeConsulta(consulta.documentId),
+    p: await fact.pendientes({ cliente: cliente.documentId }),
+  }), ({ e, p }) => e.resumen === 'facturada' && e.lineas[0].factura?.documentId === desdeConsulta?.documentId && p.length === 0);
+  await rechaza('volver a facturar lo mismo',
+    () => fact.crearBorrador({ conceptos: [{ consulta: consulta.documentId, lineKey: lineaServicio.lineKey }] }),
+    'ya se está cobrando');
+
+  // --- la consulta no puede contradecir lo cobrado ---
+  const lineasActuales = async (cambio) => {
+    const c = await leer();
+    return c.lines.map((l) => {
+      const campo = l.__component === 'clinical.service-line' ? 'service' : 'product';
+      const base = { __component: l.__component, id: l.id, [campo]: { connect: [], disconnect: [] }, quantity: Number(l.quantity), state: l.state, notes: l.notes };
+      return cambio(base, l) ?? base;
+    });
+  };
+  const guardar = async (cambio) => d('api::clinical.consultation').update({ documentId: consulta.documentId, data: { lines: await lineasActuales(cambio) } });
+
+  await rechaza('cambiar la cantidad de una línea facturada',
+    () => guardar((b, l) => (l.lineKey === lineaServicio.lineKey ? { ...b, quantity: 1 } : b)), 'cantidad');
+  await rechaza('pasar a recomendada una línea facturada',
+    () => guardar((b, l) => (l.lineKey === lineaServicio.lineKey ? { ...b, state: 'recommended' } : b)), 'no puede pasar');
+  await rechaza('cambiar el producto de una línea facturada',
+    () => guardar((b, l) => (l.lineKey === lineaMedicamento.lineKey ? { ...b, product: vacunaProducto.documentId } : b)), 'no puede cambiar de producto');
+  await rechaza('quitar una línea facturada',
+    async () => d('api::clinical.consultation').update({
+      documentId: consulta.documentId,
+      data: { lines: (await lineasActuales((b) => b)).filter((b, i) => i !== 1) },
+    }), 'no se puede quitar');
+  await acepta('las notas y el paso de entregado a aplicado sí se pueden cambiar',
+    () => guardar((b, l) => (l.lineKey === lineaMedicamento.lineKey ? { ...b, state: 'applied', notes: 'Con comida' } : { ...b, notes: 'Revisado' })),
+    (r) => !!r);
+  await rechaza('archivar una consulta facturada',
+    () => d('api::clinical.consultation').update({ documentId: consulta.documentId, data: { archivedAt: new Date().toISOString() } }), 'archivarse');
+  await rechaza('borrar una consulta facturada',
+    () => d('api::clinical.consultation').delete({ documentId: consulta.documentId }), 'no se puede borrar');
+  await rechaza('archivar un borrador con renglones',
+    () => d(F).update({ documentId: desdeConsulta.documentId, data: { archivedAt: new Date().toISOString() } }), 'bórralo');
+
+  await acepta('borrar el borrador devuelve las líneas a pendientes', async () => {
+    await d(F).delete({ documentId: desdeConsulta.documentId });
+    return fact.estadoDeConsulta(consulta.documentId);
+  }, (e) => e.resumen === 'sin_facturar' && e.pendientes === 2);
+  await acepta('y entonces la línea ya se puede cambiar',
+    () => guardar((b, l) => (l.lineKey === lineaServicio.lineKey ? { ...b, quantity: 1 } : b)), (r) => !!r);
 
   console.log('\n--- beneficios ---');
   const beneficio = await d('api::billing.plan-benefit').create({ data: { plan: plan.documentId, name: 'Baño SMOKE', quantityPerYear: 1 } });
@@ -333,6 +621,42 @@ async function limpiar(app) {
   await acepta('una mascota archivada no aparece en findMany', () => Promise.resolve(visibles), (v) => v.length === 0);
   const conFiltro = await d('api::pet.pet').findMany({ filters: { name: 'Fido SMOKE', archivedAt: { $notNull: true } } });
   await acepta('sí aparece si se filtra por archivedAt explícitamente', () => Promise.resolve(conFiltro), (v) => v.length === 1);
+
+  console.log('\n--- emisión y consecutivo ---');
+  const nuevaConCargo = async () => {
+    const f = await d(F).create({ data: { customer: cliente.documentId } });
+    await d(R).create({ data: { invoice: f.documentId, kind: 'custom', description: 'Cargo SMOKE', unitPrice: 1000, taxTreatment: 'excluido' } });
+    return f;
+  };
+  const antesDeLaSegunda = await consecutivo();
+  await acepta('dos emisiones seguidas toman números consecutivos', async () => {
+    const a = await fact.emitir((await nuevaConCargo()).documentId);
+    const b = await fact.emitir((await nuevaConCargo()).documentId);
+    return [Number(a.number), Number(b.number)];
+  }, ([a, b]) => a === antesDeLaSegunda + 1 && b === antesDeLaSegunda + 2);
+
+  // Clínica: el formulario reenvía las resoluciones tal como estaban al abrirlo.
+  const reenviar = async (cambio) => {
+    const c = await d('api::clinic.clinic').findFirst({ populate: ['resolutions'] });
+    const resoluciones = c.resolutions.map((r) => cambio({ ...r })).filter(Boolean);
+    return app.service('api::clinic.clinic').createOrUpdate({ data: { resolutions: resoluciones } });
+  };
+  const antesDeGuardar = await consecutivo();
+  await acepta('guardar Clínica con un consecutivo viejo no lo hace retroceder', async () => {
+    await reenviar((r) => (r.id === resolucion.id ? { ...r, currentNumber: 1 } : r));
+    return consecutivo();
+  }, (n) => n === antesDeGuardar);
+  await rechaza('cambiar el prefijo de una resolución ya usada',
+    () => reenviar((r) => (r.id === resolucion.id ? { ...r, prefix: 'ZZ' } : r)), 'no se puede cambiar');
+  await rechaza('quitar una resolución ya usada',
+    () => reenviar((r) => (r.id === resolucion.id ? null : r)), 'no se puede quitar');
+
+  await app.db.connection(TABLA_RES).where({ id: resolucion.id }).update({ current_number: resolucion.rangeTo });
+  const agotada = await nuevaConCargo();
+  await rechaza('emitir con el rango agotado', () => fact.emitir(agotada.documentId), 'agotó su rango');
+  await acepta('…y la factura sigue en borrador', () => d(F).findOne({ documentId: agotada.documentId }), (r) => r.state === 'draft' && !r.number);
+
+  await restaurarConsecutivo();
 
   console.log('\n--- limpieza ---');
   console.log(`  ${await limpiar(app)} registros de prueba eliminados`);

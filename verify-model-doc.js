@@ -14,7 +14,10 @@
 
 const fs = require('fs');
 
-const doc = fs.readFileSync('strapi-veterinaria-prompt.md', 'utf8');
+// Con `core.autocrlf=true` git puede dejar el documento en CRLF (basta un
+// `git stash pop`), y entonces las expresiones de abajo no encuentran ningún
+// bloque y el script decía "coherente" comparando 0. Se normaliza aquí.
+const doc = fs.readFileSync('strapi-veterinaria-prompt.md', 'utf8').replace(/\r\n/g, '\n');
 let fallos = 0;
 const mal = (m) => { console.log('  FALLO ' + m); fallos++; };
 
@@ -23,6 +26,7 @@ const bloques = [
   ...doc.matchAll(/### `src\/components\/([a-z-]+\/[a-z-]+)\.json`[\s\S]*?```json\n([\s\S]*?)\n```/g),
 ];
 console.log(`bloques de componente en el documento: ${bloques.length}`);
+if (bloques.length === 0) mal('no se encontró ningún bloque de componente: el documento no se está comparando');
 
 for (const [, ruta, json] of bloques) {
   const archivo = `src/components/${ruta}.json`;

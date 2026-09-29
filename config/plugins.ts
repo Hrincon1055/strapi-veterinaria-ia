@@ -100,6 +100,16 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     resolve: './src/plugins/veterinaria-agenda',
   },
 
+  /**
+   * Facturación desde la consulta: pendientes de cobro, borradores, emisión
+   * con consecutivo DIAN, PDF y anulación. Plugin local, en src/plugins/.
+   * La lógica está en `api::billing.invoicing`; el plugin solo la expone.
+   */
+  'veterinaria-facturacion': {
+    enabled: true,
+    resolve: './src/plugins/veterinaria-facturacion',
+  },
+
   /** Diagrama de los content types y sus relaciones. Sin configuración. */
   'schema-visualizer': {
     enabled: true,

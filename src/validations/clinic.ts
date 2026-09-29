@@ -1,5 +1,5 @@
 import type { Core } from '@strapi/strapi';
-import { ValidationError, effective, isAfter, loadCurrent, on, today } from './helpers';
+import { ValidationError, effective, isAfter, loadCurrent, on, porId, previaDe, today } from './helpers';
 
 /**
  * Reglas de la configuración de la clínica.
@@ -47,6 +47,58 @@ export default (strapi: Core.Strapi): void => {
           `El dígito de verificación no corresponde al NIT ${numero}: debería ser ${esperado}, no ${dv}`
         );
       }
+    }
+
+    // --- consecutivo: lo lleva el servidor ---
+    // `currentNumber` es "último número usado" y lo sube la emisión con un
+    // UPDATE atómico (`api::billing.invoicing.emitir`). El formulario de
+    // Clínica lo reenvía con el valor que tenía al abrirse: si se aceptara,
+    // guardar la clínica mientras recepción factura haría retroceder el
+    // consecutivo y repetiría números. Solo se admite al crear la resolución
+    // (p. ej. para arrancar una resolución a mitad de rango).
+    if (Array.isArray(data.resolutions) && current) {
+      const guardadas = porId(current.resolutions);
+
+      // "Usada" = hay facturas emitidas que la citan: eso es lo que el
+      // histórico protege. No vale mirar `currentNumber`: una resolución que
+      // arranca a mitad de rango (o la de la demo, en 128) lo trae desde el
+      // primer día sin haber facturado nada.
+      const numeros = (current.resolutions ?? []).map((r: any) => r.resolutionNumber).filter(Boolean);
+      const citadas = new Set<string>(
+        numeros.length === 0
+          ? []
+          : (
+              await strapi.db.query('api::billing.invoice' as any).findMany({
+                where: { resolutionNumber: { $in: numeros }, number: { $notNull: true } },
+                select: ['resolutionNumber'],
+              })
+            ).map((f: any) => String(f.resolutionNumber))
+      );
+      const usada = (r: any) => citadas.has(String(r?.resolutionNumber));
+
+      for (const r of data.resolutions) {
+        const previa = previaDe(guardadas, r);
+        if (!previa) continue;
+        r.currentNumber = previa.currentNumber ?? null;
+        if (usada(previa)) {
+          for (const campo of ['resolutionNumber', 'prefix', 'rangeFrom', 'rangeTo']) {
+            if (campo in r && String(r[campo] ?? '') !== String(previa[campo] ?? '')) {
+              throw new ValidationError(
+                `La resolución ${previa.resolutionNumber} ya se usó para facturar: su ${campo} no se puede cambiar. Carga una resolución nueva.`
+              );
+            }
+          }
+        }
+      }
+
+      const siguen = new Set(data.resolutions.map((r: any) => (r?.id != null ? String(r.id) : null)));
+      const quitada = (current.resolutions ?? []).find((r: any) => usada(r) && !siguen.has(String(r.id)));
+      if (quitada) {
+        throw new ValidationError(
+          `La resolución ${quitada.resolutionNumber} ya se usó para facturar y no se puede quitar: desactívala, es el histórico`
+        );
+      }
+      ctx.params.data = data;
     }
 
     // --- resoluciones de facturación ---
