@@ -3,6 +3,7 @@ import {
   ValidationError,
   effective,
   effectiveRelation,
+  esDiferenciaVacia,
   isAfter,
   loadCurrent,
   on,
@@ -47,12 +48,6 @@ const RELACIONES_FACTURA = ['customer', 'subscription', 'items', 'correctsInvoic
  * El panel manda cada relación como diferencia; la que no se tocó llega como
  * `{ connect: [], disconnect: [] }`. Eso no es un cambio.
  */
-const esDiferenciaVacia = (v: any): boolean =>
-  !!v && typeof v === 'object' && !Array.isArray(v) &&
-  (v.connect === undefined || (Array.isArray(v.connect) && v.connect.length === 0)) &&
-  (v.disconnect === undefined || (Array.isArray(v.disconnect) && v.disconnect.length === 0)) &&
-  v.set === undefined;
-
 const sinId = (o: any): any => {
   if (!o || typeof o !== 'object') return o ?? null;
   const { id, __component, ...resto } = o;

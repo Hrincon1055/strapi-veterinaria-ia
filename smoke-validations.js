@@ -172,6 +172,18 @@ async function limpiar(app) {
   const categoria = await d('api::scheduling.service-category').findFirst({});
   const servicio = await d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30, basePrice: 50000 } });
   await rechaza('servicio duplicado en la misma categoría', () => d('api::scheduling.service').create({ data: { category: categoria.documentId, name: 'Consulta SMOKE', defaultDurationMinutes: 30 } }), 'ya existe');
+  // El panel reenvía la categoría sin tocar como `{ connect: [], disconnect: [] }`.
+  await acepta('editar un servicio desde el panel sin tocar la categoría', () =>
+    d('api::scheduling.service').update({ documentId: servicio.documentId, data: { category: { connect: [], disconnect: [] }, defaultDurationMinutes: 40 }, populate: ['category'] }),
+    (r) => r.defaultDurationMinutes === 40 && r.category?.documentId === categoria.documentId);
+  const otraCategoria = await d('api::scheduling.service-category').findFirst({ filters: { documentId: { $ne: categoria.documentId } } });
+  const cambiar = (de, a) => ({ connect: [{ id: a.id, documentId: a.documentId, locale: null, isTemporary: true }], disconnect: [{ id: de.id, documentId: de.documentId, locale: null }] });
+  await acepta('cambiar la categoría de un servicio desde el panel', () =>
+    d('api::scheduling.service').update({ documentId: servicio.documentId, data: { category: cambiar(categoria, otraCategoria) }, populate: ['category'] }),
+    (r) => r.category?.documentId === otraCategoria.documentId);
+  await d('api::scheduling.service').update({ documentId: servicio.documentId, data: { category: cambiar(otraCategoria, categoria) } });
+  await rechaza('quitar la categoría de un servicio', () =>
+    d('api::scheduling.service').update({ documentId: servicio.documentId, data: { category: { connect: [], disconnect: [{ documentId: categoria.documentId }] } } }), 'obligatorio');
   console.log('\n--- catálogo de productos ---');
   const vacunaClinica = await d('api::clinical.vaccine').create({ data: { name: 'Rabia SMOKE', species: especie.documentId } });
   await rechaza(

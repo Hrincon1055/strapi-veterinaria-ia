@@ -23,12 +23,26 @@ export const READ_ACTIONS = ['findMany', 'findFirst', 'findOne'];
 export const isWrite = (ctx: DocumentContext) => WRITE_ACTIONS.includes(ctx.action);
 
 /**
+ * El panel manda las relaciones como diferencia (`{ connect, disconnect }`), y
+ * al guardar un formulario en el que la relación no se tocó llegan las dos
+ * listas vacías. Eso significa "sin cambios", no "se está limpiando".
+ */
+export const esDiferenciaVacia = (v: any): boolean =>
+  !!v && typeof v === 'object' && !Array.isArray(v) &&
+  // Sin ninguna de las dos listas no es una diferencia: puede ser el propio
+  // elemento `{ id, documentId }` de dentro de un `connect`.
+  (v.connect !== undefined || v.disconnect !== undefined) &&
+  (v.connect === undefined || (Array.isArray(v.connect) && v.connect.length === 0)) &&
+  (v.disconnect === undefined || (Array.isArray(v.disconnect) && v.disconnect.length === 0)) &&
+  v.set === undefined;
+
+/**
  * Normaliza el valor de una relación entrante a un documentId.
  * El Document Service acepta varias formas: documentId suelto, objeto,
  * array, o los operadores set/connect/disconnect.
  *
- * Devuelve `undefined` si la relación no viene en los datos (no tocar),
- * `null` si se está limpiando, o el documentId.
+ * Devuelve `undefined` si la relación no viene en los datos o llega como
+ * diferencia vacía (no tocar), `null` si se está limpiando, o el documentId.
  *
  * DECISIÓN: un id numérico se trata como documentId en texto. En Strapi 5 la
  * API pública trabaja con documentId; aceptar números solo evita romper
@@ -37,6 +51,7 @@ export const isWrite = (ctx: DocumentContext) => WRITE_ACTIONS.includes(ctx.acti
 export function toDocumentId(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
+  if (esDiferenciaVacia(value)) return undefined;
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
   if (Array.isArray(value)) {
@@ -123,7 +138,7 @@ export function effective<T = any>(data: any, current: any, key: string): T | un
 
 /** Valor efectivo de una relación, como documentId. Requiere `key` poblado en `current`. */
 export function effectiveRelation(data: any, current: any, key: string): string | null | undefined {
-  if (data && key in data) return toDocumentId(data[key]);
+  if (data && key in data && !esDiferenciaVacia(data[key])) return toDocumentId(data[key]);
   const cur = current?.[key];
   if (cur === undefined || cur === null) return cur === null ? null : undefined;
   return cur.documentId ?? null;

@@ -1,5 +1,5 @@
 import type { Core } from '@strapi/strapi';
-import { toDocumentId, ValidationError, type DocumentContext } from './helpers';
+import { esDiferenciaVacia, toDocumentId, ValidationError, type DocumentContext } from './helpers';
 
 /**
  * Strapi no admite `required: true` en atributos de tipo relation, así que la
@@ -7,7 +7,8 @@ import { toDocumentId, ValidationError, type DocumentContext } from './helpers';
  *
  * En `create` la relación debe venir con valor. En `update` solo se comprueba
  * si el cliente la incluye: enviarla vacía equivale a desvincularla y eso no
- * está permitido en estas relaciones.
+ * está permitido en estas relaciones. La diferencia vacía que manda el panel
+ * (`{ connect: [], disconnect: [] }`) no la toca, así que no cuenta.
  */
 export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::shared.contact': ['profile'],
@@ -48,7 +49,7 @@ export default (strapi: Core.Strapi): void => {
     const data = (ctx as DocumentContext).params?.data ?? {};
 
     for (const field of required) {
-      const provided = field in data;
+      const provided = field in data && !esDiferenciaVacia(data[field]);
       if (ctx.action === 'update' && !provided) continue;
 
       const value = toDocumentId(data[field]);

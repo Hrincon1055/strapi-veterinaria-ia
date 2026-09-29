@@ -7,7 +7,9 @@ import {
   isAfter,
   loadCurrent,
   on,
-  toDocumentId,
+  porId,
+  previaDe,
+  relacionDeComponente,
 } from './helpers';
 
 /** Estados que ocupan agenda: dos citas en estos estados no pueden solaparse. */
@@ -40,7 +42,11 @@ export default (strapi: Core.Strapi): void => {
 
   on(strapi, 'api::scheduling.appointment', ['create', 'update'], async (ctx, next) => {
     const data = ctx.params.data ?? {};
-    const current = await loadCurrent(strapi, ctx, ['responsible', 'room', 'services']);
+    const current = await loadCurrent(strapi, ctx, {
+      responsible: true,
+      room: true,
+      services: { populate: ['service'] },
+    });
 
     const startAt = effective<string>(data, current, 'startAt');
     const endAt = effective<string>(data, current, 'endAt');
@@ -78,9 +84,10 @@ export default (strapi: Core.Strapi): void => {
     const services = effective<any[]>(data, current, 'services');
     if (Array.isArray(services) && 'services' in data) {
       const seen = new Set<string>();
+      const guardadas = porId(current?.services);
 
       for (const line of services) {
-        const serviceId = toDocumentId(line?.service);
+        const serviceId = relacionDeComponente(line?.service, previaDe(guardadas, line), 'service');
         if (!serviceId) {
           throw new ValidationError('Cada línea de servicio debe indicar un servicio');
         }
