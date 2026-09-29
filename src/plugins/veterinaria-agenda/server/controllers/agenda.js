@@ -3,6 +3,8 @@
 const VER_TODAS = 'plugin::veterinaria-agenda.agenda.ver-todas';
 const AGENDAR = 'plugin::veterinaria-agenda.agenda.agendar';
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+// Debe coincidir con el modal de reserva.
+const MOTIVO_MINIMO = 5;
 
 /** ¿Este administrador puede ver la agenda de todo el personal? */
 function puedeVerTodas(ctx) {
@@ -74,6 +76,10 @@ module.exports = ({ strapi }) => {
 
       if (!staff || !mascota || !startAt) {
         return ctx.badRequest('Faltan datos: hacen falta staff, mascota y startAt');
+      }
+
+      if (typeof motivo !== 'string' || motivo.trim().length < MOTIVO_MINIMO) {
+        return ctx.badRequest(`El motivo de la consulta necesita al menos ${MOTIVO_MINIMO} caracteres`);
       }
 
       // Mismo criterio que en la lectura: quien no puede ver todas las
