@@ -1147,6 +1147,10 @@ export interface ApiClinicClinic extends Struct.SingleTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    defaultConsultationService: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::scheduling.service'
+    >;
     defaultCurrency: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'COP'>;
     documentNumber: Schema.Attribute.String &

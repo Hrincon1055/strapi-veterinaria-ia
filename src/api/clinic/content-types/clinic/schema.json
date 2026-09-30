@@ -37,6 +37,8 @@
 
     "openingHours": { "type": "component", "repeatable": true, "component": "clinic.opening-hours" },
     "timezone": { "type": "string", "default": "America/Bogota", "maxLength": 60 },
-    "emergencyPhone": { "type": "string", "maxLength": 20 }
+    "emergencyPhone": { "type": "string", "maxLength": 20 },
+
+    "defaultConsultationService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" }
   }
 }

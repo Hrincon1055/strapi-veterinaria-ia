@@ -76,6 +76,12 @@ export function ConsultaPage() {
                 {e.consulta.archivada && (
                   <Alert variant="warning" title="Consulta archivada">No se factura una consulta archivada.</Alert>
                 )}
+                {e.sinCargoDeConsulta && (
+                  <Alert variant="warning" title="Sin cargo de consulta">
+                    La consulta se atendió pero no tiene ningún servicio registrado. Si se cobra, añádelo en el borrador
+                    con "Añadir conceptos" (o en la consulta, en Servicios y productos).
+                  </Alert>
+                )}
               </Flex>
             </Tarjeta>
 

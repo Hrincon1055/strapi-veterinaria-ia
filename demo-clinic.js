@@ -37,14 +37,25 @@ const HORARIO = [
 
 HORARIO.push({ dayOfWeek: 'sunday', isClosed: true, notes: 'Solo urgencias' });
 
+/** "Consulta general" del catálogo de la demo, o null si aún no existe. */
+async function servicioDeConsulta(app) {
+  const s = await app.documents('api::scheduling.service').findFirst({ filters: { name: 'Consulta general' } });
+  return s?.documentId ?? null;
+}
+
 async function crearClinica(app) {
   // Un single type se escribe con createOrUpdate del servicio de factoría, no
   // con documents().update(): sin documentId, update no crea nada y falla en
   // silencio (valida, pero no escribe).
   const svc = app.service('api::clinic.clinic');
 
-  const existente = await svc.find({});
+  const existente = await svc.find({ populate: ['defaultConsultationService'] });
   if (existente?.legalName === 'Veterinaria San Roque S.A.S.') {
+    // Clínica creada antes de que existiera el campo: se completa sin tocar lo demás.
+    if (!existente.defaultConsultationService) {
+      const consulta = await servicioDeConsulta(app);
+      if (consulta) await svc.createOrUpdate({ data: { defaultConsultationService: consulta } });
+    }
     return { creada: false, nombre: existente.legalName };
   }
 
@@ -109,6 +120,9 @@ async function crearClinica(app) {
       openingHours: HORARIO,
       timezone: 'America/Bogota',
       emergencyPhone: '+573009998877',
+      // El cargo que "Finalizar atención" propone si la consulta no tiene
+      // servicio. Los servicios los crea demo-clinica.js, antes que esto.
+      defaultConsultationService: await servicioDeConsulta(app),
     },
   });
 
@@ -142,6 +156,7 @@ async function borrarClinica(app) {
       website: null,
       invoiceFooterNotes: null,
       emergencyPhone: null,
+      defaultConsultationService: null,
       ciiuCode: null,
       merchantRegistration: null,
     },

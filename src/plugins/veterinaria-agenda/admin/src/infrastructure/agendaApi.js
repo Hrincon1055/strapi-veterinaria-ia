@@ -64,8 +64,14 @@ export function crearAgendaApi(fetchClient) {
       return data.data;
     },
 
-    async finalizarAtencion(consultaId) {
-      const { data } = await fetchClient.post(`${BASE}/consultations/${consultaId}/attention/finish`, {});
+    /** `decision`: `{ servicio }` si la consulta aún no tiene servicio aplicado. */
+    async finalizarAtencion(consultaId, decision = {}) {
+      const { data } = await fetchClient.post(`${BASE}/consultations/${consultaId}/attention/finish`, decision);
+      return data.data;
+    },
+
+    async servicios() {
+      const { data } = await fetchClient.get(`${BASE}/services`);
       return data.data;
     },
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Page, Layouts } from '@strapi/strapi/admin';
 import {
   Box, Flex, Typography, Tabs, Table, Thead, Tbody, Tr, Th, Td, Button, TextInput, Field,
-  SingleSelect, SingleSelectOption, Loader, Alert, EmptyStateLayout,
+  SingleSelect, SingleSelectOption, Loader, Alert, EmptyStateLayout, Badge,
 } from '@strapi/design-system';
 import { Plus } from '@strapi/icons';
 import { useFacturacionStore } from '../store';
@@ -36,7 +36,7 @@ function FiltroFecha({ etiqueta, valor, onCambio }) {
   );
 }
 
-/** Consultas con algún concepto pendiente de cobro. */
+/** Consultas con algún concepto pendiente de cobro o atendidas sin cargo de consulta. */
 function Pendientes() {
   const navigate = useNavigate();
   const { filtrosPendientes: f, setFiltrosPendientes } = useFacturacionStore();
@@ -57,7 +57,14 @@ function Pendientes() {
                 <Td><Typography>{fechaHora(c.consulta.consultedAt)}</Typography></Td>
                 <Td><Typography>{c.mascota?.name ?? '—'}</Typography></Td>
                 <Td><Typography>{c.cliente?.nombre ?? '—'}</Typography></Td>
-                <Td><Typography>{c.pendientes}</Typography></Td>
+                <Td>
+                  <Flex gap={2}>
+                    <Typography>{c.pendientes}</Typography>
+                    {c.sinCargoDeConsulta && (
+                      <Badge backgroundColor="warning100" textColor="warning700">Sin cargo de consulta</Badge>
+                    )}
+                  </Flex>
+                </Td>
                 <Td><Typography>{dinero(c.valorPendiente)}</Typography></Td>
                 <Td><Button size="S" variant="secondary">Facturar</Button></Td>
               </Tr>
@@ -68,6 +75,8 @@ function Pendientes() {
       <Typography variant="pi" textColor="neutral600">
         El valor es una estimación con el catálogo de hoy; el precio se fija al crear el borrador.
         Una línea sin precio o sin perfil de IVA en el catálogo no suma aquí y no se puede facturar hasta corregirla.
+        "Sin cargo de consulta": atendida sin ningún servicio registrado; si se cobra, añade el servicio al
+        facturarla. Una cortesía se factura con descuento del 100 % en el renglón.
       </Typography>
     </Flex>
   );

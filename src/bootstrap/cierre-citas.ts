@@ -9,6 +9,12 @@ import type { Core } from '@strapi/strapi';
  * cuya hora de fin haya pasado. Sin consulta no se toca: si nadie la atendió,
  * lo que corresponde es "no asistió" o "cancelada", y eso lo decide recepción.
  *
+ * Cierra igual que "Finalizar atención" (servicio del plugin de agenda): si la
+ * consulta no tiene ningún servicio aplicado le añade el "Servicio de consulta
+ * por defecto" de Clínica, para que la visita llegue a Facturación, que es
+ * quien decide si se cobra. Si Clínica no tiene ese servicio, cierra sin
+ * añadir nada y Facturación marca la consulta como "sin cargo de consulta".
+ *
  * Corre sin sesión, así que la regla de `validations/scheduling.ts` que exige
  * el permiso de finalizar no le aplica (el que llama decide).
  *
@@ -67,15 +73,24 @@ export async function cerrarCitasAtendidas(strapi: Core.Strapi, ahora = new Date
       consultation: { id: { $notNull: true } },
     },
     fields: ['documentId', 'startAt'],
+    populate: { consultation: { fields: ['documentId'] } },
   });
+
+  const agenda = strapi.plugin('veterinaria-agenda')?.service('agenda');
 
   let cerradas = 0;
   for (const cita of abiertas) {
     try {
-      await strapi.documents('api::scheduling.appointment').update({
-        documentId: cita.documentId,
-        data: { state: 'completed' } as any,
-      });
+      const consulta = (cita as any).consultation?.documentId;
+      const cargo = agenda && consulta ? await agenda.cargoDeConsulta(consulta) : null;
+      if (cargo && (cargo.tieneCargo || cargo.servicioPorDefecto)) {
+        await agenda.finalizarAtencion(consulta, { usarPorDefecto: true });
+      } else {
+        await strapi.documents('api::scheduling.appointment').update({
+          documentId: cita.documentId,
+          data: { state: 'completed' } as any,
+        });
+      }
       cerradas++;
     } catch (e: any) {
       // Una que falle no frena a las demás.

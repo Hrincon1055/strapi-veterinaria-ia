@@ -147,7 +147,8 @@
       "invoiceFooterNotes": "Notas al pie de la factura",
       "openingHours": "Horario de atención",
       "timezone": "Zona horaria",
-      "emergencyPhone": "Teléfono de urgencias"
+      "emergencyPhone": "Teléfono de urgencias",
+      "defaultConsultationService": "Servicio de consulta por defecto"
     },
     "api::clinical.allergy": {
       "allergen": "Alérgeno",

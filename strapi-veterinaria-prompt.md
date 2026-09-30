@@ -1069,6 +1069,11 @@ _No aparece en la zona: se anida dentro de `clinical.treatment-plan`._
     "emergencyPhone": {
       "type": "string",
       "maxLength": 20
+    },
+    "defaultConsultationService": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::scheduling.service"
     }
   }
 }
@@ -1081,6 +1086,7 @@ Decisiones que conviene no revertir:
 - **`verificationDigit` se valida contra el NIT** con el módulo 11 de la DIAN (`src/validations/clinic.ts`). Un DV mal escrito hace que la DIAN rechace todas las facturas, y el error no aparece hasta que se intenta emitir.
 - **`fiscalResponsibilities` es un componente repetible** porque un contribuyente puede tener varias, y Strapi no tiene enumeración múltiple.
 - **`fiscalAddress` reutiliza `shared.address`** en lugar de repetir los campos.
+- **`defaultConsultationService` es el cargo que se propone al finalizar una atención sin servicios** (ver la regla del cargo en 7.5). Es una relación y no un nombre fijo en el código, para que renombrar el servicio en el catálogo no rompa la propuesta.
 
 Reglas en `src/validations/clinic.ts`, todas verificadas: DV coherente con el NIT; una sola resolución activa; rango final mayor que el inicial; consecutivo dentro del rango; vigencia coherente; la resolución activa no puede estar vencida ni con el rango agotado (con aviso por log a menos de 100 números); y los horarios no pueden cerrar antes de abrir ni repetir día. Además, `currentNumber` ("último número usado") lo lleva el servidor: en una resolución ya guardada se conserva el valor almacenado aunque el formulario mande otro (así guardar Clínica mientras se factura no hace retroceder el consecutivo), y solo se acepta al crear la resolución; una resolución ya usada —con facturas emitidas que la citan, no con `currentNumber` puesto, porque una resolución puede arrancar a mitad de rango— no cambia de número, prefijo ni rango, y no se puede quitar de la lista (se desactiva).
 
@@ -1999,6 +2005,8 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
 }
 ```
 `nextControlOn` = fecha sugerida del próximo control (no es una cita).
+
+**La consulta atendida siempre lleva cargo; si se cobra lo decide Facturación.** Al cerrar la cita de una consulta sin ningún `service-line` `applied` se añade un servicio: en "Finalizar atención" el veterinario elige cuál (propuesto `clinic.defaultConsultationService`), y el cierre nocturno y "Marcar atendida" en la agenda añaden el de Clínica. El veterinario no decide si se cobra: no hay campo de "sin cargo" en la consulta. Recepción o la administración deciden al preparar la factura; una cortesía se factura con descuento del 100 % en el renglón, que deja traza y saca la línea de pendientes. Si Clínica no tiene servicio por defecto, el cierre nocturno cierra sin cargo y Facturación → Pendientes de cobro marca la consulta como "sin cargo de consulta".
 
 **El contenido clínico va en la dynamic zone `sections`** (sección 5.1), no en campos fijos: cada visita compone las secciones que necesita. Una consulta de estética lleva tres; una cirugía lleva las siete. Sustituye a los antiguos `anamnesis`, `diagnosis` y `treatmentNotes`, que eran tres `blocks` obligados a existir aunque la visita no los usara.
 

@@ -33,6 +33,7 @@ const KIND_DE_COMPONENTE: Record<string, string> = Object.fromEntries(
 
 const POPULATE_CONSULTA = {
   pet: { populate: { owner: { populate: ['profile'] } } },
+  appointment: { fields: ['state'] },
   lines: {
     on: {
       'clinical.service-line': { populate: { service: { populate: ['tax'] } } },
@@ -130,6 +131,18 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           : facturadas === cobrables.length ? 'facturada'
             : 'parcial';
 
+    // Al cerrar la cita se añade el servicio de la visita (panel Atención,
+    // agenda o cierre nocturno), así que una consulta atendida sin ningún
+    // servicio aplicado es una excepción: Clínica sin "Servicio de consulta
+    // por defecto", o una cita cerrada a mano en el Content Manager. Se
+    // señala en la bandeja para que Recepción decida. Una consulta cuya cita
+    // sigue abierta aún se está atendiendo y no se señala.
+    const tieneCargo = (consulta.lines ?? []).some(
+      (l: any) => l.__component === 'clinical.service-line' && l.state === 'applied'
+    );
+    const atendida = !consulta.appointment || consulta.appointment.state === 'completed';
+    const sinCargoDeConsulta = atendida && !tieneCargo;
+
     const owner = consulta.pet?.owner;
     return {
       consulta: {
@@ -141,6 +154,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       mascota: consulta.pet ? { documentId: consulta.pet.documentId, name: consulta.pet.name } : null,
       cliente: owner ? { documentId: owner.documentId, nombre: nombre(owner.profile) } : null,
       resumen,
+      sinCargoDeConsulta,
       pendientes: lineas.filter((l: any) => l.estado === 'pendiente').length,
       valorPendiente: lineas
         .filter((l: any) => l.estado === 'pendiente')
@@ -225,7 +239,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     },
 
     /**
-     * Bandeja: consultas con algún concepto pendiente de cobro, la más
+     * Bandeja: consultas con algún concepto pendiente de cobro o atendidas
+     * sin cargo de consulta (`sinCargoDeConsulta`), la más
      * reciente primero. `desde`/`hasta` (AAAA-MM-DD) filtran por fecha de la
      * consulta; `cliente` por documentId del cliente.
      */
@@ -249,7 +264,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const renglones = await renglonesDe(consultas.map((c) => c.documentId));
       return consultas
         .map((c) => construirEstado(c, renglones))
-        .filter((e) => e.pendientes > 0)
+        .filter((e) => e.pendientes > 0 || e.sinCargoDeConsulta)
         .map(({ lineas, ...resto }) => resto);
     },
 

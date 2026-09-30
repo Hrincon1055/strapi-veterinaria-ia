@@ -30,6 +30,16 @@ function aTarjeta(c) {
   };
 }
 
+/** Las dos tarjetas de "Servicios y productos" de la consulta, con su relación. */
+const LINEAS_CONSULTA = {
+  lines: {
+    on: {
+      'clinical.service-line': { populate: { service: { fields: ['documentId'] } } },
+      'clinical.product-line': { populate: { product: { fields: ['documentId'] } } },
+    },
+  },
+};
+
 /** Lo que hay que poblar para construir una tarjeta. */
 const POPULATE_CITA = {
   pet: { populate: { owner: { populate: ['profile'] } } },
@@ -270,6 +280,19 @@ module.exports = ({ strapi }) => ({
 
   /** Cambia el estado de una cita (llegó, en curso, atendida, no vino...). */
   async cambiarEstado(documentId, estado) {
+    // Marcar atendida desde la agenda con consulta = finalizar la atención
+    // con el servicio por defecto de Clínica si falta el cargo. Quien quiera
+    // registrar otro servicio lo hace desde el panel Atención de la consulta.
+    if (estado === 'completed') {
+      const cita = await strapi.documents('api::scheduling.appointment').findOne({
+        documentId,
+        populate: { consultation: { fields: ['documentId'] } },
+      });
+      if (cita?.consultation && cita.state !== 'completed') {
+        await this.finalizarAtencion(cita.consultation.documentId, { usarPorDefecto: true });
+        return strapi.documents('api::scheduling.appointment').findOne({ documentId });
+      }
+    }
     return strapi.documents('api::scheduling.appointment').update({
       documentId,
       data: { state: estado },
@@ -354,15 +377,73 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
+   * Lo que el panel de atención necesita: la cita, si la consulta ya tiene
+   * cargo (o se decidió no cobrarla) y el servicio que se propondría.
+   */
+  async atencion(consultaDocumentId) {
+    const [cita, { lineas, ...cargo }] = await Promise.all([
+      this.citaDeConsulta(consultaDocumentId),
+      this.cargoDeConsulta(consultaDocumentId),
+    ]);
+    return { cita, ...cargo };
+  },
+
+  /**
+   * ¿Tiene la consulta el cargo de la visita? Cuenta solo un servicio
+   * `applied`: uno recomendado no se cobra, y un producto no es la consulta.
+   */
+  async cargoDeConsulta(consultaDocumentId) {
+    const consulta = await strapi.documents('api::clinical.consultation').findOne({
+      documentId: consultaDocumentId,
+      fields: ['documentId'],
+      populate: LINEAS_CONSULTA,
+    });
+    if (!consulta) throw new Error('La consulta no existe');
+
+    const clinica = await strapi.documents('api::clinic.clinic').findFirst({
+      populate: { defaultConsultationService: { fields: ['documentId', 'name', 'basePrice', 'isActive'] } },
+    });
+    const porDefecto = clinica?.defaultConsultationService;
+
+    return {
+      tieneCargo: (consulta.lines ?? []).some((l) => l.__component === 'clinical.service-line' && l.state === 'applied'),
+      servicioPorDefecto: porDefecto?.isActive ? { documentId: porDefecto.documentId, nombre: porDefecto.name } : null,
+      lineas: consulta.lines ?? [],
+    };
+  },
+
+  /** Servicios activos, para elegir el cargo de la consulta al finalizar. */
+  async servicios() {
+    const lista = await strapi.documents('api::scheduling.service').findMany({
+      filters: { isActive: true },
+      fields: ['documentId', 'name', 'basePrice'],
+      sort: 'name:asc',
+    });
+    return lista.map((s) => ({ documentId: s.documentId, nombre: s.name, precio: s.basePrice }));
+  },
+
+  /**
    * Da por atendida la cita de una consulta, o la reabre si se cerró por
    * error. Guardar la consulta no la cierra: el veterinario guarda varias
    * veces durante la visita y cerrarla antes liberaría su tramo en la agenda
    * con el paciente todavía en el consultorio.
    *
+   * **La consulta atendida siempre lleva cargo; si se cobra lo decide
+   * Facturación**, no el veterinario. Si al finalizar no tiene ningún servicio
+   * aplicado se añade uno: `servicio` (el que eligió el veterinario en el
+   * panel) o, con `usarPorDefecto`, el de Clínica (agenda, cierre nocturno).
+   * Sin ninguno se rechaza. Si ya tiene un servicio no se añade nada: no hay
+   * doble cobro. Recepción decide al facturar; una cortesía va con descuento
+   * del 100 % en el renglón.
+   *
+   * Todo en una transacción: si la línea no se puede añadir, la cita no se
+   * cierra.
+   *
    * Reabrir vuelve a `in_progress`, que bloquea agenda otra vez; si entre
    * tanto recepción agendó en ese tramo, la regla de solapamiento lo rechaza.
+   * No quita el cargo añadido: eso se corrige en la ficha.
    */
-  async finalizarAtencion(consultaDocumentId, { reabrir = false } = {}) {
+  async finalizarAtencion(consultaDocumentId, { reabrir = false, servicio = null, usarPorDefecto = false } = {}) {
     const cita = await this.citaDeConsulta(consultaDocumentId);
     if (!cita) throw new Error('Esta consulta no viene de una cita: no hay nada que finalizar');
 
@@ -372,16 +453,68 @@ module.exports = ({ strapi }) => ({
         documentId: cita.documentId,
         data: { state: 'in_progress', completedAt: null },
       });
-    } else if (cita.state !== 'completed') {
-      if (['cancelled', 'no_show'].includes(cita.state)) {
-        throw new Error('La cita está cancelada o marcada como "no asistió"; cambia su estado desde la agenda');
+      return this.atencion(consultaDocumentId);
+    }
+
+    if (cita.state === 'completed') return this.atencion(consultaDocumentId);
+    if (['cancelled', 'no_show'].includes(cita.state)) {
+      throw new Error('La cita está cancelada o marcada como "no asistió"; cambia su estado desde la agenda');
+    }
+
+    const cargo = await this.cargoDeConsulta(consultaDocumentId);
+    const falta = !cargo.tieneCargo;
+    if (falta && !servicio && usarPorDefecto) servicio = cargo.servicioPorDefecto?.documentId ?? null;
+    if (falta && !servicio) {
+      throw new Error(
+        usarPorDefecto
+          ? 'La consulta no tiene servicio y Clínica no tiene "Servicio de consulta por defecto". ' +
+              'Finalízala desde la consulta (panel Atención) eligiendo el servicio.'
+          : 'Esta consulta no tiene servicio: elige el que corresponde a la visita'
+      );
+    }
+
+    await strapi.db.transaction(async () => {
+      if (falta && servicio) {
+        const elegido = await strapi.documents('api::scheduling.service').findOne({
+          documentId: servicio,
+          fields: ['isActive'],
+        });
+        if (!elegido?.isActive) throw new Error('El servicio elegido no existe o no está activo');
+
+        // La zona se reescribe entera: las líneas que ya había se reenvían con
+        // su `id` y su `lineKey`, para que la facturación las siga
+        // reconociendo (ver `asignarClaves` en validations/clinical.ts).
+        await strapi.documents('api::clinical.consultation').update({
+          documentId: consultaDocumentId,
+          data: {
+            lines: [
+              ...cargo.lineas.map(reenviarLinea),
+              { __component: 'clinical.service-line', service: servicio, quantity: 1, state: 'applied' },
+            ],
+          },
+        });
       }
+
       await strapi.documents('api::scheduling.appointment').update({
         documentId: cita.documentId,
         data: { state: 'completed' },
       });
-    }
+    });
 
-    return this.citaDeConsulta(consultaDocumentId);
+    return this.atencion(consultaDocumentId);
   },
 });
+
+/** Una línea guardada, tal como hay que reenviarla para conservarla. */
+function reenviarLinea(l) {
+  const campo = l.__component === 'clinical.service-line' ? 'service' : 'product';
+  return {
+    __component: l.__component,
+    id: l.id,
+    [campo]: l[campo]?.documentId ?? null,
+    quantity: l.quantity,
+    state: l.state,
+    notes: l.notes ?? null,
+    lineKey: l.lineKey,
+  };
+}

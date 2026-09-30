@@ -152,16 +152,29 @@ module.exports = ({ strapi }) => {
     async atencion(ctx) {
       try {
         ctx.body = {
-          data: { cita: await svc().citaDeConsulta(ctx.params.documentId), puedeFinalizar: puedeFinalizar(ctx) },
+          data: { ...(await svc().atencion(ctx.params.documentId)), puedeFinalizar: puedeFinalizar(ctx) },
         };
       } catch (e) {
         return ctx.badRequest(e.message);
       }
     },
 
+    /** Servicios activos, para el selector del cargo de la consulta. */
+    async servicios(ctx) {
+      ctx.body = { data: await svc().servicios() };
+    },
+
+    /**
+     * Cuerpo opcional: `{ servicio }`, documentId del servicio que se añade.
+     * Solo se usa si la consulta no tiene ya un servicio aplicado.
+     */
     async finalizarAtencion(ctx) {
+      const { servicio } = ctx.request.body ?? {};
+      if (servicio != null && typeof servicio !== 'string') return ctx.badRequest('"servicio" debe ser un documentId');
       try {
-        ctx.body = { data: await svc().finalizarAtencion(ctx.params.documentId) };
+        ctx.body = {
+          data: await svc().finalizarAtencion(ctx.params.documentId, { servicio: servicio || null }),
+        };
       } catch (e) {
         return ctx.badRequest(e.message);
       }
