@@ -103,6 +103,13 @@ const FACTURACION = {
   cambiarPrecio: 'plugin::veterinaria-facturacion.facturacion.cambiar-precio',
 };
 
+/**
+ * Historia clínica imprimible (plugin `veterinaria-historia`). Solo quien
+ * puede leer la historia completa en el Content Manager: Recepción lee
+ * consultas pero no alergias ni vacunas, y el módulo las junta todas.
+ */
+const HISTORIA = 'plugin::veterinaria-historia.historia.ver';
+
 const recepcion: Concesion[] = [
   { subjects: RECEPCION_CRUD, verbos: CRUD },
   { subjects: [...CATALOGOS, 'api::clinical.consultation', 'api::clinic.clinic'], verbos: READ },
@@ -144,13 +151,13 @@ export const ROLES_PANEL: RolPanel[] = [
     description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
     concesiones: veterinario,
     // El veterinario atiende lo que ya tiene agendado: ve su agenda, no reserva.
-    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver],
+    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver, HISTORIA],
   },
   {
     name: 'Administrador de clínica',
     description: 'Todo lo anterior más catálogos, campañas, notificaciones y datos de la clínica.',
     concesiones: administracion,
-    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION)],
+    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA],
   },
 ];
 

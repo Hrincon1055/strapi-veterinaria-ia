@@ -110,6 +110,15 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     resolve: './src/plugins/veterinaria-facturacion',
   },
 
+  /**
+   * Historia clínica imprimible de una mascota o de varias del mismo
+   * propietario. Plugin local, en src/plugins/. Solo lee.
+   */
+  'veterinaria-historia': {
+    enabled: true,
+    resolve: './src/plugins/veterinaria-historia',
+  },
+
   /** Diagrama de los content types y sus relaciones. Sin configuración. */
   'schema-visualizer': {
     enabled: true,

@@ -24,7 +24,7 @@ npx strapi ts:generate-types      # regenerate types/generated/ after a schema c
 npx tsc --noEmit                  # typecheck server code
 node smoke-validations.js         # 40 live assertions against the business rules (boots Strapi, self-cleaning)
 node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
-node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone
+node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone (en el panel: menú "Historia clínica", imprimible)
 node factura-pdf.js <FE129|documentId> [salida]   # PDF de una factura (o vista previa de un borrador) en .tmp/facturas/
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
 node audit-orphans.js             # duplicate names + tables/dist left behind by a deleted type
@@ -244,6 +244,13 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - **Panel lateral de la consulta** con `app.getPlugin('content-manager').apis.addEditViewSidePanel` en `bootstrap`. Strapi lo llama con `{ model, documentId, … }` para cada documento; devolver `null` lo oculta. Muestra lo guardado, no lo que se está editando.
 - **Botón "Facturar" de la agenda**: `AgendaPage` mira los permisos de la cuenta con `useAuth(…, (s) => s.permissions)` y solo lo pasa si hay alguno de facturación.
 - **Verificado por HTTP con las cuentas de la demo**: 30 comprobaciones de permisos y del flujo completo con Recepción y Veterinario, y los cuatro permisos de Administrador de clínica con `marta.lozano@veterinaria.test`.
+
+**La historia clínica imprimible es un tercer plugin local, `src/plugins/veterinaria-historia/`**, misma arquitectura, solo lectura. Menú "Historia clínica": se busca al propietario (o a una mascota), se marcan sus mascotas y `imprimir?mascotas=a,b&desde=&hasta=&orden=` muestra la vista previa. También hay un atajo en el panel lateral de la ficha de mascota y de cliente. Lo que no es obvio:
+
+- **Una historia no mezcla propietarios.** El servidor rechaza (400) mascotas de dos clientes: el papel va a nombre de una persona. Las alergias salen siempre completas; el periodo solo filtra consultas y vacunas.
+- **Se imprime una copia, no la página.** `Impresion.jsx` monta el documento otra vez como hijo directo de `<body>` (portal) y con `@media print` oculta todo lo demás: el layout del panel tiene un contenedor de alto fijo con scroll propio que cortaría la historia en la primera hoja. La copia va con `lightTheme` (styled-components `ThemeProvider`) para que una cuenta en modo oscuro no imprima texto claro. Las clases `vh-*` solo marcan saltos de página.
+- **Permiso `historia.ver`**, de Veterinario y Administrador de clínica. Recepción no: lee consultas pero no alergias ni vacunas, y este módulo las junta.
+- No hay icono de impresora en `@strapi/icons`; se usa `File`.
 
 `strapi-admin.js` tiene que ser **ESM con `export default`** (`export { default } from './admin/src/index.jsx'`); en CommonJS el empaquetador del panel falla con *"default" is not exported*. `strapi-server.js` en cambio es CommonJS. Y el código del plugin va en `.js`, no en `.ts`: `config/plugins.ts` lo resuelve desde `./src/plugins/…`, así que Strapi cargaría el fuente sin compilar.
 
