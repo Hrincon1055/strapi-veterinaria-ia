@@ -229,6 +229,22 @@ export default async (strapi: Core.Strapi): Promise<void> => {
     }
   }
 
+  // 5. `searchLabel` siempre como columna de la lista, detrás del id: es lo
+  // que identifica el registro y lo que cruza la búsqueda (nombre, documento,
+  // dueño…). Si alguien la quita en "Configurar la vista", vuelve al arrancar.
+  for (const [key] of etiquetas) {
+    const config: any = await store.get({ key });
+    const lista: string[] | undefined = config?.layouts?.list;
+    if (!Array.isArray(lista) || lista.includes('searchLabel')) continue;
+
+    const pos = lista[0] === 'id' ? 1 : 0;
+    config.layouts.list = [...lista.slice(0, pos), 'searchLabel', ...lista.slice(pos)];
+    const meta = config.metadatas?.searchLabel?.list;
+    if (meta) meta.searchable = meta.sortable = true;
+    await store.set({ key, value: config });
+    cambios++;
+  }
+
   if (cambios > 0) {
     strapi.log.info(`[main-fields] ${cambios} configuraciones del panel actualizadas`);
   }
