@@ -41,9 +41,9 @@ export function crearAgendaApi(fetchClient) {
      * del hueco, para que el cliente no pueda estirar la cita sobre el tramo
      * siguiente.
      */
-    async reservar({ staff, mascota, startAt, motivo }) {
+    async reservar({ staff, mascota, startAt, motivo, servicio }) {
       const { data } = await fetchClient.post(`${BASE}/appointments`, {
-        staff, mascota, startAt, motivo,
+        staff, mascota, startAt, motivo, servicio,
       });
       return data.data;
     },
@@ -72,6 +72,12 @@ export function crearAgendaApi(fetchClient) {
 
     async servicios() {
       const { data } = await fetchClient.get(`${BASE}/services`);
+      return data.data;
+    },
+
+    /** Consulta sin cita: registra el servicio de la visita. */
+    async registrarServicio(consultaId, servicio) {
+      const { data } = await fetchClient.post(`${BASE}/consultations/${consultaId}/attention/service`, { servicio });
       return data.data;
     },
 

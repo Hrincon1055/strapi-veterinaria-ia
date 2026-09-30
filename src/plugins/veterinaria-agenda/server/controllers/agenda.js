@@ -83,10 +83,16 @@ module.exports = ({ strapi }) => {
     },
 
     async reservar(ctx) {
-      const { staff, mascota, startAt, motivo } = ctx.request.body ?? {};
+      const { staff, mascota, startAt, motivo, servicio } = ctx.request.body ?? {};
 
       if (!staff || !mascota || !startAt) {
         return ctx.badRequest('Faltan datos: hacen falta staff, mascota y startAt');
+      }
+
+      // El servicio de la visita viaja a la consulta: sin él, el veterinario
+      // tendría que decir al finalizar qué atendió.
+      if (typeof servicio !== 'string' || !servicio) {
+        return ctx.badRequest('Elige el servicio de la cita');
       }
 
       if (typeof motivo !== 'string' || motivo.trim().length < MOTIVO_MINIMO) {
@@ -110,6 +116,7 @@ module.exports = ({ strapi }) => {
             petDocumentId: mascota,
             startAt,
             motivo,
+            servicioDocumentId: servicio,
           }),
         };
       } catch (e) {
@@ -175,6 +182,17 @@ module.exports = ({ strapi }) => {
         ctx.body = {
           data: await svc().finalizarAtencion(ctx.params.documentId, { servicio: servicio || null }),
         };
+      } catch (e) {
+        return ctx.badRequest(e.message);
+      }
+    },
+
+    /** Consulta sin cita: registra el servicio de la visita. Cuerpo `{ servicio }`. */
+    async registrarServicio(ctx) {
+      const { servicio } = ctx.request.body ?? {};
+      if (typeof servicio !== 'string' || !servicio) return ctx.badRequest('Elige el servicio de la visita');
+      try {
+        ctx.body = { data: await svc().registrarServicio(ctx.params.documentId, servicio) };
       } catch (e) {
         return ctx.badRequest(e.message);
       }

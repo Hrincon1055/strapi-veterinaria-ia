@@ -44,6 +44,7 @@ export function ModalCita({ cita, abierto, onCerrar, onCambiarEstado, onAtender,
 
             <Dato etiqueta="Propietario" valor={cita.propietario} />
             <Dato etiqueta="Consultorio" valor={cita.consultorio} />
+            <Dato etiqueta="Servicio" valor={cita.servicios?.join(', ') || null} />
             <Dato etiqueta="Motivo" valor={cita.title} />
 
             {cerrada && (

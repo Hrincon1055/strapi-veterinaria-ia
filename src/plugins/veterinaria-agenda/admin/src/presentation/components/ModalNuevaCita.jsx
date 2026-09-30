@@ -7,6 +7,8 @@ import {
   Field,
   Flex,
   Modal,
+  SingleSelect,
+  SingleSelectOption,
   Textarea,
   Typography,
 } from "@strapi/design-system";
@@ -32,8 +34,14 @@ const Dato = ({ etiqueta, valor }) => (
  *
  * Del hueco no se pregunta nada: profesional, día, hora y duración ya están
  * decididos por dónde se pulsó, y se muestran como datos, no como campos. Lo
- * único que falta es de quién es la cita. Eso mantiene la reserva en dos
- * gestos: pulsar el hueco y elegir la mascota.
+ * único que falta es de quién es la cita y a qué viene. Eso mantiene la
+ * reserva en pocos gestos: pulsar el hueco, elegir la mascota, el servicio
+ * (ya propuesto) y escribir el motivo.
+ *
+ * El servicio viaja a la consulta: al pulsar "Atender y crear consulta" queda
+ * como servicio aplicado, y el veterinario no tiene que decir al finalizar
+ * qué atendió. Sale preseleccionado el "Servicio de consulta por defecto" de
+ * Clínica.
  *
  * La búsqueda de mascota va contra el servidor y no filtra una lista traída
  * entera: una clínica con miles de pacientes no cabe en un desplegable, y el
@@ -44,11 +52,14 @@ export function ModalNuevaCita({
   abierto,
   onCerrar,
   onBuscarMascotas,
+  onCargarServicios,
   onReservar,
 }) {
   const [mascotas, setMascotas] = React.useState([]);
   const [mascota, setMascota] = React.useState(null);
   const [motivo, setMotivo] = React.useState("");
+  const [servicios, setServicios] = React.useState(null);
+  const [servicio, setServicio] = React.useState("");
   const [buscando, setBuscando] = React.useState(false);
   const [guardando, setGuardando] = React.useState(false);
 
@@ -59,7 +70,22 @@ export function ModalNuevaCita({
     setMascota(null);
     setMotivo("");
     setMascotas([]);
+    setServicio("");
   }, [abierto, hueco?.startAt]);
+
+  // Catálogo de servicios: una vez por apertura, con el de Clínica elegido.
+  React.useEffect(() => {
+    if (!abierto) return;
+    let vivo = true;
+    onCargarServicios()
+      .then((lista) => {
+        if (!vivo) return;
+        setServicios(lista);
+        setServicio((actual) => actual || lista.find((s) => s.porDefecto)?.documentId || "");
+      })
+      .catch(() => vivo && setServicios([]));
+    return () => { vivo = false; };
+  }, [abierto, hueco?.startAt, onCargarServicios]);
 
   const buscar = React.useCallback(
     async (texto) => {
@@ -90,7 +116,7 @@ export function ModalNuevaCita({
   // que se abra desde ella quedan sin rótulo.
   const largoMotivo = motivo.trim().length;
   const motivoValido = largoMotivo >= MOTIVO_MINIMO;
-  const completo = Boolean(mascota) && motivoValido;
+  const completo = Boolean(mascota) && Boolean(servicio) && motivoValido;
 
   const confirmar = async () => {
     if (!completo) return;
@@ -100,6 +126,7 @@ export function ModalNuevaCita({
       mascota,
       startAt: hueco.startAt,
       motivo: motivo.trim(),
+      servicio,
     });
     setGuardando(false);
     if (ok) onCerrar();
@@ -146,6 +173,25 @@ export function ModalNuevaCita({
                   </ComboboxOption>
                 ))}
               </Combobox>
+              <Field.Hint />
+            </Field.Root>
+
+            <Field.Root
+              name='servicio'
+              required
+              hint='Pasa a la consulta como servicio aplicado.'>
+              <Field.Label>Servicio</Field.Label>
+              <SingleSelect
+                placeholder={servicios ? "Elige el servicio" : "Cargando servicios…"}
+                value={servicio}
+                onChange={(v) => setServicio(String(v))}
+                disabled={!servicios}>
+                {(servicios ?? []).map((s) => (
+                  <SingleSelectOption key={s.documentId} value={s.documentId}>
+                    {s.nombre}
+                  </SingleSelectOption>
+                ))}
+              </SingleSelect>
               <Field.Hint />
             </Field.Root>
 

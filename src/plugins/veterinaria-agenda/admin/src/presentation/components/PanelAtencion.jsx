@@ -7,125 +7,112 @@ import { useAtencion } from '../../application/useAtencion';
 import { COLOR_ESTADO, ETIQUETA_ESTADO, horaDe } from '../../domain/semana';
 
 const CONSULTA = 'api::clinical.consultation';
-const CERRADAS = ['completed', 'cancelled', 'no_show'];
-
-/**
- * La consulta no tiene servicio aplicado: se propone el de Clínica y el
- * veterinario confirma o cambia qué servicio fue la visita. Si se cobra no
- * lo decide él: lo decide Facturación al preparar la factura.
- */
-function ElegirCargo({ servicios, porDefecto, enviando, bloqueado, onFinalizar }) {
-  const [elegido, setElegido] = React.useState(porDefecto?.documentId ?? '');
-  React.useEffect(() => {
-    if (!elegido && porDefecto) setElegido(porDefecto.documentId);
-  }, [porDefecto, elegido]);
-
-  return (
-    <Flex direction="column" gap={2} alignItems="stretch">
-      <Typography variant="pi" textColor="warning700">
-        Esta consulta no tiene servicio registrado. ¿Qué servicio fue la visita?
-      </Typography>
-      <Field.Root name="cargo-consulta">
-        <SingleSelect
-          size="S"
-          placeholder={servicios ? 'Elige un servicio' : 'Cargando servicios…'}
-          value={elegido}
-          onChange={(v) => setElegido(String(v))}
-          disabled={!servicios || bloqueado}
-        >
-          {(servicios ?? []).map((s) => (
-            <SingleSelectOption key={s.documentId} value={s.documentId}>{s.nombre}</SingleSelectOption>
-          ))}
-        </SingleSelect>
-      </Field.Root>
-      <Button
-        variant="success"
-        size="S"
-        fullWidth
-        loading={enviando}
-        disabled={!elegido || bloqueado}
-        onClick={() => onFinalizar({ servicio: elegido })}
-      >
-        Añadir y finalizar
-      </Button>
-      <Typography variant="pi" textColor="neutral600">
-        Si se cobra o no lo decide Facturación antes de emitir la factura.
-      </Typography>
-      {!porDefecto && (
-        <Typography variant="pi" textColor="neutral600">
-          Clínica no tiene "Servicio de consulta por defecto": la administración puede elegirlo para que salga
-          ya seleccionado.
-        </Typography>
-      )}
-    </Flex>
-  );
-}
 
 function Atencion({ documentId }) {
-  const { cargando, sinPermiso, error, datos, enviando, servicios, hayQueElegir, finalizar, reabrir } =
+  const { cargando, sinPermiso, error, datos, enviando, servicios, finalizar, guardarServicio, reabrir } =
     useAtencion(documentId);
-  // Con cambios sin guardar no se finaliza: finalizar puede escribir en la
-  // consulta y recargar la ficha, y esos cambios se perderían.
+  // Con cambios sin guardar no se actúa: el servidor puede escribir en la
+  // consulta y la ficha se recarga, y esos cambios se perderían.
   const modificado = useForm('PanelAtencion', (s) => s.modified);
+
+  // Propuesto: el servicio que ya tiene la visita (el de la reserva) y, si no
+  // tiene, el "Servicio de consulta por defecto" de Clínica.
+  const actual = datos?.servicioVisita?.documentId ?? '';
+  const propuesto = actual || datos?.servicioPorDefecto?.documentId || '';
+  const [elegido, setElegido] = React.useState('');
+  React.useEffect(() => setElegido(propuesto), [propuesto]);
 
   if (cargando) return <Loader small>Cargando…</Loader>;
   if (sinPermiso) return <Typography variant="pi" textColor="neutral600">Sin acceso a la agenda.</Typography>;
-  if (error || !datos) return <Typography variant="pi" textColor="danger600">No se pudo consultar la cita.</Typography>;
+  if (error || !datos) return <Typography variant="pi" textColor="danger600">No se pudo consultar la atención.</Typography>;
 
-  const { cita, puedeFinalizar } = datos;
-  if (!cita) {
-    return (
-      <Typography variant="pi" textColor="neutral600">
-        Esta consulta no viene de una cita de la agenda.
-      </Typography>
-    );
-  }
-
-  const color = COLOR_ESTADO[cita.state] ?? 'neutral';
-  const abierta = !CERRADAS.includes(cita.state);
+  const { cita, puedeFinalizar, tieneCargo, servicioVisita } = datos;
+  const anulada = Boolean(cita && ['cancelled', 'no_show'].includes(cita.state));
+  // Atendida: cita cerrada, o consulta sin cita que ya tiene su servicio.
+  const atendida = cita ? cita.state === 'completed' : tieneCargo;
+  const estado = cita ? cita.state : atendida ? 'completed' : null;
+  const color = estado ? COLOR_ESTADO[estado] ?? 'neutral' : 'neutral';
 
   return (
     <Flex direction="column" gap={3} alignItems="stretch" width="100%">
-      <Flex justifyContent="space-between" alignItems="center">
+      <Flex justifyContent="space-between" alignItems="center" gap={2}>
         <Typography variant="pi" textColor="neutral600">
-          {String(cita.startAt).slice(0, 10)} · {horaDe(cita.startAt)} – {horaDe(cita.endAt)}
+          {cita
+            ? `${String(cita.startAt).slice(0, 10)} · ${horaDe(cita.startAt)} – ${horaDe(cita.endAt)}`
+            : 'Consulta sin cita de agenda'}
         </Typography>
-        <Badge backgroundColor={`${color}100`} textColor={`${color}700`}>{ETIQUETA_ESTADO[cita.state]}</Badge>
+        {estado && (
+          <Badge backgroundColor={`${color}100`} textColor={`${color}700`}>{ETIQUETA_ESTADO[estado]}</Badge>
+        )}
       </Flex>
 
       {!puedeFinalizar ? (
-        abierta && (
-          <Typography variant="pi" textColor="neutral600">
-            La finaliza quien atiende al terminar la consulta.
-          </Typography>
-        )
-      ) : cita.state === 'completed' ? (
-        <Button variant="tertiary" size="S" fullWidth loading={enviando} onClick={reabrir}>
-          Reabrir atención
-        </Button>
-      ) : !abierta ? null : (
         <>
-          {modificado && (
-            <Typography variant="pi" textColor="warning700">
-              Guarda la consulta antes de finalizar.
-            </Typography>
+          <Typography variant="pi">
+            Servicio de la visita: <b>{servicioVisita?.nombre ?? '—'}</b>
+          </Typography>
+          {cita && !atendida && !anulada && (
+            <Typography variant="pi" textColor="neutral600">La finaliza quien atiende al terminar la consulta.</Typography>
           )}
-          {hayQueElegir ? (
-            <ElegirCargo
-              servicios={servicios}
-              porDefecto={datos.servicioPorDefecto}
-              enviando={enviando}
-              bloqueado={modificado}
-              onFinalizar={finalizar}
-            />
-          ) : (
-            <Button variant="success" size="S" fullWidth loading={enviando} disabled={modificado} onClick={() => finalizar()}>
+        </>
+      ) : anulada ? null : (
+        <>
+          <Field.Root name="servicio-visita" hint="Si se cobra o no lo decide Facturación.">
+            <Field.Label>Servicio de la visita</Field.Label>
+            <SingleSelect
+              size="S"
+              placeholder={servicios ? 'Elige un servicio' : 'Cargando servicios…'}
+              value={elegido}
+              onChange={(v) => setElegido(String(v))}
+              disabled={!servicios || enviando}
+            >
+              {(servicios ?? []).map((s) => (
+                <SingleSelectOption key={s.documentId} value={s.documentId}>{s.nombre}</SingleSelectOption>
+              ))}
+            </SingleSelect>
+            <Field.Hint />
+          </Field.Root>
+
+          {modificado && (
+            <Typography variant="pi" textColor="warning700">Guarda la consulta antes de continuar.</Typography>
+          )}
+
+          {!atendida ? (
+            <Button
+              variant="success"
+              size="S"
+              fullWidth
+              loading={enviando}
+              disabled={!elegido || modificado}
+              onClick={() => finalizar(elegido)}
+            >
               Finalizar atención
             </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="S"
+              fullWidth
+              loading={enviando}
+              disabled={!elegido || elegido === actual || modificado}
+              onClick={() => guardarServicio(elegido)}
+            >
+              Guardar servicio
+            </Button>
           )}
-          <Typography variant="pi" textColor="neutral600">
-            La historia se puede seguir editando después de finalizar.
-          </Typography>
+
+          {cita?.state === 'completed' && (
+            <Button variant="tertiary" size="S" fullWidth disabled={enviando} onClick={reabrir}>
+              Reabrir atención
+            </Button>
+          )}
+
+          {!datos.servicioPorDefecto && !actual && (
+            <Typography variant="pi" textColor="neutral600">
+              Clínica no tiene "Servicio de consulta por defecto": la administración puede elegirlo para que salga
+              ya seleccionado.
+            </Typography>
+          )}
         </>
       )}
     </Flex>
@@ -134,7 +121,12 @@ function Atencion({ documentId }) {
 
 /**
  * Panel lateral de la ficha de la consulta (`addEditViewSidePanel`): el
- * estado de su cita y el botón para darla por atendida.
+ * servicio de la visita y el cierre de la atención. Sale siempre en las
+ * consultas, vengan o no de una cita.
+ *
+ * El servicio de la visita se ve siempre y se puede corregir: si viene de la
+ * reserva, la recepcionista pudo equivocarse; si la consulta no tiene cita
+ * (urgencia, atención no prevista), se propone el de Clínica.
  *
  * Guardar la consulta NO cierra la cita, a propósito: el veterinario guarda
  * varias veces durante la visita (anamnesis, examen, resultado de
@@ -142,15 +134,19 @@ function Atencion({ documentId }) {
  * agenda con el paciente todavía en el consultorio. Cerrar es una decisión
  * explícita de quien atiende; el cierre nocturno
  * (`src/bootstrap/cierre-citas.ts`) recoge las que se queden abiertas.
- *
- * Y al cerrar se asegura que la visita llegue a Facturación: si la consulta no
- * tiene ningún servicio aplicado, se propone el "Servicio de consulta por
- * defecto" de Clínica.
  */
 export const PanelAtencion = ({ model, documentId }) => {
-  if (model !== CONSULTA || !documentId) return null;
+  if (model !== CONSULTA) return null;
   return {
     title: 'Atención',
-    content: <Atencion documentId={documentId} />,
+    // Una consulta nueva no existe hasta que se guarda: no hay dónde
+    // registrar el servicio todavía.
+    content: documentId ? (
+      <Atencion documentId={documentId} />
+    ) : (
+      <Typography variant="pi" textColor="neutral600">
+        Guarda la consulta para elegir el servicio de la visita y finalizar la atención.
+      </Typography>
+    ),
   };
 };

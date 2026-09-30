@@ -76,6 +76,7 @@ export function useAgenda() {
   );
 
   const buscarMascotas = useCallback((q) => api.buscarMascotas(q), [api]);
+  const cargarServicios = useCallback(() => api.servicios(), [api]);
 
   /**
    * Reserva en un hueco libre. Devuelve `true` si se creó, para que el modal
@@ -86,9 +87,9 @@ export function useAgenda() {
    * que en una vista de 5 días con 13 tramos molesta.
    */
   const reservar = useCallback(
-    async ({ staff, mascota, startAt, motivo }) => {
+    async ({ staff, mascota, startAt, motivo, servicio }) => {
       try {
-        const cita = await api.reservar({ staff, mascota, startAt, motivo });
+        const cita = await api.reservar({ staff, mascota, startAt, motivo, servicio });
         agregarCita(staff, cita);
         avisar('success', `Cita reservada para ${cita.mascota?.nombre ?? 'la mascota'}`);
         return true;
@@ -122,6 +123,6 @@ export function useAgenda() {
 
   return {
     lunes, vista, seleccion, yo, personal, semana, cargando, error,
-    cambiarEstado, abrirConsulta, buscarMascotas, reservar,
+    cambiarEstado, abrirConsulta, buscarMascotas, cargarServicios, reservar,
   };
 }

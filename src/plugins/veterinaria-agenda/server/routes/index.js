@@ -46,7 +46,10 @@ module.exports = {
       // el estado lo puede cualquiera con agenda; cambiarlo, solo quien atiende.
       { method: 'GET', path: '/consultations/:documentId/attention', handler: 'agenda.atencion', config: puedeVer },
       { method: 'POST', path: '/consultations/:documentId/attention/finish', handler: 'agenda.finalizarAtencion', config: puedeFinalizar },
-      { method: 'GET', path: '/services', handler: 'agenda.servicios', config: puedeFinalizar },
+      { method: 'POST', path: '/consultations/:documentId/attention/service', handler: 'agenda.registrarServicio', config: puedeFinalizar },
+      // Leer el catálogo de servicios no es sensible: lo usan recepción al
+      // reservar y el veterinario al finalizar.
+      { method: 'GET', path: '/services', handler: 'agenda.servicios', config: puedeVer },
       { method: 'POST', path: '/consultations/:documentId/attention/reopen', handler: 'agenda.reabrirAtencion', config: puedeFinalizar },
     ],
   },

@@ -3,17 +3,18 @@ import { useFetchClient, useNotification } from '@strapi/strapi/admin';
 import { crearAgendaApi } from '../infrastructure/agendaApi';
 
 /**
- * Aplicación: el cierre de la atención desde la ficha de la consulta.
+ * Aplicación: el servicio de la visita y el cierre de la atención desde la
+ * ficha de la consulta.
  *
  * No usa el store de la agenda: el panel vive en el Content Manager, fuera de
  * la página del plugin, y la agenda vuelve a pedir la semana al montarse, así
  * que al regresar al calendario la cita ya sale como atendida.
  *
- * Cuando finalizar cambia la consulta (añade el servicio de la visita),
- * el formulario abierto queda desactualizado: si se guardara después,
- * reenviaría la zona de líneas sin el cargo y lo borraría. Por eso en ese caso
- * se recarga la ficha. El panel no deja finalizar con cambios sin guardar, así
- * que la recarga no pierde nada.
+ * Cuando el servidor escribe en la consulta (añade o cambia el servicio de la
+ * visita, `consultaCambiada`), el formulario abierto queda desactualizado: si
+ * se guardara después, reenviaría la zona de líneas vieja y desharía el
+ * cambio. Por eso en ese caso se recarga la ficha. El panel no deja actuar con
+ * cambios sin guardar, así que la recarga no pierde nada.
  */
 export function useAtencion(consultaId) {
   const fetchClient = useFetchClient();
@@ -34,21 +35,20 @@ export function useAtencion(consultaId) {
     return () => { vivo = false; };
   }, [api, consultaId]);
 
-  // La lista de servicios solo hace falta si hay que elegir el cargo.
-  const d = estado.datos;
-  const hayQueElegir = Boolean(d?.puedeFinalizar && d.cita && d.cita.state !== 'completed' && !d.tieneCargo);
+  // El selector está siempre visible para quien puede finalizar.
+  const puedeFinalizar = Boolean(estado.datos?.puedeFinalizar);
   useEffect(() => {
-    if (!hayQueElegir || servicios) return;
+    if (!puedeFinalizar || servicios) return;
     api.servicios().then(setServicios).catch(() => setServicios([]));
-  }, [api, hayQueElegir, servicios]);
+  }, [api, puedeFinalizar, servicios]);
 
   const ejecutar = useCallback(
-    async (accion, exito, { recargar = false } = {}) => {
+    async (accion, exito) => {
       setEnviando(true);
       try {
-        const nuevo = await accion();
+        const { consultaCambiada, ...nuevo } = await accion();
         toggleNotification({ type: 'success', message: exito });
-        if (recargar) {
+        if (consultaCambiada) {
           window.location.reload();
           return;
         }
@@ -56,7 +56,7 @@ export function useAtencion(consultaId) {
       } catch (e) {
         toggleNotification({
           type: 'danger',
-          message: e?.response?.data?.error?.message ?? 'No se pudo actualizar la cita',
+          message: e?.response?.data?.error?.message ?? 'No se pudo actualizar la atención',
         });
       } finally {
         setEnviando(false);
@@ -65,16 +65,14 @@ export function useAtencion(consultaId) {
     [toggleNotification]
   );
 
-  /** `decision`: nada si ya tiene servicio; `{ servicio }` si no. */
+  /** Cierra la atención con ese servicio de la visita (con o sin cita). */
   const finalizar = useCallback(
-    (decision = {}) =>
-      ejecutar(
-        () => api.finalizarAtencion(consultaId, decision),
-        decision.servicio
-          ? 'Atención finalizada; el servicio queda pendiente de cobro en Facturación'
-          : 'Atención finalizada: la cita queda como atendida',
-        { recargar: Boolean(decision.servicio) }
-      ),
+    (servicio) => ejecutar(() => api.finalizarAtencion(consultaId, { servicio }), 'Atención finalizada'),
+    [api, consultaId, ejecutar]
+  );
+  /** Corrige el servicio de la visita sin tocar la cita. */
+  const guardarServicio = useCallback(
+    (servicio) => ejecutar(() => api.registrarServicio(consultaId, servicio), 'Servicio de la visita actualizado'),
     [api, consultaId, ejecutar]
   );
   const reabrir = useCallback(
@@ -82,5 +80,5 @@ export function useAtencion(consultaId) {
     [api, consultaId, ejecutar]
   );
 
-  return { ...estado, enviando, servicios, hayQueElegir, finalizar, reabrir };
+  return { ...estado, enviando, servicios, finalizar, guardarServicio, reabrir };
 }

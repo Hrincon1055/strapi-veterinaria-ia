@@ -12,7 +12,7 @@ export function AgendaPage() {
   const navigate = useNavigate();
   const {
     yo, personal, semana, cargando, error, seleccion,
-    cambiarEstado, abrirConsulta, buscarMascotas, reservar,
+    cambiarEstado, abrirConsulta, buscarMascotas, cargarServicios, reservar,
   } = useAgenda();
   const [citaAbierta, setCitaAbierta] = React.useState(null);
   const [huecoElegido, setHuecoElegido] = React.useState(null);
@@ -110,6 +110,7 @@ export function AgendaPage() {
         abierto={Boolean(huecoElegido)}
         onCerrar={() => setHuecoElegido(null)}
         onBuscarMascotas={buscarMascotas}
+        onCargarServicios={cargarServicios}
         onReservar={reservar}
       />
     </Page.Main>
