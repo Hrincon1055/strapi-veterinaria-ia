@@ -13,7 +13,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "x-generation-date": "2026-09-30T13:58:06.500Z"
+    "x-generation-date": "2026-09-30T15:24:35.591Z"
   },
   "servers": [
     {
@@ -120610,9 +120610,6 @@
               "notes": {
                 "type": "string"
               },
-              "searchLabel": {
-                "type": "string"
-              },
               "locale": {
                 "type": "string"
               },
@@ -121509,9 +121506,6 @@
           "notes": {
             "type": "string"
           },
-          "searchLabel": {
-            "type": "string"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -121657,9 +121651,6 @@
                   }
                 },
                 "notes": {
-                  "type": "string"
-                },
-                "searchLabel": {
                   "type": "string"
                 },
                 "createdAt": {
@@ -124019,9 +124010,6 @@
               "notes": {
                 "type": "string"
               },
-              "searchLabel": {
-                "type": "string"
-              },
               "locale": {
                 "type": "string"
               },
@@ -124898,9 +124886,6 @@
           "notes": {
             "type": "string"
           },
-          "searchLabel": {
-            "type": "string"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -125027,9 +125012,6 @@
                   }
                 },
                 "notes": {
-                  "type": "string"
-                },
-                "searchLabel": {
                   "type": "string"
                 },
                 "createdAt": {

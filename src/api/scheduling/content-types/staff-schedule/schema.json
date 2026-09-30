@@ -16,7 +16,6 @@
     "validUntil": { "type": "date" },
     "isActive": { "type": "boolean", "default": true, "required": true },
     "shifts": { "type": "component", "repeatable": true, "component": "scheduling.work-shift" },
-    "notes": { "type": "text" },
-    "searchLabel": { "type": "string", "maxLength": 255 }
+    "notes": { "type": "text" }
   }
 }

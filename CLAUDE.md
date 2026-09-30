@@ -79,7 +79,11 @@ Como Strapi no tiene campos calculados, la solución es una columna real. `src/l
 
 `src/bootstrap/main-fields.ts` declara el main field, y hay que escribir en **dos** sitios: `settings.mainField` del destino Y `metadatas.<campo>.edit.mainField` de cada content type que lo apunte — el selector lee del origen, no del destino. Cambiarlo solo en el panel del destino no surte efecto en los formularios que ya existen.
 
-No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente escritura. Y no lo ocultes del panel: un campo oculto deja de ser `isListable` y Strapi volvería a `documentId`.
+No edites un `searchLabel` a mano: el middleware lo sobrescribe en la siguiente escritura. Por eso `main-fields.ts` lo marca **no editable** en el panel (todo content type cuyo main field en `MAIN_FIELDS` sea `searchLabel`): se ve en gris, sin confundir a nadie. Y no lo ocultes del panel: un campo oculto deja de ser `isListable` y Strapi volvería a `documentId`.
+
+Queda un hueco por la API: `esEscrituraDeEtiqueta()` deja pasar sin recalcular una escritura cuyo único campo sea `searchLabel` (es la forma de la escritura interna), así que un cliente de la API que mande solo `{ searchLabel }` fijaría un texto a mano. El panel no cae ahí porque reenvía el formulario entero.
+
+**Un `searchLabel` sin fórmula no se deja en el esquema.** `staff-schedule` y `schedule-exception` lo tuvieron sin entrada en `LABEL_BUILDERS` ni en `MAIN_FIELDS`: nadie lo rellenaba y quedaba como un campo editable a mano que no servía para nada, así que se quitó (2026-09-30). Si algún día hay que buscarlos desde un selector de relación: el atributo en el esquema, una fórmula en `LABEL_BUILDERS` (p. ej. profesional · vigencia; profesional · fecha · tipo), el main field en `MAIN_FIELDS` —lo que además lo bloquea solo—, su traducción en `etiquetas-es.json` si hiciera falta y, si depende de otra entidad, su disparador de cascada en `validations/labels.ts`. `backfill-labels.ts` rellena las existentes al arrancar.
 
 **El staff trabaja en el panel; solo el cliente usa users-permissions.** Recepción, Veterinario y Administrador de clínica son roles del RBAC del panel (`src/bootstrap/admin-roles.ts`) y cada persona es un `admin::user`. Se migraron el 2026-09-28 con `migrate-staff-to-admin.js`, conservando el hash bcrypt: cada uno entra en `/admin` con su correo y su contraseña de siempre. Consecuencias que no son obvias:
 

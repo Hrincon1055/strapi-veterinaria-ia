@@ -2386,10 +2386,6 @@ export interface ApiSchedulingScheduleException
       ['vacation', 'sick_leave', 'training', 'holiday', 'personal', 'other']
     >;
     room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
-    searchLabel: Schema.Attribute.String &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 255;
-      }>;
     staff: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     toDate: Schema.Attribute.Date & Schema.Attribute.Required;
     toTime: Schema.Attribute.Time;
@@ -2522,10 +2518,6 @@ export interface ApiSchedulingStaffSchedule
     notes: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
     room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
-    searchLabel: Schema.Attribute.String &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 255;
-      }>;
     shifts: Schema.Attribute.Component<'scheduling.work-shift', true>;
     slotMinutes: Schema.Attribute.Integer &
       Schema.Attribute.Required &

@@ -200,9 +200,16 @@ export default async (strapi: Core.Strapi): Promise<void> => {
   }
 
   // 4. campos que solo escribe el servidor, en componentes y content types.
+  // Todo `searchLabel` que sea main field lo recalcula `validations/labels.ts`
+  // en cada escritura: se deja a la vista (oculto dejaría de ser listable y el
+  // selector volvería al documentId) pero sin editar.
+  const etiquetas = Object.entries(MAIN_FIELDS)
+    .filter(([, campo]) => campo === 'searchLabel')
+    .map(([uid]) => [`${PREFIJO}${uid}`, ['searchLabel']] as const);
   const soloLectura = [
     ...Object.entries(SOLO_LECTURA_COMPONENTES).map(([uid, c]) => [`components::${uid}`, c] as const),
     ...Object.entries(SOLO_LECTURA).map(([uid, c]) => [`${PREFIJO}${uid}`, c] as const),
+    ...etiquetas,
   ];
   for (const [key, campos] of soloLectura) {
     const config: any = await store.get({ key });

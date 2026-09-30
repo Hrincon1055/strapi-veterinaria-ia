@@ -18,7 +18,6 @@
     "fromTime": { "type": "time" },
     "toTime": { "type": "time" },
     "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
-    "notes": { "type": "text" },
-    "searchLabel": { "type": "string", "maxLength": 255 }
+    "notes": { "type": "text" }
   }
 }
