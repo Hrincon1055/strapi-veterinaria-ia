@@ -52,12 +52,47 @@ function Hueco({ hueco, top, alto, onAgendar }) {
 }
 
 /**
+ * La línea de la hora actual. Fuerte en el día de hoy, con un punto en el
+ * borde como en Outlook, y tenue en el resto de la semana para poder seguir
+ * la hora de un lado a otro. Encima de las citas, pero sin capturar clics:
+ * la cita que atraviesa se sigue pudiendo abrir.
+ */
+function LineaAhora({ top, fuerte }) {
+  return (
+    <Box
+      aria-hidden
+      position="absolute"
+      background="primary600"
+      style={{
+        top: `${top - (fuerte ? 1 : 0)}px`,
+        left: 0,
+        right: 0,
+        height: fuerte ? '2px' : '1px',
+        opacity: fuerte ? 1 : 0.35,
+        zIndex: 2,
+        pointerEvents: 'none',
+      }}
+    >
+      {fuerte && (
+        <Box
+          background="primary600"
+          style={{ position: 'absolute', left: '-5px', top: '-4px', width: '10px', height: '10px', borderRadius: '50%' }}
+        />
+      )}
+    </Box>
+  );
+}
+
+/**
  * Un día de un profesional: los huecos libres de fondo y las citas encima.
  *
  * Las citas van después en el DOM, así que tapan al hueco cuando se solapan:
  * lo que se pulsa encima de una cita es siempre la cita.
+ *
+ * `ahora` son los minutos desde medianoche, o `null` si la línea no toca
+ * (semana que no es la actual, u hora fuera de la franja pintada).
  */
-export function ColumnaDia({ dia, citas, rango, esHoy, onAbrirCita, onAgendar }) {
+export function ColumnaDia({ dia, citas, rango, esHoy, ahora, onAbrirCita, onAgendar }) {
   const alturaTotal = (rango.max - rango.min) * PX_POR_MINUTO;
   const y = (min) => (min - rango.min) * PX_POR_MINUTO;
 
@@ -95,6 +130,8 @@ export function ColumnaDia({ dia, citas, rango, esHoy, onAbrirCita, onAgendar })
           <Typography variant="pi" textColor="neutral400">sin atención</Typography>
         </Flex>
       )}
+
+      {ahora != null && <LineaAhora top={y(ahora)} fuerte={esHoy} />}
     </Box>
   );
 }

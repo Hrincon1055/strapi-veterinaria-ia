@@ -16,7 +16,19 @@ export const DIAS = [
   { clave: 'sunday', etiqueta: 'Dom' },
 ];
 
-export const hoy = () => new Date().toISOString().slice(0, 10);
+/**
+ * Fecha y hora de pared del navegador. La agenda trabaja en hora local sin
+ * zona (los huecos llegan como `07:00:00.000` y las citas como `07:00Z` con
+ * esa misma hora), así que "ahora" es el reloj de la recepción, no UTC:
+ * con `toISOString()` hoy saltaba a mañana a partir de las 19:00 en Colombia.
+ */
+export function hoy(ahora = new Date()) {
+  const dos = (n) => String(n).padStart(2, '0');
+  return `${ahora.getFullYear()}-${dos(ahora.getMonth() + 1)}-${dos(ahora.getDate())}`;
+}
+
+/** Minutos transcurridos desde la medianoche local. */
+export const minutosAhora = (ahora = new Date()) => ahora.getHours() * 60 + ahora.getMinutes();
 
 /** Lunes de la semana que contiene esa fecha. Mismo criterio que el servidor. */
 export function lunesDe(fecha) {
