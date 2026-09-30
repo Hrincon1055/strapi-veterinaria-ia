@@ -99,6 +99,7 @@ export function AgendaPage() {
         onCerrar={() => setCitaAbierta(null)}
         onCambiarEstado={(id, estado) => { cambiarEstado(id, estado); setCitaAbierta(null); }}
         onAtender={atender}
+        puedeFinalizar={Boolean(yo?.puedeFinalizar)}
         onFacturar={puedeFacturar
           ? (consultaId) => navigate(`/plugins/veterinaria-facturacion/consultas/${consultaId}`)
           : undefined}

@@ -9,6 +9,7 @@ import setFieldLabels from './bootstrap/field-labels';
 import setMainFields from './bootstrap/main-fields';
 import seedCatalogs from './bootstrap/seed';
 import setupRoles from './bootstrap/roles';
+import scheduleAppointmentClosing from './bootstrap/cierre-citas';
 
 export default {
   /**
@@ -36,5 +37,6 @@ export default {
     await backfillLineKeys(strapi);
     await setMainFields(strapi);
     await setFieldLabels(strapi);
+    await scheduleAppointmentClosing(strapi);
   },
 };

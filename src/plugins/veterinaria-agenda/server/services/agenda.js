@@ -336,4 +336,52 @@ module.exports = ({ strapi }) => ({
 
     return { documentId: consulta.documentId, creada: true };
   },
+
+  /**
+   * La cita de una consulta, para el panel lateral de la ficha. `null` si la
+   * consulta se creó sin cita (urgencia registrada a mano en el panel).
+   */
+  async citaDeConsulta(consultaDocumentId) {
+    const consulta = await strapi.documents('api::clinical.consultation').findOne({
+      documentId: consultaDocumentId,
+      populate: { appointment: { fields: ['documentId', 'state', 'startAt', 'endAt', 'completedAt'] } },
+    });
+    if (!consulta) throw new Error('La consulta no existe');
+    const c = consulta.appointment;
+    return c
+      ? { documentId: c.documentId, state: c.state, startAt: c.startAt, endAt: c.endAt, completedAt: c.completedAt }
+      : null;
+  },
+
+  /**
+   * Da por atendida la cita de una consulta, o la reabre si se cerró por
+   * error. Guardar la consulta no la cierra: el veterinario guarda varias
+   * veces durante la visita y cerrarla antes liberaría su tramo en la agenda
+   * con el paciente todavía en el consultorio.
+   *
+   * Reabrir vuelve a `in_progress`, que bloquea agenda otra vez; si entre
+   * tanto recepción agendó en ese tramo, la regla de solapamiento lo rechaza.
+   */
+  async finalizarAtencion(consultaDocumentId, { reabrir = false } = {}) {
+    const cita = await this.citaDeConsulta(consultaDocumentId);
+    if (!cita) throw new Error('Esta consulta no viene de una cita: no hay nada que finalizar');
+
+    if (reabrir) {
+      if (cita.state !== 'completed') throw new Error('La cita no está atendida: no hay nada que reabrir');
+      await strapi.documents('api::scheduling.appointment').update({
+        documentId: cita.documentId,
+        data: { state: 'in_progress', completedAt: null },
+      });
+    } else if (cita.state !== 'completed') {
+      if (['cancelled', 'no_show'].includes(cita.state)) {
+        throw new Error('La cita está cancelada o marcada como "no asistió"; cambia su estado desde la agenda');
+      }
+      await strapi.documents('api::scheduling.appointment').update({
+        documentId: cita.documentId,
+        data: { state: 'completed' },
+      });
+    }
+
+    return this.citaDeConsulta(consultaDocumentId);
+  },
 });

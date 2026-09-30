@@ -24,6 +24,10 @@ const puedeAgendar = {
   policies: ['plugin::veterinaria-agenda.puede-agendar'],
 };
 
+const puedeFinalizar = {
+  policies: ['plugin::veterinaria-agenda.puede-finalizar'],
+};
+
 module.exports = {
   admin: {
     type: 'admin',
@@ -37,6 +41,12 @@ module.exports = {
       // Reservar: solo quien tenga `agenda.agendar`.
       { method: 'GET', path: '/pets', handler: 'agenda.mascotas', config: puedeAgendar },
       { method: 'POST', path: '/appointments', handler: 'agenda.reservar', config: puedeAgendar },
+
+      // Cerrar la atención desde la ficha de la consulta (panel lateral). Ver
+      // el estado lo puede cualquiera con agenda; cambiarlo, solo quien atiende.
+      { method: 'GET', path: '/consultations/:documentId/attention', handler: 'agenda.atencion', config: puedeVer },
+      { method: 'POST', path: '/consultations/:documentId/attention/finish', handler: 'agenda.finalizarAtencion', config: puedeFinalizar },
+      { method: 'POST', path: '/consultations/:documentId/attention/reopen', handler: 'agenda.reabrirAtencion', config: puedeFinalizar },
     ],
   },
 };

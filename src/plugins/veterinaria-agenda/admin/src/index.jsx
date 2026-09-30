@@ -1,6 +1,7 @@
 import { Calendar } from '@strapi/icons';
 
 import { AgendaPage } from './presentation/AgendaPage';
+import { PanelAtencion } from './presentation/components/PanelAtencion';
 
 const PLUGIN_ID = 'veterinaria-agenda';
 
@@ -31,5 +32,9 @@ export default {
     app.registerPlugin({ id: PLUGIN_ID, name: PLUGIN_ID });
   },
 
-  bootstrap() {},
+  bootstrap(app) {
+    // "Finalizar atención" dentro de la ficha de la consulta: el veterinario
+    // cierra la cita donde está trabajando, sin volver a la agenda.
+    app.getPlugin('content-manager').apis.addEditViewSidePanel([PanelAtencion]);
+  },
 };

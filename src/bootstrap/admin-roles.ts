@@ -85,6 +85,8 @@ const AGENDA = {
   propia: 'plugin::veterinaria-agenda.agenda.ver-propia',
   todas: 'plugin::veterinaria-agenda.agenda.ver-todas',
   agendar: 'plugin::veterinaria-agenda.agenda.agendar',
+  // Dar por atendida una cita: quien atiende, no recepción.
+  finalizar: 'plugin::veterinaria-agenda.agenda.finalizar',
 };
 
 /**
@@ -142,13 +144,13 @@ export const ROLES_PANEL: RolPanel[] = [
     description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
     concesiones: veterinario,
     // El veterinario atiende lo que ya tiene agendado: ve su agenda, no reserva.
-    otras: [...COMUNES_PANEL, AGENDA.propia, FACTURACION.ver],
+    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver],
   },
   {
     name: 'Administrador de clínica',
     description: 'Todo lo anterior más catálogos, campañas, notificaciones y datos de la clínica.',
     concesiones: administracion,
-    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.todas, AGENDA.agendar, ...Object.values(FACTURACION)],
+    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION)],
   },
 ];
 

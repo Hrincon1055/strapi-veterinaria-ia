@@ -2,6 +2,7 @@
 
 const VER_TODAS = 'plugin::veterinaria-agenda.agenda.ver-todas';
 const AGENDAR = 'plugin::veterinaria-agenda.agenda.agendar';
+const FINALIZAR = 'plugin::veterinaria-agenda.agenda.finalizar';
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 // Debe coincidir con el modal de reserva.
 const MOTIVO_MINIMO = 5;
@@ -17,6 +18,11 @@ function puedeAgendar(ctx) {
   return Boolean(ctx.state?.userAbility?.can(AGENDAR));
 }
 
+/** ¿Puede dar por atendida una cita? El veterinario sí; recepción, no. */
+function puedeFinalizar(ctx) {
+  return Boolean(ctx.state?.userAbility?.can(FINALIZAR));
+}
+
 module.exports = ({ strapi }) => {
   const svc = () => strapi.plugin('veterinaria-agenda').service('agenda');
 
@@ -25,7 +31,12 @@ module.exports = ({ strapi }) => {
       const yo = await svc().quienSoy(ctx.state.user.id);
       // La interfaz necesita los dos para decidir qué pinta: sin `puedeAgendar`
       // los huecos se quedan como fondo inerte, que es lo que ve un veterinario.
-      ctx.body = { ...yo, puedeVerTodas: puedeVerTodas(ctx), puedeAgendar: puedeAgendar(ctx) };
+      ctx.body = {
+        ...yo,
+        puedeVerTodas: puedeVerTodas(ctx),
+        puedeAgendar: puedeAgendar(ctx),
+        puedeFinalizar: puedeFinalizar(ctx),
+      };
     },
 
     async personal(ctx) {
@@ -115,6 +126,11 @@ module.exports = ({ strapi }) => {
       if (!VALIDOS.includes(estado)) {
         return ctx.badRequest(`Estado no válido. Usa uno de: ${VALIDOS.join(', ')}`);
       }
+      // La regla del Document Service lo rechazaría igual, pero con un 400;
+      // aquí es un 403, que es lo que es.
+      if (estado === 'completed' && !puedeFinalizar(ctx)) {
+        return ctx.forbidden('Solo quien atiende puede dar la cita por atendida');
+      }
       try {
         ctx.body = { data: await svc().cambiarEstado(documentId, estado) };
       } catch (e) {
@@ -127,6 +143,33 @@ module.exports = ({ strapi }) => {
     async abrirConsulta(ctx) {
       try {
         ctx.body = { data: await svc().abrirConsulta(ctx.params.documentId) };
+      } catch (e) {
+        return ctx.badRequest(e.message);
+      }
+    },
+
+    /** Estado de la cita de una consulta, para el panel lateral de la ficha. */
+    async atencion(ctx) {
+      try {
+        ctx.body = {
+          data: { cita: await svc().citaDeConsulta(ctx.params.documentId), puedeFinalizar: puedeFinalizar(ctx) },
+        };
+      } catch (e) {
+        return ctx.badRequest(e.message);
+      }
+    },
+
+    async finalizarAtencion(ctx) {
+      try {
+        ctx.body = { data: await svc().finalizarAtencion(ctx.params.documentId) };
+      } catch (e) {
+        return ctx.badRequest(e.message);
+      }
+    },
+
+    async reabrirAtencion(ctx) {
+      try {
+        ctx.body = { data: await svc().finalizarAtencion(ctx.params.documentId, { reabrir: true }) };
       } catch (e) {
         return ctx.badRequest(e.message);
       }

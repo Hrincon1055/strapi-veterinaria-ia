@@ -57,5 +57,21 @@ export function crearAgendaApi(fetchClient) {
       const { data } = await fetchClient.post(`${BASE}/appointments/${documentId}/consultation`, {});
       return data.data;
     },
+
+    /** `{ cita, puedeFinalizar }` de una consulta; `cita` es null si no viene de la agenda. */
+    async atencion(consultaId) {
+      const { data } = await fetchClient.get(`${BASE}/consultations/${consultaId}/attention`);
+      return data.data;
+    },
+
+    async finalizarAtencion(consultaId) {
+      const { data } = await fetchClient.post(`${BASE}/consultations/${consultaId}/attention/finish`, {});
+      return data.data;
+    },
+
+    async reabrirAtencion(consultaId) {
+      const { data } = await fetchClient.post(`${BASE}/consultations/${consultaId}/attention/reopen`, {});
+      return data.data;
+    },
   };
 }

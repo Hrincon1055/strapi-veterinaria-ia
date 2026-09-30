@@ -16,7 +16,7 @@ const Dato = ({ etiqueta, valor }) => (
  * y fecha ya puestos, y lleva al formulario. Si la cita ya tiene consulta, el
  * botón abre esa en vez de crear otra — por eso el texto cambia.
  */
-export function ModalCita({ cita, abierto, onCerrar, onCambiarEstado, onAtender, onFacturar }) {
+export function ModalCita({ cita, abierto, onCerrar, onCambiarEstado, onAtender, onFacturar, puedeFinalizar }) {
   if (!cita) return null;
 
   const tieneConsulta = Boolean(cita.consultationDocumentId);
@@ -64,9 +64,13 @@ export function ModalCita({ cita, abierto, onCerrar, onCambiarEstado, onAtender,
             <Button variant="danger-light" onClick={() => onCambiarEstado(cita.documentId, 'no_show')}>
               No asistió
             </Button>
-            <Button variant="secondary" onClick={() => onCambiarEstado(cita.documentId, 'completed')}>
-              Marcar atendida
-            </Button>
+            {/* Dar por atendida es de quien atiende; recepción no ve el
+                botón y el servidor se lo rechazaría igual. */}
+            {puedeFinalizar && cita.state !== 'completed' && (
+              <Button variant="secondary" onClick={() => onCambiarEstado(cita.documentId, 'completed')}>
+                Marcar atendida
+              </Button>
+            )}
             {tieneConsulta && onFacturar && (
               <Button variant="secondary" onClick={() => onFacturar(cita.consultationDocumentId)}>
                 Facturar

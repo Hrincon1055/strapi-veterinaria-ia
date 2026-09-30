@@ -6,12 +6,18 @@
  * `registerMany` SOLO se puede llamar desde bootstrap: fuera de aquí lanza
  * "You can't register new actions outside of the bootstrap function".
  *
- * Se registran tres acciones porque son tres cosas distintas que el negocio
- * reparte de otra manera: el profesional ve su agenda; recepción ve la de
- * todos; y reservar en un hueco libre es de recepción, no del veterinario,
- * que solo atiende lo que ya tiene agendado. Quien no tenga `ver-todas` queda
- * forzado a la suya, lo decida o no la interfaz; quien no tenga `agendar` no
- * puede crear citas aunque llame al endpoint a mano.
+ * Se registran cuatro acciones porque son cuatro cosas distintas que el
+ * negocio reparte de otra manera: el profesional ve su agenda; recepción ve la
+ * de todos; reservar en un hueco libre es de recepción, no del veterinario,
+ * que solo atiende lo que ya tiene agendado; y dar por atendida una cita es de
+ * quien atiende, no de recepción. Quien no tenga `ver-todas` queda forzado a
+ * la suya, lo decida o no la interfaz; quien no tenga `agendar` no puede crear
+ * citas aunque llame al endpoint a mano; y sin `finalizar` una cita no pasa a
+ * atendida ni por la agenda ni por el Content Manager
+ * (`src/validations/scheduling.ts`).
+ *
+ * `admin-roles.ts` (la aplicación, no el plugin) sí las concede a los roles
+ * del panel, con `addPermissions`.
  *
  * Y aquí acaba el trabajo: **no se asignan a ningún rol desde código**. El
  * Super Admin las recibe solo —Strapi le concede toda acción registrada al
@@ -36,6 +42,12 @@ const ACCIONES = [
   {
     uid: 'agenda.agendar',
     displayName: 'Reservar citas en los huecos libres',
+    pluginName: 'veterinaria-agenda',
+    section: 'plugins',
+  },
+  {
+    uid: 'agenda.finalizar',
+    displayName: 'Finalizar la atención de una cita',
     pluginName: 'veterinaria-agenda',
     section: 'plugins',
   },

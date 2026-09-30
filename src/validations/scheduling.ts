@@ -15,6 +15,9 @@ import {
 /** Estados que ocupan agenda: dos citas en estos estados no pueden solaparse. */
 const BLOCKING_STATES = ['scheduled', 'confirmed', 'arrived', 'in_progress'];
 
+/** Permiso del panel para pasar una cita a `completed` (plugin de agenda). */
+const FINALIZAR = 'plugin::veterinaria-agenda.agenda.finalizar';
+
 export default (strapi: Core.Strapi): void => {
   // ---- api::scheduling.service --------------------------------------------
 
@@ -77,6 +80,22 @@ export default (strapi: Core.Strapi): void => {
       !effective(data, current, 'completedAt')
     ) {
       data.completedAt = new Date().toISOString();
+    }
+
+    // Dar por atendida una cita es de quien atiende. La regla vive aquí y no
+    // solo en el plugin de agenda porque recepción tiene CRUD de citas en el
+    // Content Manager y podría marcarla desde el formulario. Sin sesión
+    // (el cierre nocturno de `bootstrap/cierre-citas.ts`, scripts) pasa: el
+    // que llama decide. Un cliente de la app nunca.
+    if (state === 'completed' && previousState !== 'completed') {
+      const sesion = strapi.requestContext.get()?.state;
+      const estrategia = sesion?.auth?.strategy?.name;
+      if (estrategia === 'users-permissions') {
+        throw new ValidationError('Una cita solo la puede dar por atendida la clínica');
+      }
+      if (estrategia === 'admin' && !sesion?.userAbility?.can(FINALIZAR)) {
+        throw new ValidationError('Solo quien atiende puede dar la cita por atendida (permiso "Finalizar la atención")');
+      }
     }
 
     // Líneas de servicio: completar duración y precio desde el catálogo, y
