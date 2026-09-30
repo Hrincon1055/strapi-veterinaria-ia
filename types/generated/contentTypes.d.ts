@@ -680,6 +680,10 @@ export interface ApiBillingInvoiceItem extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 36;
       }>;
+    priceOverrideReason: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
     product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Decimal &

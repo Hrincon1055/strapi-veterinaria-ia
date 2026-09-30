@@ -5,13 +5,13 @@ import {
   Flex, Typography, Table, Thead, Tbody, Tr, Th, Td, Button, IconButton, TextInput, Textarea, Field,
   SingleSelect, SingleSelectOption, Loader, Alert, Link, Box, Grid,
 } from '@strapi/design-system';
-import { Trash, Plus, Eye, Download } from '@strapi/icons';
+import { Trash, Plus, Eye, Download, Pencil } from '@strapi/icons';
 import { usePermisos, useFactura, useBusquedas } from '../../application/useFacturacion';
 import {
   dinero, fecha, fechaHora, cantidad, iva, ESTADO_FACTURA, ESTADO_PAGO, TIPO_RENGLON, UNIDAD,
 } from '../../domain/formato';
 import { Insignia, Tarjeta, Dato, Totales, RUTA } from '../components/comunes';
-import { ModalEmitir, ModalAnular, ModalBorrar, ModalAgregar } from '../components/modales';
+import { ModalEmitir, ModalAnular, ModalBorrar, ModalAgregar, ModalPrecio } from '../components/modales';
 
 /**
  * Celda numérica que guarda al salir del campo, y solo si cambió: cada
@@ -20,6 +20,8 @@ import { ModalEmitir, ModalAnular, ModalBorrar, ModalAgregar } from '../componen
 function CeldaNumero({ valor, onGuardar, etiqueta, deshabilitada }) {
   const [texto, setTexto] = React.useState(String(valor ?? 0));
   React.useEffect(() => setTexto(String(valor ?? 0)), [valor]);
+  // Sin ancho máximo: un `style` en TextInput llega al <input> interno y no al
+  // borde que lo envuelve, así que las flechas quedaban a la mitad de la caja.
   return (
     <TextInput
       aria-label={etiqueta}
@@ -30,7 +32,6 @@ function CeldaNumero({ valor, onGuardar, etiqueta, deshabilitada }) {
       disabled={deshabilitada}
       onChange={(e) => setTexto(e.target.value)}
       onBlur={() => { if (Number(texto) !== Number(valor)) onGuardar(Number(texto)); }}
-      style={{ maxWidth: 110 }}
     />
   );
 }
@@ -43,6 +44,7 @@ export function FacturaPage() {
   const busquedas = useBusquedas();
   const factura = f.datos;
   const [modal, setModal] = React.useState(null); // 'emitir' | 'anular' | 'borrar' | 'agregar'
+  const [renglonPrecio, setRenglonPrecio] = React.useState(null);
   const [notas, setNotas] = React.useState('');
   React.useEffect(() => setNotas(factura?.notas ?? ''), [factura?.notas]);
 
@@ -166,9 +168,18 @@ export function FacturaPage() {
                             : <Typography>{cantidad(r.cantidad)} {UNIDAD[r.unidad] ?? r.unidad ?? ''}</Typography>}
                         </Td>
                         <Td>
-                          {editable && permisos.puedeEmitir
-                            ? <CeldaNumero etiqueta="Precio unitario" valor={r.precioUnitario} onGuardar={(v) => f.cambiarRenglon(r.documentId, { precioUnitario: v })} deshabilitada={f.ocupado} />
-                            : <Typography>{dinero(r.precioUnitario, factura.moneda)}</Typography>}
+                          {/* El precio es el del catálogo: solo lo cambia quien tiene el permiso, con motivo (D5). */}
+                          <Flex gap={1} alignItems="center">
+                            <Typography>{dinero(r.precioUnitario, factura.moneda)}</Typography>
+                            {editable && permisos.puedeCambiarPrecio && (
+                              <IconButton label="Cambiar precio" variant="ghost" onClick={() => setRenglonPrecio(r)} disabled={f.ocupado}>
+                                <Pencil />
+                              </IconButton>
+                            )}
+                          </Flex>
+                          {r.motivoPrecio && (
+                            <Typography variant="pi" textColor="warning600">Precio manual: {r.motivoPrecio}</Typography>
+                          )}
                         </Td>
                         <Td>
                           {editable
@@ -196,9 +207,9 @@ export function FacturaPage() {
               {editable && (
                 <Box paddingTop={2}>
                   <Typography variant="pi" textColor="neutral600">
-                    El precio y el IVA se copiaron del catálogo al añadir cada concepto.
-                    {permisos.puedeEmitir ? '' : ' Cambiar un precio requiere el permiso de emitir.'}
-                    {' '}Una cortesía se factura con descuento del 100 %.
+                    El precio y el IVA se copiaron del catálogo al añadir cada concepto. Para rebajar un
+                    precio usa el descuento; una cortesía se factura con descuento del 100 %.
+                    {permisos.puedeCambiarPrecio ? '' : ' Cambiar un precio de catálogo lo hace la administración de la clínica.'}
                   </Typography>
                 </Box>
               )}
@@ -230,6 +241,8 @@ export function FacturaPage() {
             onBorrar={async () => { const ok = await f.borrar(); if (ok) navigate(RUTA); return ok; }} />
           <ModalAgregar abierto={modal === 'agregar'} onCerrar={() => setModal(null)} factura={factura} busquedas={busquedas}
             onAgregarDirecto={f.agregarDirecto} onAgregarConceptos={f.agregarConceptos} />
+          <ModalPrecio renglon={renglonPrecio} moneda={factura.moneda} ocupado={f.ocupado} onCerrar={() => setRenglonPrecio(null)}
+            onCambiar={(renglon, precioUnitario, motivoPrecio) => f.cambiarRenglon(renglon, { precioUnitario, motivoPrecio })} />
         </>
       )}
     </Page.Main>

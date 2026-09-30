@@ -13,6 +13,7 @@ import { includeArchived } from './archived';
 import { calcularRenglon, calcularTotales, TARIFAS_GRAVADO } from '../api/billing/domain/calculo';
 import { CATALOGOS, LINEAS_FACTURABLES, TIPOS_DE_RENGLON, type Relacion } from '../api/billing/domain/fuentes';
 import { estaEmitiendo } from '../api/billing/domain/emision';
+import { cambiandoPrecio } from '../api/billing/domain/cambio-precio';
 
 const FACTURA = 'api::billing.invoice';
 const RENGLON = 'api::billing.invoice-item';
@@ -525,6 +526,7 @@ export default (strapi: Core.Strapi): void => {
     const relacion = tipo.relacion;
     const destinoId = relacion ? valorDe(relacion) : null;
     const cambioDestino = relacion && ctx.action === 'update' && destinoId !== (actual?.[relacion]?.documentId ?? null);
+    let precioCatalogo: number | null = null;
     if (relacion && destinoId && (ctx.action === 'create' || cambioDestino)) {
       const cat = CATALOGOS[relacion];
       const e: any = await strapi.documents(cat.uid as any).findOne({
@@ -537,6 +539,7 @@ export default (strapi: Core.Strapi): void => {
       if (relacion === 'subscription' && e.customer?.documentId !== clienteId) {
         throw new ValidationError('Esa suscripción no es del cliente de la factura');
       }
+      if (cat.precio) precioCatalogo = e[cat.precio] ?? null;
       if (cat.precio && (!(('unitPrice') in data) || data.unitPrice == null)) {
         if (e[cat.precio] == null) {
           throw new ValidationError(`"${nombre}" no tiene precio de venta en el catálogo; defínelo antes de facturarlo`);
@@ -555,6 +558,31 @@ export default (strapi: Core.Strapi): void => {
       if (!('unit' in data) || !data.unit) data.unit = cat.unidad(e);
       if (cat.costo && e[cat.costo] != null) data.unitCost = e[cat.costo];
       if (!effective(data, actual, 'description')) data.description = nombre;
+    }
+
+    // --- precio manual (D5) ---
+    // El precio es el del catálogo; para rebajarlo está el descuento, que se
+    // ve en la factura. Uno distinto solo entra por `conCambioDePrecio` (el
+    // plugin lo abre tras comprobar `facturacion.cambiar-precio`) y con
+    // motivo. Se compara con el catálogo si el concepto es nuevo o cambió, y
+    // con lo guardado si no: el Content Manager reenvía el precio sin cambios.
+    if (relacion && CATALOGOS[relacion].precio) {
+      const referencia = precioCatalogo ?? actual?.unitPrice ?? null;
+      const precio = effective<number>(data, actual, 'unitPrice');
+      const motivo = 'priceOverrideReason' in data ? String(data.priceOverrideReason ?? '').trim() || null : undefined;
+      if (referencia != null && precio != null && Number(precio) !== Number(referencia)) {
+        if (!cambiandoPrecio()) {
+          throw new ValidationError(
+            'El precio del renglón es el del catálogo; para rebajarlo usa el descuento. Cambiarlo exige el permiso "Cambiar precios de catálogo" y un motivo, desde Facturación'
+          );
+        }
+        if (!motivo) throw new ValidationError('Indica el motivo del cambio de precio');
+        data.priceOverrideReason = motivo;
+      } else if (precioCatalogo != null) {
+        data.priceOverrideReason = null; // concepto nuevo o cambiado: precio de catálogo
+      } else if (motivo !== undefined && motivo !== (actual?.priceOverrideReason ?? null) && !cambiandoPrecio()) {
+        throw new ValidationError('El motivo del cambio de precio solo se escribe al cambiar el precio, desde Facturación');
+      }
     }
 
     // --- importes ---

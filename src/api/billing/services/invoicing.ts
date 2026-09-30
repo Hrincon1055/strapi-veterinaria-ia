@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import { includeArchived } from '../../../validations/archived';
 import { calcularRenglon } from '../domain/calculo';
 import { enEmision } from '../domain/emision';
+import { conCambioDePrecio } from '../domain/cambio-precio';
 import { CATALOGOS, LINEAS_FACTURABLES, TIPOS_DE_RENGLON } from '../domain/fuentes';
 import { comprador, emisor } from '../domain/instantaneas';
 
@@ -332,6 +333,20 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         } as any,
       });
       return conRenglones(facturaDocumentId);
+    },
+
+    /**
+     * Cambia el precio de catálogo de un renglón (D5), con motivo. Quien
+     * llama ya comprobó el permiso `facturacion.cambiar-precio`; la regla del
+     * renglón solo acepta un precio distinto dentro de esta marca.
+     */
+    cambiarPrecio(renglonDocumentId: string, { unitPrice, motivo }: { unitPrice: number; motivo: string }) {
+      return conCambioDePrecio(() =>
+        strapi.documents(RENGLON as any).update({
+          documentId: renglonDocumentId,
+          data: { unitPrice, priceOverrideReason: motivo } as any,
+        })
+      );
     },
 
     /**

@@ -43,6 +43,7 @@ function aRenglon(r) {
     cantidad: Number(r.quantity),
     unidad: r.unit,
     precioUnitario: r.unitPrice ?? 0,
+    motivoPrecio: r.priceOverrideReason ?? null,
     descuento: r.discountAmount ?? 0,
     tratamiento: r.taxTreatment,
     tarifa: r.taxRate ?? 0,
@@ -208,11 +209,18 @@ module.exports = ({ strapi }) => {
     },
 
     async actualizarRenglon(id, renglonId, cambios) {
+      // El precio va aparte, por el servicio que abre la marca de cambio de
+      // precio (el controlador ya comprobó el permiso y el motivo).
+      if (cambios.precioUnitario !== undefined) {
+        await invoicing().cambiarPrecio(renglonId, {
+          unitPrice: Number(cambios.precioUnitario),
+          motivo: String(cambios.motivoPrecio).trim(),
+        });
+      }
       const data = {};
       if (cambios.descuento !== undefined) data.discountAmount = Number(cambios.descuento) || 0;
-      if (cambios.precioUnitario !== undefined) data.unitPrice = Number(cambios.precioUnitario);
       if (cambios.cantidad !== undefined) data.quantity = Number(cambios.cantidad);
-      await strapi.documents(RENGLON).update({ documentId: renglonId, data });
+      if (Object.keys(data).length > 0) await strapi.documents(RENGLON).update({ documentId: renglonId, data });
       return detalle(id);
     },
 

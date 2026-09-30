@@ -26,6 +26,7 @@
     "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
     "unit": { "type": "string", "maxLength": 20 },
     "unitPrice": { "type": "integer", "min": 0 },
+    "priceOverrideReason": { "type": "string", "maxLength": 255 },
     "discountAmount": { "type": "integer", "default": 0, "min": 0 },
     "taxTreatment": { "type": "enumeration", "enum": ["gravado", "exento", "excluido"] },
     "taxRate": { "type": "integer", "default": 0, "min": 0, "max": 100 },

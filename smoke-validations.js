@@ -451,6 +451,16 @@ async function limpiar(app) {
   await rechaza('cargo libre sin precio', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'Cargo SMOKE', taxTreatment: 'excluido' } }), 'precio unitario');
   await rechaza('descuento mayor que el renglón', () => d(R).create({ data: { invoice: borrador.documentId, kind: 'custom', description: 'Cargo SMOKE', unitPrice: 1000, discountAmount: 2000, taxTreatment: 'excluido' } }), 'supera');
 
+  // --- precio manual (D5): solo por invoicing.cambiarPrecio y con motivo ---
+  await rechaza('cambiar el precio de catálogo por el Document Service (Content Manager)', () => d(R).update({ documentId: rServicio.documentId, data: { unitPrice: 60000 } }), 'es el del catálogo');
+  await rechaza('cambiar el precio sin motivo', () => fact.cambiarPrecio(rServicio.documentId, { unitPrice: 60000, motivo: '  ' }), 'motivo');
+  await acepta('cambiar el precio con motivo', () => fact.cambiarPrecio(rServicio.documentId, { unitPrice: 60000, motivo: 'SMOKE precio variable' }),
+    (r) => r.unitPrice === 60000 && r.priceOverrideReason === 'SMOKE precio variable' && r.lineSubtotal === 180000);
+  await acepta('el panel reenvía precio y motivo sin cambios al guardar otra cosa', () => d(R).update({ documentId: rServicio.documentId, data: { unitPrice: 60000, priceOverrideReason: 'SMOKE precio variable', discountAmount: 0 } }),
+    (r) => r.unitPrice === 60000 && r.priceOverrideReason === 'SMOKE precio variable');
+  await rechaza('reescribir el motivo sin cambiar el precio', () => d(R).update({ documentId: rServicio.documentId, data: { priceOverrideReason: 'otro' } }), 'solo se escribe');
+  await fact.cambiarPrecio(rServicio.documentId, { unitPrice: 50000, motivo: 'SMOKE vuelta al catálogo' });
+
   // --- no se cobra dos veces ---
   const otroBorrador = await d(F).create({ data: { customer: cliente.documentId } });
   await rechaza('la misma línea en otro borrador', () => d(R).create({ data: renglonDe(otroBorrador, lineaServicio) }), 'ya se está cobrando');

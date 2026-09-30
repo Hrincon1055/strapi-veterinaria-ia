@@ -31,10 +31,11 @@ module.exports = ({ strapi }) => {
     /** Qué puede hacer esta cuenta: la interfaz decide qué botones pinta. */
     async quienSoy(ctx) {
       ctx.body = {
-        puedeVer: ['ver', 'preparar', 'emitir', 'anular'].some((a) => puede(ctx, a)),
+        puedeVer: ['ver', 'preparar', 'emitir', 'anular', 'cambiar-precio'].some((a) => puede(ctx, a)),
         puedePreparar: puede(ctx, 'preparar'),
         puedeEmitir: puede(ctx, 'emitir'),
         puedeAnular: puede(ctx, 'anular'),
+        puedeCambiarPrecio: puede(ctx, 'cambiar-precio'),
       };
     },
 
@@ -108,9 +109,12 @@ module.exports = ({ strapi }) => {
       const { id, item } = ctx.params;
       const cambios = ctx.request.body ?? {};
       // D5: el descuento lo pone quien prepara; cambiar el precio del
-      // catálogo, solo quien puede emitir.
-      if (cambios.precioUnitario !== undefined && !puede(ctx, 'emitir')) {
-        return ctx.forbidden('Cambiar el precio de catálogo requiere el permiso de emitir facturas');
+      // catálogo exige su propio permiso y un motivo, que queda en el renglón.
+      if (cambios.precioUnitario !== undefined) {
+        if (!puede(ctx, 'cambiar-precio')) {
+          return ctx.forbidden('Cambiar el precio de catálogo requiere el permiso "Cambiar precios de catálogo"');
+        }
+        if (!String(cambios.motivoPrecio ?? '').trim()) return ctx.badRequest('Indica el motivo del cambio de precio');
       }
       if (!(await svc().renglonDe(id, item))) return ctx.notFound('Ese renglón no es de esta factura');
       await responder(ctx, () => svc().actualizarRenglon(id, item, cambios));

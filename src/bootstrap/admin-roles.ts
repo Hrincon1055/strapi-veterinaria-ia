@@ -90,13 +90,15 @@ const AGENDA = {
 /**
  * Facturación (plugin `veterinaria-facturacion`). Recepción prepara, emite y
  * cobra; el veterinario solo consulta qué se cobró; anular una factura
- * emitida es de la administración.
+ * emitida y cambiar un precio de catálogo son de la administración (el Super
+ * Admin recibe todas las acciones registradas al arrancar).
  */
 const FACTURACION = {
   ver: 'plugin::veterinaria-facturacion.facturacion.ver',
   preparar: 'plugin::veterinaria-facturacion.facturacion.preparar',
   emitir: 'plugin::veterinaria-facturacion.facturacion.emitir',
   anular: 'plugin::veterinaria-facturacion.facturacion.anular',
+  cambiarPrecio: 'plugin::veterinaria-facturacion.facturacion.cambiar-precio',
 };
 
 const recepcion: Concesion[] = [

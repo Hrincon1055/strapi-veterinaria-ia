@@ -32,7 +32,7 @@ Todo se hace en el panel (`/admin`). Cada persona entra con su propio correo y c
 | --- | :---: | :---: | :---: |
 | Ver pendientes, facturas y PDF | ✔ | ✔ | ✔ |
 | Crear y ajustar borradores | ✔ | — | ✔ |
-| Cambiar el precio de un concepto | ✔ | — | ✔ |
+| Cambiar el precio de un concepto | — | — | ✔ |
 | Emitir y registrar pagos | ✔ | — | ✔ |
 | Anular facturas | — | — | ✔ |
 | Crear servicios y productos en el catálogo | — | — | ✔ |
@@ -285,10 +285,13 @@ Así queda constancia de que se prestó y no se cobró.
 
 ### 5.3 Cambiar el precio de un concepto
 
-Solo quien puede emitir facturas. Úsalo para excepciones; lo normal es corregir el catálogo.
+Solo la administración de la clínica. Es para excepciones, como un servicio cuyo precio depende del paciente. Para una rebaja usa el descuento (5.2), que queda a la vista en la factura; si el precio del catálogo está mal, corrígelo en el catálogo.
 
-1. En la columna **V. unitario**, escribe el precio nuevo.
-2. Sal del campo.
+1. En la columna **V. unitario**, pulsa el lápiz junto al precio.
+2. Escribe el precio nuevo y el **motivo** (obligatorio).
+3. Pulsa **Cambiar precio**.
+
+El motivo queda guardado en el concepto y se ve debajo del precio como "Precio manual: …".
 
 ### 5.4 Cambiar la cantidad
 
@@ -543,7 +546,8 @@ Tampoco se puede **borrar, archivar ni cambiar de mascota** una consulta que tie
 | "Esa consulta es de una mascota de otro cliente" | Se mezclaron consultas de clientes distintos | Haz una factura para cada cliente |
 | "La línea … se está cobrando en … Quítala del borrador o anula la factura antes de cambiarla" | Se intentó modificar en la consulta algo ya facturado | Sigue *Corregir una consulta que ya está facturada* |
 | "El descuento (…) supera el valor del renglón (…)" | Descuento mayor que el valor | Máximo, el 100 % del concepto |
-| "Cambiar el precio de catálogo requiere el permiso de emitir facturas" | Tu rol no puede cambiar precios | Pídeselo a quien emite, o usa un descuento |
+| "Cambiar el precio de catálogo requiere el permiso "Cambiar precios de catálogo"" | Tu rol no puede cambiar precios | Usa un descuento, o pídeselo a la administración |
+| "El precio del renglón es el del catálogo; para rebajarlo usa el descuento…" | Se intentó cambiar el precio desde el Content Manager | Cámbialo desde Facturación, con el permiso y un motivo |
 | "No hay una resolución DIAN activa en Clínica" | Falta la resolución o ninguna está activa | Administración la carga o la activa en Clínica |
 | "La resolución … venció el …" / "…agotó su rango autorizado…" | La resolución ya no sirve | Administración carga la nueva resolución de la DIAN y la activa |
 | "Para anular una factura hay que indicar el motivo" | Falta el motivo | Escríbelo en la ventana de anulación |

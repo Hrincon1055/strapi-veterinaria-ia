@@ -8,13 +8,13 @@
  * protección es esta (los endpoints se pueden llamar a mano).
  *
  * El precio manual de un renglón (D5) no tiene ruta propia: el controlador
- * exige `emitir` si la petición lo trae.
+ * exige `cambiar-precio` y un motivo si la petición lo trae.
  */
 const exige = (...acciones) => ({
   policies: [{ name: 'plugin::veterinaria-facturacion.tiene-permiso', config: { acciones } }],
 });
 
-const ver = exige('ver', 'preparar', 'emitir', 'anular');
+const ver = exige('ver', 'preparar', 'emitir', 'anular', 'cambiar-precio');
 const preparar = exige('preparar');
 const emitir = exige('emitir');
 const anular = exige('anular');

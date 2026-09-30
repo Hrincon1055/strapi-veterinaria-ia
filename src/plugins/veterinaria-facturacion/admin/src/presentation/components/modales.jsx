@@ -73,6 +73,43 @@ export function ModalAnular({ abierto, onCerrar, onAnular, factura, ocupado }) {
   );
 }
 
+/**
+ * Cambiar el precio de catálogo de un renglón (D5). Es la excepción: para
+ * rebajar está el descuento. Exige motivo, que queda guardado en el renglón.
+ */
+export function ModalPrecio({ renglon, moneda, onCerrar, onCambiar, ocupado }) {
+  const [precio, setPrecio] = React.useState('');
+  const [motivo, setMotivo] = React.useState('');
+  React.useEffect(() => {
+    setPrecio(renglon ? String(renglon.precioUnitario) : '');
+    setMotivo('');
+  }, [renglon]);
+  const valor = Number(precio);
+  const valido = precio !== '' && Number.isFinite(valor) && valor >= 0 && valor !== renglon?.precioUnitario;
+  return (
+    <Dialogo
+      abierto={Boolean(renglon)} onCerrar={onCerrar} titulo="Cambiar precio" accion="Cambiar precio"
+      ocupado={ocupado} deshabilitado={!valido || !motivo.trim()}
+      onAccion={async () => { if (await onCambiar(renglon.documentId, valor, motivo.trim())) onCerrar(); }}
+    >
+      <Flex direction="column" gap={4} alignItems="stretch">
+        <Typography>
+          <b>{renglon?.descripcion}</b>: precio actual {dinero(renglon?.precioUnitario, moneda)}.
+          Para una rebaja o una cortesía usa el descuento, que queda a la vista en la factura.
+        </Typography>
+        <Field.Root name="precio" required>
+          <Field.Label>Nuevo precio unitario</Field.Label>
+          <TextInput type="number" min={0} value={precio} onChange={(e) => setPrecio(e.target.value)} />
+        </Field.Root>
+        <Field.Root name="motivoPrecio" required>
+          <Field.Label>Motivo</Field.Label>
+          <Textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej.: cirugía para paciente de 40 kg" />
+        </Field.Root>
+      </Flex>
+    </Dialogo>
+  );
+}
+
 export function ModalBorrar({ abierto, onCerrar, onBorrar }) {
   return (
     <Dialogo abierto={abierto} onCerrar={onCerrar} titulo="Eliminar borrador" accion="Eliminar" peligro

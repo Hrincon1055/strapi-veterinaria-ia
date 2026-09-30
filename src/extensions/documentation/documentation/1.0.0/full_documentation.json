@@ -13,7 +13,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "x-generation-date": "2026-09-29T21:44:29.726Z"
+    "x-generation-date": "2026-09-30T12:17:22.295Z"
   },
   "servers": [
     {
@@ -32595,6 +32595,9 @@
                 "unitPrice": {
                   "type": "integer"
                 },
+                "priceOverrideReason": {
+                  "type": "string"
+                },
                 "discountAmount": {
                   "type": "integer"
                 },
@@ -33048,6 +33051,9 @@
               },
               "unitPrice": {
                 "type": "integer"
+              },
+              "priceOverrideReason": {
+                "type": "string"
               },
               "discountAmount": {
                 "type": "integer"
@@ -37501,6 +37507,9 @@
                     "unitPrice": {
                       "type": "integer"
                     },
+                    "priceOverrideReason": {
+                      "type": "string"
+                    },
                     "discountAmount": {
                       "type": "integer"
                     },
@@ -37910,6 +37919,9 @@
           },
           "unitPrice": {
             "type": "integer"
+          },
+          "priceOverrideReason": {
+            "type": "string"
           },
           "discountAmount": {
             "type": "integer"

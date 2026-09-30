@@ -574,6 +574,7 @@
       "lockKey": "Bloqueo de cobro (automático)",
       "unit": "Unidad",
       "unitPrice": "Precio unitario",
+      "priceOverrideReason": "Motivo del cambio de precio",
       "discountAmount": "Descuento",
       "taxTreatment": "Tratamiento de IVA",
       "taxRate": "Tarifa de IVA (%)",
