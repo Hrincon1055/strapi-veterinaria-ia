@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * Citas de muestra para ver la página de Agenda con contenido.
@@ -19,10 +19,10 @@
  * develop` antes de ejecutarlo.
  */
 
-const { createStrapi } = require('@strapi/strapi');
-const { perfilDeCuenta, RECEPCION } = require('./demo-staff');
+const { createStrapi } = require("@strapi/strapi");
+const { perfilDeCuenta, RECEPCION } = require("./demo-staff");
 
-const MARCA = '[demo]';
+const MARCA = "[demo]";
 
 /** Lunes de la semana que contiene esa fecha. */
 function lunesDe(fecha) {
@@ -44,24 +44,71 @@ const sumarDias = (fecha, n) => {
  * vacía sea cual sea la cuenta enlazada.
  */
 const CITAS = [
-  { staff: 'laura.gomez', mascota: 'Kira', titulo: 'Control anual', dia: 0, hueco: 2, estado: 'confirmed' },
-  { staff: 'laura.gomez', mascota: 'Milo', titulo: 'Vacunación refuerzo', dia: 1, hueco: 0, estado: 'scheduled' },
-  { staff: 'laura.gomez', mascota: 'Nube', titulo: 'Revisión por vómito', dia: 2, hueco: 4, estado: 'scheduled' },
-  { staff: 'laura.gomez', mascota: 'Rocco', titulo: 'Retiro de puntos', dia: 3, hueco: 1, estado: 'confirmed' },
-  { staff: 'andres.mejia', mascota: 'Simón', titulo: 'Baño y corte', dia: 0, hueco: 1, estado: 'confirmed' },
-  { staff: 'andres.mejia', mascota: 'Kira', titulo: 'Corte de uñas', dia: 2, hueco: 0, estado: 'scheduled' },
-  { staff: 'sofia.arango', mascota: 'Rocco', titulo: 'Esterilización', dia: 1, hueco: 0, estado: 'scheduled' },
+  {
+    staff: "laura.gomez",
+    mascota: "Kira",
+    titulo: "Control anual",
+    dia: 0,
+    hueco: 2,
+    estado: "confirmed",
+  },
+  {
+    staff: "laura.gomez",
+    mascota: "Milo",
+    titulo: "Vacunación refuerzo",
+    dia: 1,
+    hueco: 0,
+    estado: "scheduled",
+  },
+  {
+    staff: "laura.gomez",
+    mascota: "Nube",
+    titulo: "Revisión por vómito",
+    dia: 2,
+    hueco: 4,
+    estado: "scheduled",
+  },
+  {
+    staff: "laura.gomez",
+    mascota: "Rocco",
+    titulo: "Retiro de puntos",
+    dia: 3,
+    hueco: 1,
+    estado: "confirmed",
+  },
+  {
+    staff: "andres.mejia",
+    mascota: "Simón",
+    titulo: "Baño y corte",
+    dia: 0,
+    hueco: 1,
+    estado: "confirmed",
+  },
+  {
+    staff: "andres.mejia",
+    mascota: "Kira",
+    titulo: "Corte de uñas",
+    dia: 2,
+    hueco: 0,
+    estado: "scheduled",
+  },
+  {
+    staff: "sofia.arango",
+    mascota: "Rocco",
+    titulo: "Esterilización",
+    dia: 1,
+    hueco: 0,
+    estado: "scheduled",
+  },
 ];
 
 async function crear(app) {
   const d = (uid) => app.documents(uid);
-  const disponibilidad = app.service('api::scheduling.availability');
+  const disponibilidad = app.service("api::scheduling.availability");
 
   const hoy = new Date().toISOString().slice(0, 10);
   const lunes = lunesDe(hoy);
   const domingo = sumarDias(lunes, 6);
-
-  console.log(`\nSemana ${lunes} a ${domingo}\n`);
 
   let creadas = 0;
   let saltadas = 0;
@@ -70,22 +117,32 @@ async function crear(app) {
   for (const c of CITAS) {
     // El personal es una cuenta del panel; se busca por su correo.
     const usuario = await app.db
-      .query('admin::user')
+      .query("admin::user")
       .findOne({ where: { email: `${c.staff}@veterinaria.test` } });
-    const mascota = await d('api::pet.pet').findFirst({ filters: { name: c.mascota } });
+    const mascota = await d("api::pet.pet").findFirst({
+      filters: { name: c.mascota },
+    });
 
     if (!usuario || !mascota) {
-      console.log(`  omitida: falta ${!usuario ? c.staff : c.mascota} (¿corriste demo-data.js?)`);
+      console.log(
+        `  omitida: falta ${!usuario ? c.staff : c.mascota} (¿corriste demo-data.js?)`,
+      );
       saltadas++;
       continue;
     }
 
-    const libres = await disponibilidad.huecos(usuario.documentId, lunes, domingo);
+    const libres = await disponibilidad.huecos(
+      usuario.documentId,
+      lunes,
+      domingo,
+    );
     const dia = (libres.dias ?? [])[c.dia];
     const hueco = dia?.huecos?.[c.hueco];
 
     if (!hueco) {
-      console.log(`  omitida: ${c.staff} no tiene hueco libre ${c.hueco} el día ${c.dia}`);
+      console.log(
+        `  omitida: ${c.staff} no tiene hueco libre ${c.hueco} el día ${c.dia}`,
+      );
       saltadas++;
       continue;
     }
@@ -95,7 +152,7 @@ async function crear(app) {
     const startAt = `${hueco.startAt}Z`;
     const endAt = `${hueco.endAt}Z`;
 
-    const yaHay = await d('api::scheduling.appointment').findFirst({
+    const yaHay = await d("api::scheduling.appointment").findFirst({
       filters: { responsible: { documentId: usuario.documentId }, startAt },
     });
     if (yaHay) {
@@ -103,7 +160,7 @@ async function crear(app) {
       continue;
     }
 
-    await d('api::scheduling.appointment').create({
+    await d("api::scheduling.appointment").create({
       data: {
         pet: mascota.documentId,
         responsible: usuario.documentId,
@@ -111,20 +168,22 @@ async function crear(app) {
         startAt,
         endAt,
         state: c.estado,
-        source: 'front_desk',
+        source: "front_desk",
         bookedBy: agendadaPor,
         title: `${c.titulo} ${MARCA}`,
       },
     });
 
     console.log(
-      `  ${startAt.slice(0, 16).replace('T', ' ')}  ${c.staff.padEnd(14)} ${c.mascota.padEnd(7)} ${c.titulo}`
+      `  ${startAt.slice(0, 16).replace("T", " ")}  ${c.staff.padEnd(14)} ${c.mascota.padEnd(7)} ${c.titulo}`,
     );
     creadas++;
   }
 
-  console.log(`\n${creadas} cita(s) creada(s)${saltadas ? `, ${saltadas} omitida(s)` : ''}.`);
-  console.log('Abre el panel -> Agenda para verlas.\n');
+  console.log(
+    `\n${creadas} cita(s) creada(s)${saltadas ? `, ${saltadas} omitida(s)` : ""}.`,
+  );
+  console.log("Abre el panel -> Agenda para verlas.\n");
   return creadas;
 }
 
@@ -132,17 +191,21 @@ async function borrar(app) {
   const d = (uid) => app.documents(uid);
   let n = 0;
 
-  for (const cita of await d('api::scheduling.appointment').findMany({
+  for (const cita of await d("api::scheduling.appointment").findMany({
     filters: { title: { $contains: MARCA } },
-    populate: ['consultation'],
+    populate: ["consultation"],
     pagination: { limit: -1 },
   })) {
     // La consulta que se abrió desde la cita también es de muestra.
     if (cita.consultation) {
-      await d('api::clinical.consultation').delete({ documentId: cita.consultation.documentId });
+      await d("api::clinical.consultation").delete({
+        documentId: cita.consultation.documentId,
+      });
       n++;
     }
-    await d('api::scheduling.appointment').delete({ documentId: cita.documentId });
+    await d("api::scheduling.appointment").delete({
+      documentId: cita.documentId,
+    });
     n++;
   }
 
@@ -154,9 +217,15 @@ module.exports = { crearAgenda: crear, borrarAgenda: borrar };
 // `demo-data.js` lo usa como módulo; suelto sigue funcionando igual.
 if (require.main === module) {
   (async () => {
-    const app = await createStrapi({ appDir: process.cwd(), distDir: 'dist' }).load();
+    const app = await createStrapi({
+      appDir: process.cwd(),
+      distDir: "dist",
+    }).load();
     try {
-      if (process.argv.includes('--reset')) console.log(`\n${await borrar(app)} registro(s) de muestra eliminado(s).\n`);
+      if (process.argv.includes("--reset"))
+        console.log(
+          `\n${await borrar(app)} registro(s) de muestra eliminado(s).\n`,
+        );
       else await crear(app);
     } finally {
       await app.destroy();
