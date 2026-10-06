@@ -28,6 +28,7 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::pet.pet': 'searchLabel',
   'api::pet.breed': 'searchLabel',
   'api::clinical.consultation': 'searchLabel',
+  'api::clinical.prescription': 'searchLabel',
   'api::catalog.product': 'searchLabel',
   'api::billing.subscription': 'searchLabel',
   'api::shared.contact': 'searchLabel',
@@ -127,6 +128,12 @@ const SOLO_LECTURA: Record<string, string[]> = {
   'api::cash.cash-session': ['responsible', 'closedBy', 'closedAt', 'countedCash', 'expectedCash', 'difference', 'totals'],
   'api::cash.payment': ['receivedBy', 'changeAmount', 'reversedAt'],
   'api::cash.cash-movement': ['performedBy'],
+  // Fórmula médica: la emite y la anula `api::clinical.prescribing`; por el
+  // Content Manager no se edita (`validations/prescription.ts`).
+  'api::clinical.prescription': [
+    'sequence', 'number', 'state', 'issuedAt', 'consultation', 'pet', 'vet', 'vetName', 'vetLicense',
+    'vetLicenseIssuer', 'vetSignature', 'items', 'instructions', 'followUpOn', 'voidedAt', 'voidReason',
+  ],
 };
 
 /**

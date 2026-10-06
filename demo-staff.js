@@ -44,7 +44,13 @@ async function cuentaDelPanel(app, { email, rol, password, perfil }) {
     const d = app.documents('api::identity.profile');
     let ficha = await d.findFirst({ filters: { documentNumber: perfil.documentNumber } });
     if (!ficha) ficha = await d.create({ data: perfil });
-    await d.update({ documentId: ficha.documentId, data: { adminUser: cuenta.id } });
+    // El registro profesional se completa si falta (perfiles creados antes de
+    // que existiera la fórmula médica), sin pisar uno puesto a mano.
+    const registro =
+      perfil.professionalLicense && !ficha.professionalLicense
+        ? { professionalLicense: perfil.professionalLicense, licenseIssuer: perfil.licenseIssuer ?? null }
+        : {};
+    await d.update({ documentId: ficha.documentId, data: { adminUser: cuenta.id, ...registro } });
   }
 
   return cuenta;

@@ -1666,6 +1666,80 @@ export interface ApiClinicalPetVaccination extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiClinicalPrescription extends Struct.CollectionTypeSchema {
+  collectionName: 'prescriptions';
+  info: {
+    description: 'Receta emitida a partir del plan de tratamiento de una consulta. Congelada al emitir: se anula, no se edita.';
+    displayName: 'F\u00F3rmula m\u00E9dica';
+    pluralName: 'prescriptions';
+    singularName: 'prescription';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    consultation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::clinical.consultation'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    followUpOn: Schema.Attribute.Date;
+    instructions: Schema.Attribute.Text;
+    issuedAt: Schema.Attribute.DateTime;
+    items: Schema.Attribute.Component<'clinical.prescription-item', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::clinical.prescription'
+    > &
+      Schema.Attribute.Private;
+    number: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    pet: Schema.Attribute.Relation<'manyToOne', 'api::pet.pet'>;
+    publishedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    sequence: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    state: Schema.Attribute.Enumeration<['issued', 'voided']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'issued'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    vet: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    vetLicense: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
+    vetLicenseIssuer: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    vetName: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    vetSignature: Schema.Attribute.Media<'images'>;
+    voidedAt: Schema.Attribute.DateTime;
+    voidReason: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+  };
+}
+
 export interface ApiClinicalVaccine extends Struct.CollectionTypeSchema {
   collectionName: 'vaccines';
   info: {
@@ -2381,6 +2455,10 @@ export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 100;
       }>;
+    licenseIssuer: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2392,11 +2470,16 @@ export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
         maxLength: 100;
       }>;
     photo: Schema.Attribute.Media<'images'>;
+    professionalLicense: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 40;
+      }>;
     publishedAt: Schema.Attribute.DateTime;
     searchLabel: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
+    signature: Schema.Attribute.Media<'images'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3872,6 +3955,7 @@ declare module '@strapi/strapi' {
       'api::clinical.allergy': ApiClinicalAllergy;
       'api::clinical.consultation': ApiClinicalConsultation;
       'api::clinical.pet-vaccination': ApiClinicalPetVaccination;
+      'api::clinical.prescription': ApiClinicalPrescription;
       'api::clinical.vaccine': ApiClinicalVaccine;
       'api::customer.customer': ApiCustomerCustomer;
       'api::customer.customer-note': ApiCustomerCustomerNote;

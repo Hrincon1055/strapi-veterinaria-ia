@@ -291,7 +291,9 @@ function CuerpoSeccion({ s }) {
               {s.medications.map((m, i) => (
                 <Typography key={i} variant="omega">
                   <strong>{m.drug}</strong>
+                  {m.producto && m.producto !== m.drug && ` (${m.producto})`}
                   {pauta(m) && ` — ${pauta(m)}`}
+                  {m.quantity != null && ` · dispensar ${numero(m.quantity)}`}
                   {m.notes && <Typography variant="pi" textColor="neutral600"> ({m.notes})</Typography>}
                 </Typography>
               ))}

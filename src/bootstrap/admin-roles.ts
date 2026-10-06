@@ -117,6 +117,16 @@ const FACTURACION = {
 const HISTORIA = 'plugin::veterinaria-historia.historia.ver';
 
 /**
+ * Fórmula médica (mismo plugin). La emite quien prescribe; anular la de otra
+ * persona es de la administración (la propia la anula quien la firmó). En el
+ * Content Manager la fórmula es de solo lectura: se escribe por el plugin.
+ */
+const FORMULA = {
+  emitir: 'plugin::veterinaria-historia.formula.emitir',
+  anular: 'plugin::veterinaria-historia.formula.anular',
+};
+
+/**
  * Hospitalización (plugin `veterinaria-hospitalizacion`, 5.6). Recepción ve
  * quién está ingresado (atiende al dueño que llama y factura la estancia); el
  * auxiliar registra signos y tomas; ingresar, prescribir, trasladar y dar el
@@ -139,6 +149,7 @@ const veterinario: Concesion[] = [
   ...recepcion,
   { subjects: VETERINARIO_CRUD, verbos: CRUD },
   { subjects: ['api::documents.signed-document-event'], verbos: ['read', 'create'] },
+  { subjects: ['api::clinical.prescription'], verbos: READ },
 ];
 
 const administracion: Concesion[] = [
@@ -220,7 +231,7 @@ export const ROLES_PANEL: RolPanel[] = [
     description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
     concesiones: veterinario,
     // El veterinario atiende lo que ya tiene agendado: ve su agenda, no reserva.
-    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver, HISTORIA, ...Object.values(HOSPITALIZACION)],
+    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver, HISTORIA, FORMULA.emitir, ...Object.values(HOSPITALIZACION)],
   },
   {
     name: 'Auxiliar de hospitalización',
@@ -245,7 +256,7 @@ export const ROLES_PANEL: RolPanel[] = [
       { subjects: CAJA_LECTURA, verbos: READ },
       { subjects: ['api::cash.cash-register'], verbos: CRUD },
     ],
-    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA, ...Object.values(HOSPITALIZACION), ...Object.values(CAJA)],
+    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA, ...Object.values(FORMULA), ...Object.values(HOSPITALIZACION), ...Object.values(CAJA)],
   },
 ];
 

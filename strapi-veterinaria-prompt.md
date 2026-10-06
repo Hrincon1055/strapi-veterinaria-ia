@@ -47,7 +47,7 @@ src/
     identity/content-types/profile/schema.json
     customer/content-types/{customer,customer-note}/schema.json
     pet/content-types/{pet,species,breed}/schema.json
-    clinical/content-types/{consultation,vaccine,pet-vaccination,allergy}/schema.json
+    clinical/content-types/{consultation,vaccine,pet-vaccination,allergy,prescription}/schema.json
     scheduling/content-types/{appointment,service-category,service,clinic-room,staff-schedule,schedule-exception}/schema.json
     billing/content-types/{plan,plan-benefit,subscription,benefit-usage,invoice,invoice-item}/schema.json
     travel/content-types/travel-case/schema.json
@@ -65,6 +65,7 @@ src/
     billing/{dian-resolution,fiscal-responsibility,tax-profile}.json
     clinical/{attachment,service-line,product-line}.json
     clinical/{anamnesis,physical-exam,lab-result,imaging,diagnosis,procedure,treatment-plan,medication}.json
+    clinical/prescription-item.json
     scheduling/{appointment-service,work-shift}.json
     catalog/{medication-details,vaccine-details,food-details,accessory-details,sanitary-registration,active-ingredient}.json
     travel/{health-certificate,rabies-titer,microchip-check,antiparasitic,import-permit,crate,other-requirement}.json
@@ -77,7 +78,7 @@ src/
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **47 content types (uno de ellos single type), 42 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **48 content types (uno de ellos single type), 43 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -910,6 +911,15 @@ Fármaco prescrito dentro de un plan de tratamiento.
       "type": "integer",
       "min": 1
     },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.product"
+    },
+    "quantity": {
+      "type": "decimal",
+      "min": 0
+    },
     "notes": {
       "type": "string",
       "maxLength": 255
@@ -919,6 +929,8 @@ Fármaco prescrito dentro de un plan de tratamiento.
 ```
   
 _No aparece en la zona: se anida dentro de `clinical.treatment-plan`._
+
+`product` (opcional) enlaza el fármaco con un medicamento del catálogo (`productType = medication`): la fórmula médica (5.8) saca de ahí la presentación, los principios activos y si es de control especial. Sin `drug`, el servidor pone el nombre del producto. `quantity` es la cantidad total a dispensar (en unidades de venta del producto, o lo que diga `drug` si no hay producto); si llega, es mayor que 0.
 
 ---
 
@@ -1854,6 +1866,52 @@ Cuántos billetes o monedas de una denominación hay en la caja.
 }
 ```
 
+## 5.8 Fórmula médica: diseño y decisiones
+
+La receta que se entrega al propietario, emitida desde el plan de tratamiento de una consulta (panel lateral "Fórmula médica" de la consulta, plugin `veterinaria-historia`). Decisiones (aprobadas 2026-10-06):
+
+| # | Decisión |
+| --- | --- |
+| F1 | La fórmula es un **documento guardado** (`api::clinical.prescription`), no una vista del plan: consecutivo propio `RX-000123` (`sequence` único, índice `ux_prescriptions_sequence`) y una **copia** de los medicamentos (`clinical.prescription-item`) y del firmante tomada al emitir. Reimprimir saca exactamente lo que se entregó aunque después cambie el plan o el perfil. |
+| F2 | Emitida = congelada: no se edita ni se borra; se **anula** con motivo y se emite otra. La consulta que respalda una fórmula no se borra; con una fórmula vigente tampoco se archiva ni cambia de mascota. |
+| F3 | El registro profesional vive en el **perfil**: `professionalLicense` (tarjeta profesional), `licenseIssuer` (p. ej. COMVEZCOL) y `signature` (imagen opcional; sin ella se firma a mano). Sin tarjeta no se emite. |
+| F4 | Firma la **cuenta de la sesión** (`vet` → `admin::user`), no el `vet` de la consulta: el papel lleva la responsabilidad de quien la emite. |
+| F5 | Permisos del panel: `formula.emitir` (Veterinario y Administrador de clínica) para emitir, reimprimir y anular las propias; `formula.anular` (Administrador de clínica) para anular las de otra persona. En el Content Manager es de solo lectura. Ningún rol de la API la lee. |
+| F6 | Un medicamento de control especial (`medication-details.isControlled`) se formula igual, pero el papel avisa de que hace falta además el recetario oficial del Fondo Nacional de Estupefacientes: esta fórmula no lo sustituye. |
+| F7 | Se imprime en **A5**: clínica, número, propietario, paciente (especie, raza, sexo, edad, peso), Rp/ con pauta y cantidad en cifras y en letras, indicaciones (las recomendaciones del plan, como texto), próximo control y firma con la tarjeta profesional. Una anulada se imprime con la marca "ANULADA". |
+
+Servicio `api::clinical.prescribing`: `deConsulta` (medicamentos del plan, fórmulas emitidas y si la cuenta puede firmar), `emitir` (consecutivo y creación en una transacción, dentro de la marca `enServicioDeFormulas`), `ficha` (lo que se imprime) y `anular`.
+
+### `src/components/clinical/prescription-item.json`
+
+Un medicamento tal como salió en la fórmula.
+```json
+{
+  "collectionName": "components_clinical_prescription_items",
+  "info": {
+    "displayName": "Medicamento formulado",
+    "icon": "write",
+    "description": "Copia de un medicamento del plan de tratamiento tal como salió en la fórmula médica."
+  },
+  "options": {},
+  "attributes": {
+    "drug": { "type": "string", "required": true, "maxLength": 150 },
+    "presentation": { "type": "string", "maxLength": 255 },
+    "activeIngredients": { "type": "string", "maxLength": 255 },
+    "dose": { "type": "string", "maxLength": 80 },
+    "route": {
+      "type": "enumeration",
+      "enum": ["oral", "sc", "im", "iv", "topical", "otic", "ophthalmic", "other"]
+    },
+    "frequencyHours": { "type": "integer", "min": 1, "max": 168 },
+    "durationDays": { "type": "integer", "min": 1 },
+    "quantity": { "type": "decimal", "min": 0 },
+    "isControlled": { "type": "boolean", "default": false },
+    "notes": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -1954,11 +2012,16 @@ Solo verifica contactos del perfil. La verificación del email de login y el res
     "customer": { "type": "relation", "relation": "oneToOne", "target": "api::customer.customer", "mappedBy": "profile" },
     "archivedAt": { "type": "datetime" },
     "searchLabel": { "type": "string", "maxLength": 255 },
-    "adminUser": { "type": "relation", "relation": "oneToOne", "target": "admin::user" }
+    "adminUser": { "type": "relation", "relation": "oneToOne", "target": "admin::user" },
+    "professionalLicense": { "type": "string", "maxLength": 40 },
+    "licenseIssuer": { "type": "string", "maxLength": 120 },
+    "signature": { "type": "media", "multiple": false, "allowedTypes": ["images"] }
   }
 }
 ```
 Un perfil representa a cualquier persona (staff o cliente).
+
+`professionalLicense`, `licenseIssuer` y `signature` son el registro profesional de quien prescribe (tarjeta profesional, entidad que la expide y firma escaneada): los copia la fórmula médica al emitirse (5.8). Solo tienen sentido en el staff clínico.
 
 Cada persona entra por una sola puerta: un cliente con `profile.user` (cuenta de
 la app, users-permissions) y un miembro del staff con `profile.adminUser` (cuenta
@@ -2176,6 +2239,41 @@ Dos consecuencias operativas de esa decisión:
   }
 }
 ```
+
+#### `api::clinical.prescription`
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "prescriptions",
+  "info": {
+    "singularName": "prescription",
+    "pluralName": "prescriptions",
+    "displayName": "Fórmula médica",
+    "description": "Receta emitida a partir del plan de tratamiento de una consulta. Congelada al emitir: se anula, no se edita."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "sequence": { "type": "integer", "min": 1 },
+    "number": { "type": "string", "maxLength": 20 },
+    "state": { "type": "enumeration", "enum": ["issued", "voided"], "default": "issued", "required": true },
+    "issuedAt": { "type": "datetime" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "vetName": { "type": "string", "maxLength": 200 },
+    "vetLicense": { "type": "string", "maxLength": 40 },
+    "vetLicenseIssuer": { "type": "string", "maxLength": 120 },
+    "vetSignature": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "items": { "type": "component", "repeatable": true, "component": "clinical.prescription-item" },
+    "instructions": { "type": "text" },
+    "followUpOn": { "type": "date" },
+    "voidedAt": { "type": "datetime" },
+    "voidReason": { "type": "string", "maxLength": 255 },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+Fórmula médica (5.8). La crea y la anula solo `api::clinical.prescribing`; `vetName`, `vetLicense`, `vetLicenseIssuer`, `vetSignature` e `items` son copias tomadas al emitir. Main field `searchLabel` (número · mascota · fecha).
 
 ### 7.6 Scheduling
 
@@ -3297,6 +3395,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::clinical.vaccine` | `species` |
 | `api::clinical.pet-vaccination` | `pet`, `vaccine` |
 | `api::clinical.allergy` | `pet` |
+| `api::clinical.prescription` | `consultation`, `pet`, `vet` (las pone el servicio de fórmulas) |
 | `api::scheduling.appointment` | `pet`, `responsible` |
 | `api::scheduling.service` | `category` |
 | componente `clinical.service-line` / `clinical.product-line` | `service` / `product` (la pertenencia a la consulta es estructural) |
@@ -3351,9 +3450,10 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | --- | --- |
 | `api::shared.contact` | `value` debe ser email válido si `contactType` es `email`/`email_work`; teléfono E.164 (`^\+[1-9][0-9]{7,14}$`) en los demás |
 | `api::pet.pet` | `breed.species` = `species`; `birthDate` no futura; `sterilizedOn` solo si `sterilizationState = sterilized` |
-| `api::clinical.consultation` | si falta `consultedAt`, asignar la fecha actual; `nextControlOn` posterior a `consultedAt`; si llega `weightKg`, actualizar `pet.weightKg`; cada línea de `lines` lleva `lineKey` (5.4); una línea cobrada por un renglón vivo no se quita, no cambia de servicio/producto ni de cantidad y no deja de ser facturable (sus notas sí cambian); una consulta con renglones vivos no se borra, no se archiva y no cambia de mascota |
+| `api::clinical.consultation` | si falta `consultedAt`, asignar la fecha actual; `nextControlOn` posterior a `consultedAt`; si llega `weightKg`, actualizar `pet.weightKg`; cada línea de `lines` lleva `lineKey` (5.4); una línea cobrada por un renglón vivo no se quita, no cambia de servicio/producto ni de cantidad y no deja de ser facturable (sus notas sí cambian); una consulta con renglones vivos no se borra, no se archiva y no cambia de mascota; una consulta con fórmulas médicas no se borra, y con una vigente no se archiva ni cambia de mascota; en `clinical.medication`, `product` (si lo hay) es un medicamento del catálogo, activo si cambia, `drug` por defecto el nombre del producto y `quantity` > 0 |
 | `api::clinical.pet-vaccination` | `vaccine.species` = `pet.species`; `appliedOn` no futura; `nextDueOn` > `appliedOn` |
 | `api::clinical.allergy` | `resolvedOn` obligatorio si `isActive = false` |
+| `api::clinical.prescription` | solo se crea dentro del servicio de fórmulas (consecutivo, copia del firmante con tarjeta profesional, al menos un medicamento); emitida no se edita: lo único admitido es `issued → voided` con `voidReason`, también dentro del servicio (`voidedAt` lo pone él); no se borra; la escritura que solo trae `searchLabel` pasa |
 | `api::scheduling.appointment` | `endAt` > `startAt`; si `state = cancelled` exigir `cancelledAt` y `cancelReason`; fijar `arrivedAt`/`completedAt` al pasar a `arrived`/`completed`; asignar `bookedBy` con el perfil de quien está autenticado (cliente o staff) al crear |
 | `api::scheduling.appointment` | sin solapamiento para el mismo `responsible` ni la misma `room` entre citas en estados `scheduled`, `confirmed`, `arrived`, `in_progress` |
 | `api::scheduling.appointment` | en cada línea de `services`, si faltan `durationMinutes`/`price`, copiar `service.defaultDurationMinutes`/`service.basePrice` |
@@ -3404,6 +3504,8 @@ module.exports = {
       ON invoice_items (lock_key) WHERE lock_key IS NOT NULL`);
     await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_full_number
       ON invoices (full_number) WHERE full_number IS NOT NULL`);
+    await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_prescriptions_sequence
+      ON prescriptions (sequence) WHERE sequence IS NOT NULL`);
     await knex.raw(`CREATE INDEX IF NOT EXISTS idx_invoices_issued_at
       ON invoices (issued_at, state)`);
     await knex.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ux_notifications_dedupe
@@ -3454,10 +3556,10 @@ Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógi
 | Rol del panel | Permisos |
 | --- | --- |
 | Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye registrar pagos; no cambia precios); lectura de `hospitalization` y `cage`; hospitalización: ver; caja: operar (abrir y cerrar su turno, vender, cobrar, abonos, anticipos, movimientos); lectura de `payment`, `cash-session`, `cash-movement`, `cash-register` |
-| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula); CRUD de `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`; hospitalización: ver, registrar y prescribir (ingreso, órdenes, traslado, alta) |
+| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula); CRUD de `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`; hospitalización: ver, registrar y prescribir (ingreso, órdenes, traslado, alta); lectura de `prescription`; fórmula médica: emitir, reimprimir y anular las propias |
 | Caja | lectura de `customer`, `profile`, `contact`, `pet`, catálogos, `invoice`, `invoice-item`, `payment`, `cash-session`, `cash-movement`, `cash-register`, `clinic`; `create` de `profile`, `contact` y `customer` (factura a nombre del comprador); facturación: ver; caja: operar |
 | Auxiliar de hospitalización | lectura de `hospitalization`, `treatment-order`, `cage`, `pet` y `allergy`; hospitalización: ver, registrar signos y tomas (no prescribe, no da altas) |
-| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `cage`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios; hospitalización: todo; caja: todo (operar, devolver, supervisar) y CRUD de `cash-register` |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `cage`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios; hospitalización: todo; caja: todo (operar, devolver, supervisar) y CRUD de `cash-register`; fórmula médica: emitir y anular también las de otra persona |
 
 Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
@@ -3472,7 +3574,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 47 content types y 42 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 48 content types y 43 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

@@ -15,6 +15,7 @@ import labels from './labels';
 import notification from './notification';
 import ownership from './ownership';
 import pet from './pet';
+import prescription from './prescription';
 import requiredRelations from './required-relations';
 import scheduling from './scheduling';
 import shared from './shared';
@@ -44,6 +45,7 @@ export default (strapi: Core.Strapi): void => {
   customer(strapi);
   pet(strapi);
   clinical(strapi);
+  prescription(strapi);
   clinic(strapi);
   scheduling(strapi);
   staffSchedule(strapi);

@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "prescriptions",
+  "info": {
+    "singularName": "prescription",
+    "pluralName": "prescriptions",
+    "displayName": "Fórmula médica",
+    "description": "Receta emitida a partir del plan de tratamiento de una consulta. Congelada al emitir: se anula, no se edita."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "sequence": { "type": "integer", "min": 1 },
+    "number": { "type": "string", "maxLength": 20 },
+    "state": { "type": "enumeration", "enum": ["issued", "voided"], "default": "issued", "required": true },
+    "issuedAt": { "type": "datetime" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet" },
+    "vet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "vetName": { "type": "string", "maxLength": 200 },
+    "vetLicense": { "type": "string", "maxLength": 40 },
+    "vetLicenseIssuer": { "type": "string", "maxLength": 120 },
+    "vetSignature": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "items": { "type": "component", "repeatable": true, "component": "clinical.prescription-item" },
+    "instructions": { "type": "text" },
+    "followUpOn": { "type": "date" },
+    "voidedAt": { "type": "datetime" },
+    "voidReason": { "type": "string", "maxLength": 255 },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

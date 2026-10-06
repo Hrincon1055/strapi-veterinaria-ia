@@ -104,7 +104,9 @@ function resumenSeccion(s) {
         const pauta = [m.dose, m.route, m.frequencyHours && `c/${m.frequencyHours}h`, m.durationDays && `${m.durationDays} días`]
           .filter(Boolean)
           .join(' · ');
-        l.push(`Rx  ${m.drug}${pauta ? ' — ' + pauta : ''}${m.notes ? ' (' + m.notes + ')' : ''}`);
+        const producto = m.product ? ` [${[m.product.name, m.product.presentation].filter(Boolean).join(' · ')}]` : '';
+        const cantidad = m.quantity != null ? ` · dispensar ${Number(m.quantity)}` : '';
+        l.push(`Rx  ${m.drug}${producto}${pauta ? ' — ' + pauta : ''}${cantidad}${m.notes ? ' (' + m.notes + ')' : ''}`);
       }
       if (s.followUpOn) l.push(`Control: ${fecha(s.followUpOn)}`);
       break;
@@ -196,7 +198,7 @@ function resumenSeccion(s) {
           'clinical.procedure': true,
           'clinical.lab-result': { populate: ['report'] },
           'clinical.imaging': { populate: ['images'] },
-          'clinical.treatment-plan': { populate: ['medications'] },
+          'clinical.treatment-plan': { populate: { medications: { populate: { product: { fields: ['name', 'presentation'] } } } } },
         },
       },
     },

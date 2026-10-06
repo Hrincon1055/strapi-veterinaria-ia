@@ -81,6 +81,7 @@ const PERSONAL = [
       perfil: {
         firstName: 'Sofía', lastName: 'Arango', documentType: 'cc',
         documentNumber: '43991205', occupation: 'Cirujana veterinaria', gender: 'female',
+        professionalLicense: 'MV-23456', licenseIssuer: 'COMVEZCOL',
       },
     },
     horario: {

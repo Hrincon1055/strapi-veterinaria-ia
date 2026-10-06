@@ -1,5 +1,6 @@
 import { Book } from '@strapi/icons';
 import { PanelFicha } from './presentation/components/PanelFicha';
+import { PanelFormula } from './presentation/components/PanelFormula';
 
 const PLUGIN_ID = 'veterinaria-historia';
 
@@ -25,7 +26,8 @@ export default {
   },
 
   bootstrap(app) {
-    // Atajo a la historia desde la ficha de la mascota y la del cliente.
-    app.getPlugin('content-manager').apis.addEditViewSidePanel([PanelFicha]);
+    // Atajo a la historia desde la ficha de la mascota y la del cliente, y la
+    // fórmula médica en la de la consulta.
+    app.getPlugin('content-manager').apis.addEditViewSidePanel([PanelFicha, PanelFormula]);
   },
 };

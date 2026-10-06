@@ -39,6 +39,15 @@
       "type": "integer",
       "min": 1
     },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::catalog.product"
+    },
+    "quantity": {
+      "type": "decimal",
+      "min": 0
+    },
     "notes": {
       "type": "string",
       "maxLength": 255

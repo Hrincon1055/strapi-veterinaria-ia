@@ -315,7 +315,10 @@
       "addresses": "Direcciones",
       "contacts": "Contactos",
       "user": "Usuario de la app",
-      "adminUser": "Usuario del panel"
+      "adminUser": "Usuario del panel",
+      "professionalLicense": "Tarjeta profesional",
+      "licenseIssuer": "Entidad que expide la tarjeta",
+      "signature": "Firma (imagen)"
     },
     "api::marketing.campaign": {
       "segment": "Segmento",
@@ -484,7 +487,9 @@
       "dose": "Dosis",
       "route": "Vía",
       "frequencyHours": "Frecuencia (horas)",
-      "durationDays": "Duración (días)"
+      "durationDays": "Duración (días)",
+      "product": "Producto del catálogo",
+      "quantity": "Cantidad a dispensar"
     },
     "clinical.physical-exam": {
       "temperatureC": "Temperatura (°C)",
@@ -710,6 +715,30 @@
       "denomination": "Denominación",
       "kind": "Billete o moneda",
       "quantity": "Cantidad"
+    },
+    "api::clinical.prescription": {
+      "sequence": "Consecutivo",
+      "number": "Número",
+      "issuedAt": "Emitida el",
+      "vetName": "Firmada por",
+      "vetLicense": "Tarjeta profesional",
+      "vetLicenseIssuer": "Entidad que expide la tarjeta",
+      "vetSignature": "Firma",
+      "items": "Medicamentos",
+      "instructions": "Indicaciones",
+      "followUpOn": "Próximo control",
+      "voidedAt": "Anulada el",
+      "voidReason": "Motivo de anulación"
+    },
+    "clinical.prescription-item": {
+      "presentation": "Presentación",
+      "activeIngredients": "Principios activos",
+      "dose": "Dosis",
+      "route": "Vía",
+      "frequencyHours": "Cada (horas)",
+      "durationDays": "Duración (días)",
+      "quantity": "Cantidad a dispensar",
+      "isControlled": "Medicamento de control especial"
     }
   }
 }

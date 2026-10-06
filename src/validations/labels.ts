@@ -149,6 +149,14 @@ async function cascadaDesdeMascota(strapi: Core.Strapi, petDocumentId: string): 
   for (const consulta of consultas) {
     if (await refrescarEtiqueta(strapi, 'api::clinical.consultation', consulta.documentId)) n++;
   }
+  // La etiqueta de la fórmula médica lleva el nombre de la mascota.
+  const formulas = await strapi.documents('api::clinical.prescription' as any).findMany({
+    filters: { pet: { documentId: petDocumentId } } as any,
+    fields: ['documentId'] as any,
+  } as any);
+  for (const f of formulas as any[]) {
+    if (await refrescarEtiqueta(strapi, 'api::clinical.prescription', f.documentId)) n++;
+  }
   n += await cascadaHospitalizaciones(strapi, { pet: { documentId: petDocumentId } });
   return n;
 }

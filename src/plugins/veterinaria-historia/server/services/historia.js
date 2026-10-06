@@ -33,7 +33,7 @@ const SECCIONES = {
   'clinical.procedure': true,
   'clinical.lab-result': { populate: ['report'] },
   'clinical.imaging': { populate: ['images'] },
-  'clinical.treatment-plan': { populate: ['medications'] },
+  'clinical.treatment-plan': { populate: { medications: { populate: { product: { fields: ['name', 'presentation'] } } } } },
 };
 
 const LINEAS = {
@@ -84,7 +84,12 @@ function aSeccion(s) {
     ...(s.__component === 'clinical.lab-result' ? { report: archivo(report) } : {}),
     ...(s.__component === 'clinical.imaging' ? { images: (images ?? []).map(archivo) } : {}),
     ...(s.__component === 'clinical.treatment-plan'
-      ? { medications: (s.medications ?? []).map(({ id: _id, ...m }) => m) }
+      ? {
+          medications: (s.medications ?? []).map(({ id: _id, product, ...m }) => ({
+            ...m,
+            producto: product ? [product.name, product.presentation].filter(Boolean).join(' · ') : null,
+          })),
+        }
       : {}),
   };
 }
@@ -219,6 +224,9 @@ module.exports = ({ strapi }) => {
   }
 
   return {
+    /** Datos de la clínica para la cabecera (también de la fórmula médica). */
+    clinica,
+
     async buscar(q) {
       const t = texto(q);
       if (!t || t.length < 2) return [];

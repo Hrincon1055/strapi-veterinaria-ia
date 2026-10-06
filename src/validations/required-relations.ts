@@ -22,6 +22,8 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::clinical.vaccine': ['species'],
   'api::clinical.pet-vaccination': ['pet', 'vaccine'],
   'api::clinical.allergy': ['pet'],
+  // Las rellena `api::clinical.prescribing`; la fórmula no se crea a mano.
+  'api::clinical.prescription': ['consultation', 'pet', 'vet'],
   'api::scheduling.appointment': ['pet', 'responsible'],
   'api::scheduling.service': ['category'],
   // Las líneas de la consulta son la dynamic zone `lines` (tarjetas

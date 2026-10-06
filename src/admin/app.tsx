@@ -26,6 +26,7 @@ const CON_ETIQUETA = [
   'api::pet.pet',
   'api::pet.breed',
   'api::clinical.consultation',
+  'api::clinical.prescription',
   'api::catalog.product',
   'api::billing.subscription',
   'api::billing.invoice',

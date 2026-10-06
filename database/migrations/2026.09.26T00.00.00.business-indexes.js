@@ -51,6 +51,14 @@ const INDEXES = [
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_full_number
             ON invoices (full_number) WHERE full_number IS NOT NULL`,
   },
+  // Fórmula médica: el consecutivo RX no se repite aunque dos emisiones
+  // simultáneas leyeran el mismo máximo (`api::clinical.prescribing`).
+  {
+    name: 'ux_prescriptions_sequence',
+    table: 'prescriptions',
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS ux_prescriptions_sequence
+            ON prescriptions (sequence) WHERE sequence IS NOT NULL`,
+  },
   {
     name: 'idx_invoices_issued_at',
     table: 'invoices',

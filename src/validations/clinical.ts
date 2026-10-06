@@ -89,6 +89,62 @@ async function renglonesVivos(strapi: Core.Strapi, consultaDocumentId: string): 
 const nombreDeFactura = (f: any): string => (f?.fullNumber ? `la factura ${f.fullNumber}` : 'un borrador de factura');
 
 /**
+ * Fórmulas médicas emitidas desde la consulta (`api::clinical.prescription`).
+ * Con `soloVigentes`, las que no están anuladas.
+ */
+async function formulasDe(strapi: Core.Strapi, consultaDocumentId: string, soloVigentes = false): Promise<any[]> {
+  return strapi.documents('api::clinical.prescription' as any).findMany({
+    filters: { consultation: { documentId: consultaDocumentId }, ...(soloVigentes ? { state: 'issued' } : {}) } as any,
+    fields: ['number', 'state'] as any,
+    sort: ['sequence:asc'],
+  } as any);
+}
+
+/**
+ * Medicamentos de los planes de tratamiento (`clinical.medication`, anidado
+ * en `clinical.treatment-plan`): el producto, si lo hay, es un medicamento
+ * del catálogo, y la cantidad a dispensar es positiva. Sin `drug`, toma el
+ * nombre del producto.
+ *
+ * El componente está dos niveles por debajo de la consulta, así que el
+ * guardado se empareja en dos pasos (plan por `id`, luego medicamento por
+ * `id`) para leer bien la diferencia vacía que manda el panel. Solo se exige
+ * "activo" si el producto cambia: desactivar un producto del catálogo no
+ * debe impedir editar las consultas antiguas que lo recetaron.
+ */
+async function validarMedicacion(strapi: Core.Strapi, secciones: any[], guardadas: any[] | undefined): Promise<void> {
+  const planesGuardados = porId(guardadas);
+  for (const plan of secciones) {
+    if (plan?.__component !== 'clinical.treatment-plan' || !Array.isArray(plan.medications)) continue;
+    const medsGuardados = porId(previaDe(planesGuardados, plan)?.medications);
+
+    for (const m of plan.medications) {
+      if (!m) continue;
+      if (m.quantity !== undefined && m.quantity !== null && m.quantity !== '' && !(Number(m.quantity) > 0)) {
+        throw new ValidationError('La cantidad a dispensar de un medicamento tiene que ser mayor que 0');
+      }
+
+      const previa = previaDe(medsGuardados, m);
+      const productoId = relacionDeComponente(m.product, previa, 'product');
+      if (!productoId) continue;
+
+      const p: any = await strapi.documents('api::catalog.product').findOne({
+        documentId: productoId,
+        fields: ['name', 'productType', 'isActive'] as any,
+      });
+      if (!p) throw new ValidationError('El producto indicado en la medicación no existe');
+      if (p.productType !== 'medication') {
+        throw new ValidationError(`"${p.name}" es de tipo "${p.productType}": en la medicación del plan solo van medicamentos del catálogo`);
+      }
+      if (p.isActive === false && productoId !== previa?.product?.documentId) {
+        throw new ValidationError(`"${p.name}" está inactivo en el catálogo`);
+      }
+      if (!m.drug || !String(m.drug).trim()) m.drug = String(p.name).slice(0, 150);
+    }
+  }
+}
+
+/**
  * Una línea que ya se está cobrando no puede cambiar lo que se cobra: ni
  * desaparecer, ni cambiar de servicio o producto, ni de cantidad, ni dejar de
  * ser facturable. Si la historia clínica y la factura divergen, ninguna de las
@@ -163,11 +219,17 @@ export default (strapi: Core.Strapi): void => {
     const current = await loadCurrent(strapi, ctx, {
       pet: true,
       lines: POPULATE_LINEAS,
+      sections: { on: { 'clinical.treatment-plan': { populate: { medications: { populate: ['product'] } } } } },
     });
 
     // Si no se indica el momento de la consulta, es ahora.
     if (ctx.action === 'create' && !data.consultedAt) {
       data.consultedAt = new Date().toISOString();
+      ctx.params.data = data;
+    }
+
+    if (Array.isArray(data.sections)) {
+      await validarMedicacion(strapi, data.sections, current?.sections);
       ctx.params.data = data;
     }
 
@@ -226,6 +288,14 @@ export default (strapi: Core.Strapi): void => {
               `${cambiaMascota ? 'cambiar de mascota' : 'archivarse'} mientras esa factura esté viva`
           );
         }
+        // La fórmula va a nombre de la mascota y cita la consulta.
+        const formulas = await formulasDe(strapi, ctx.params.documentId, true);
+        if (formulas.length > 0) {
+          throw new ValidationError(
+            `Esta consulta tiene la fórmula médica ${formulas[0].number} vigente: no puede ` +
+              `${cambiaMascota ? 'cambiar de mascota' : 'archivarse'} sin anularla antes`
+          );
+        }
       }
     }
 
@@ -262,6 +332,13 @@ export default (strapi: Core.Strapi): void => {
       if (vivos.length > 0) {
         throw new ValidationError(
           `Esta consulta tiene conceptos en ${nombreDeFactura(vivos[0].invoice)}: no se puede borrar mientras esa factura esté viva`
+        );
+      }
+      // Una fórmula, aun anulada, no se borra: la consulta que la respalda tampoco.
+      const formulas = await formulasDe(strapi, ctx.params.documentId);
+      if (formulas.length > 0) {
+        throw new ValidationError(
+          `Esta consulta respalda la fórmula médica ${formulas[0].number}: no se puede borrar (archívala si no está vigente)`
         );
       }
     }

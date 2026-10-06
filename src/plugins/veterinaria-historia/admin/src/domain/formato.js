@@ -145,3 +145,57 @@ export function urlArchivo(url) {
 /** Mensaje legible de un error del fetch client del panel. */
 export const mensajeDeError = (e, porDefecto) =>
   e?.response?.data?.error?.message ?? e?.message ?? porDefecto;
+
+// ---------------------------------------------------------------- fórmula médica
+
+const UNIDADES = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce',
+  'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós',
+  'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
+const DECENAS = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+const CENTENAS = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos',
+  'ochocientos', 'novecientos'];
+
+function hastaMil(n) {
+  if (n === 100) return 'cien';
+  const c = Math.floor(n / 100);
+  const r = n % 100;
+  const resto = r < 30 ? UNIDADES[r] : `${DECENAS[Math.floor(r / 10)]}${r % 10 ? ` y ${UNIDADES[r % 10]}` : ''}`;
+  return [CENTENAS[c], resto].filter(Boolean).join(' ');
+}
+
+/**
+ * Cantidad en letras para la fórmula ("dos", "medio", "uno y medio"): en una
+ * receta en papel la cifra sola se altera con un trazo. Solo enteros y
+ * medios; otra fracción devuelve null y se imprime solo la cifra.
+ */
+export function cantidadEnLetras(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0 || n >= 1000000) return null;
+  const entero = Math.floor(n);
+  const fraccion = Math.round((n - entero) * 100);
+  if (fraccion !== 0 && fraccion !== 50) return null;
+  const miles = Math.floor(entero / 1000);
+  const resto = entero % 1000;
+  const palabras = [miles === 1 ? 'mil' : miles > 1 ? `${hastaMil(miles)} mil` : '', resto ? hastaMil(resto) : '']
+    .filter(Boolean)
+    .join(' ');
+  if (fraccion === 50) return palabras ? `${palabras} y medio` : 'medio';
+  return palabras || null;
+}
+
+/** "0,1 mg/kg · Oral · cada 24 h · durante 4 días", de un medicamento de la fórmula. */
+export function pautaFormula(m) {
+  return [
+    m.dosis,
+    VIA(m.via),
+    m.cadaHoras && `cada ${m.cadaHoras} h`,
+    m.dias && `durante ${m.dias} ${m.dias === 1 ? 'día' : 'días'}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+export const ESTADO_FORMULA = {
+  issued: { rotulo: 'Vigente', color: 'success' },
+  voided: { rotulo: 'Anulada', color: 'danger' },
+};

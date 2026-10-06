@@ -27,7 +27,8 @@ const SECCIONES = {
   // Llevan media o componentes anidados: hay que decirlo explícitamente.
   'clinical.lab-result': { populate: ['report'] },
   'clinical.imaging': { populate: ['images'] },
-  'clinical.treatment-plan': { populate: ['medications'] },
+  // La medicación anida su producto del catálogo (opcional).
+  'clinical.treatment-plan': { populate: { medications: { populate: { product: { fields: ['name', 'presentation'] } } } } },
 } as const;
 
 /** La otra zona de la consulta: servicios y productos (ver validations/clinical.ts). */

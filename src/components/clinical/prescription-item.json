@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_clinical_prescription_items",
+  "info": {
+    "displayName": "Medicamento formulado",
+    "icon": "write",
+    "description": "Copia de un medicamento del plan de tratamiento tal como salió en la fórmula médica."
+  },
+  "options": {},
+  "attributes": {
+    "drug": { "type": "string", "required": true, "maxLength": 150 },
+    "presentation": { "type": "string", "maxLength": 255 },
+    "activeIngredients": { "type": "string", "maxLength": 255 },
+    "dose": { "type": "string", "maxLength": 80 },
+    "route": {
+      "type": "enumeration",
+      "enum": ["oral", "sc", "im", "iv", "topical", "otic", "ophthalmic", "other"]
+    },
+    "frequencyHours": { "type": "integer", "min": 1, "max": 168 },
+    "durationDays": { "type": "integer", "min": 1 },
+    "quantity": { "type": "decimal", "min": 0 },
+    "isControlled": { "type": "boolean", "default": false },
+    "notes": { "type": "string", "maxLength": 255 }
+  }
+}

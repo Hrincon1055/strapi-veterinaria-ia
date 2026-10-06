@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 47 content types (uno es single type) across 15 API domains, 42 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
+Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 48 content types (uno es single type) across 15 API domains, 43 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
 Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
@@ -22,7 +22,7 @@ npm run upgrade:dry  # preview a Strapi version upgrade (then `npm run upgrade`)
 ```bash
 npx strapi ts:generate-types      # regenerate types/generated/ after a schema change, without a full boot
 npx tsc --noEmit                  # typecheck server code
-node smoke-validations.js         # 199 live assertions against the business rules (boots Strapi, self-cleaning)
+node smoke-validations.js         # 226 live assertions against the business rules (boots Strapi, self-cleaning)
 node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, the hospitalization ward (Rocco ingresado, Nube de alta), the cash registers (yesterday's closed shift, today's open one with sales), 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone (en el panel: menú "Historia clínica", imprimible)
 node factura-pdf.js <FE129|documentId> [salida]   # PDF de una factura (o vista previa de un borrador) en .tmp/facturas/
@@ -256,6 +256,17 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - **Se imprime una copia, no la página.** `Impresion.jsx` monta el documento otra vez como hijo directo de `<body>` (portal) y con `@media print` oculta todo lo demás: el layout del panel tiene un contenedor de alto fijo con scroll propio que cortaría la historia en la primera hoja. La copia va con `lightTheme` (styled-components `ThemeProvider`) para que una cuenta en modo oscuro no imprima texto claro. Las clases `vh-*` solo marcan saltos de página.
 - **Permiso `historia.ver`**, de Veterinario y Administrador de clínica. Recepción no: lee consultas pero no alergias ni vacunas, y este módulo las junta.
 - No hay icono de impresora en `@strapi/icons`; se usa `File`.
+
+**La fórmula médica vive en el mismo plugin**, pero escribe: `api::clinical.prescription` (con su componente `clinical.prescription-item`), emitida desde el panel lateral "Fórmula médica" de la consulta y pintada en `formula/:id` en A5 (`Impresion` recibe `tamano`). Diseño y decisiones F1–F7 en la sección 5.8 del documento de modelo. Lo que no es obvio:
+
+- **Es una copia, no una vista del plan.** Al emitir se copian los medicamentos (con presentación, principios activos y si es controlado, sacados del `product` opcional de `clinical.medication`) y el firmante (nombre, `professionalLicense`, `licenseIssuer`, `signature` del perfil). Cambiar el plan o el perfil después no cambia una fórmula emitida; se anula y se emite otra.
+- **Firma la cuenta de la sesión**, no el `vet` de la consulta. Sin perfil enlazado (`profile.adminUser`) o sin tarjeta profesional, `emitir` se niega con un mensaje que lo dice: el Super Admin de la demo no puede emitir.
+- **La orquestación es `api::clinical.prescribing` (TS), no un servicio del plugin**: la creación y la anulación solo pasan por la regla dentro de `enServicioDeFormulas` (`src/api/clinical/domain/formula.ts`, un `AsyncLocalStorage` como el de la emisión de facturas), y esa marca tiene que vivir en código compilado que comparta módulo con las reglas. El plugin delega, como facturación con `invoicing`.
+- **No se borra, ni siquiera con el query engine**: borrar así deja huérfanos sus renglones (los componentes solo los borra el Document Service; pasó en las pruebas de humo). Los scripts borran sus fórmulas por el Document Service dentro de la marca, con `require('./dist/src/api/clinical/domain/formula')`, que es el mismo módulo que cargó Strapi. Una consulta con fórmulas no se borra; con una vigente no se archiva ni cambia de mascota.
+- **Consecutivo `RX-000123`** = `max(sequence) + 1` dentro de la transacción que crea la fórmula, con el índice único `ux_prescriptions_sequence` de respaldo. Las pruebas de humo borran las suyas al terminar, así que el número vuelve a donde estaba.
+- **Permisos**: `formula.emitir` (Veterinario y Administrador de clínica) emite, reimprime y anula las propias; `formula.anular` (Administrador) anula las ajenas. Política OR `tiene-permiso`, copia de la de facturación. El panel lateral usa `useAuth` y no aparece sin el permiso: Strapi pinta cada panel como componente (`DescriptionComponentRenderer`), así que se pueden usar hooks en él.
+- **Un medicamento controlado se formula igual**, con el aviso de que hace falta además el recetario oficial del FNE.
+- Verificado por HTTP con las cinco cuentas de la demo (17 comprobaciones: Recepción y Auxiliar 403, Sofía no anula la de Laura, Marta sí).
 
 `strapi-admin.js` tiene que ser **ESM con `export default`** (`export { default } from './admin/src/index.jsx'`); en CommonJS el empaquetador del panel falla con *"default" is not exported*. `strapi-server.js` en cambio es CommonJS. Y el código del plugin va en `.js`, no en `.ts`: `config/plugins.ts` lo resuelve desde `./src/plugins/…`, así que Strapi cargaría el fuente sin compilar.
 

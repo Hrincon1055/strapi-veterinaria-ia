@@ -34,7 +34,7 @@ const SECCIONES = {
   'clinical.procedure': true,
   'clinical.lab-result': { populate: ['report'] },
   'clinical.imaging': { populate: ['images'] },
-  'clinical.treatment-plan': { populate: ['medications'] },
+  'clinical.treatment-plan': { populate: { medications: { populate: { product: { fields: ['name', 'presentation'] } } } } },
 };
 
 const HISTORIA = {

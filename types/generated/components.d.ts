@@ -531,6 +531,14 @@ export interface ClinicalMedication extends Struct.ComponentSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
     route: Schema.Attribute.Enumeration<
       ['oral', 'sc', 'im', 'iv', 'topical', 'otic', 'ophthalmic', 'other']
     > &
@@ -593,6 +601,64 @@ export interface ClinicalPhysicalExam extends Struct.ComponentSchema {
         },
         number
       >;
+  };
+}
+
+export interface ClinicalPrescriptionItem extends Struct.ComponentSchema {
+  collectionName: 'components_clinical_prescription_items';
+  info: {
+    description: 'Copia de un medicamento del plan de tratamiento tal como sali\u00F3 en la f\u00F3rmula m\u00E9dica.';
+    displayName: 'Medicamento formulado';
+    icon: 'write';
+  };
+  attributes: {
+    activeIngredients: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    dose: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    drug: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+      }>;
+    durationDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    frequencyHours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 168;
+          min: 1;
+        },
+        number
+      >;
+    isControlled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    notes: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    presentation: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    route: Schema.Attribute.Enumeration<
+      ['oral', 'sc', 'im', 'iv', 'topical', 'otic', 'ophthalmic', 'other']
+    >;
   };
 }
 
@@ -1170,6 +1236,7 @@ declare module '@strapi/strapi' {
       'clinical.lab-result': ClinicalLabResult;
       'clinical.medication': ClinicalMedication;
       'clinical.physical-exam': ClinicalPhysicalExam;
+      'clinical.prescription-item': ClinicalPrescriptionItem;
       'clinical.procedure': ClinicalProcedure;
       'clinical.product-line': ClinicalProductLine;
       'clinical.service-line': ClinicalServiceLine;

@@ -91,6 +91,15 @@ async function limpiar(app) {
     n += await app.db.query('api::billing.invoice').deleteMany({ where: { id: { $in: ids } } }).then((r) => r.count);
   }
 
+  // Fórmulas médicas: no se borran (se anulan), y con una fórmula la consulta
+  // tampoco se deja borrar. Se borran dentro de la marca del servicio y por el
+  // Document Service, que es el que borra también sus renglones (componentes).
+  const { enServicioDeFormulas } = require('./dist/src/api/clinical/domain/formula');
+  for (const f of await d('api::clinical.prescription').findMany({ filters: { pet: { name: 'Fido SMOKE' } } })) {
+    await enServicioDeFormulas(() => d('api::clinical.prescription').delete({ documentId: f.documentId }));
+    n++;
+  }
+
   const objetivos = [
     ['api::billing.benefit-usage', { benefit: { name: 'Baño SMOKE' } }],
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
@@ -107,6 +116,8 @@ async function limpiar(app) {
     ['api::scheduling.service', { name: 'Hospitalización día SMOKE' }],
     ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
     ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
+    // La de la fórmula médica termina archivada: el filtro de archivados la esconde.
+    ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' }, archivedAt: { $notNull: true } }],
     ['api::scheduling.service', { name: 'Consulta SMOKE' }],
     ['api::catalog.product', { name: { $endsWith: 'SMOKE' } }],
     ['api::catalog.supplier', { name: { $endsWith: 'SMOKE' } }],
@@ -890,6 +901,81 @@ async function limpiar(app) {
   await rechaza('reversar con el turno cerrado', () => pos.reversar(venta.pagos[0].documentId, 'Tarde SMOKE'), 'ya se cerró');
   await rechaza('reabrir el turno', () => d(T).update({ documentId: TU, data: { state: 'open' } }), 'no cambia');
   await acepta('la cartera general agrupa por cliente y tramo', () => pos.cartera({}), (c) => typeof c.tramos['0-30'] === 'number' && Array.isArray(c.clientes));
+
+  console.log('\n--- fórmula médica ---');
+  {
+    const RX = 'api::clinical.prescription';
+    const prescribing = app.service('api::clinical.prescribing');
+    const POP_PLAN = { sections: { on: { 'clinical.treatment-plan': { populate: { medications: { populate: ['product'] } } } } } };
+    const amoxi = await d('api::catalog.product').create({
+      data: { name: 'Amoxicilina SMOKE', productType: 'medication', presentation: 'Caja x 14 tabletas',
+        details: [{ __component: 'catalog.medication-details', pharmaceuticalForm: 'tablet', isControlled: true,
+          activeIngredients: [{ name: 'Amoxicilina', strength: 250, strengthUnit: 'mg' }] }] },
+    });
+    const juguete = await d('api::catalog.product').findFirst({ filters: { name: 'Pelota SMOKE' } });
+    const consultaRx = await d('api::clinical.consultation').create({ data: { pet: mascota.documentId, vet: vet.documentId } });
+    const plan = (medications) => [{ __component: 'clinical.treatment-plan', indications: [{ type: 'paragraph', children: [{ type: 'text', text: 'Plan SMOKE' }] }],
+      recommendations: [{ type: 'paragraph', children: [{ type: 'text', text: 'Reposo SMOKE' }] }], medications }];
+
+    await rechaza('medicación con un producto que no es medicamento', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { sections: plan([{ drug: 'Pelota', product: juguete.documentId }]) } }), 'solo van medicamentos');
+    await rechaza('cantidad a dispensar 0', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { sections: plan([{ drug: 'Algo', quantity: 0 }]) } }), 'mayor que 0');
+    const conPlan = await acepta('medicación con producto y sin nombre: lo toma del producto', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { sections: plan([
+        { product: amoxi.documentId, dose: '1 tableta', route: 'oral', frequencyHours: 12, durationDays: 7, quantity: 14 },
+        { drug: 'Omeprazol SMOKE', dose: '1 mg/kg', frequencyHours: 24, durationDays: 7, quantity: 7 },
+      ]) }, populate: POP_PLAN }),
+      (r) => r.sections?.[0]?.medications?.[0]?.drug === 'Amoxicilina SMOKE' && r.sections[0].medications[0].product?.documentId === amoxi.documentId);
+    const planGuardado = conPlan?.sections?.[0];
+    await acepta('editar el plan desde el panel sin tocar el producto', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { sections: [{ ...planGuardado,
+        medications: planGuardado.medications.map((m) => ({ ...m, product: { connect: [], disconnect: [] }, notes: 'Con comida' })) }] }, populate: POP_PLAN }),
+      (r) => r.sections?.[0]?.medications?.[0]?.product?.documentId === amoxi.documentId && r.sections[0].medications[0].notes === 'Con comida');
+
+    await rechaza('crear una fórmula a mano', () =>
+      d(RX).create({ data: { consultation: consultaRx.documentId, pet: mascota.documentId, vet: vet.documentId, vetLicense: 'X', items: [{ drug: 'X' }] } }), 'no se crean a mano');
+    const { medicamentos } = await prescribing.deConsulta(consultaRx.documentId, vet.id);
+    const ids = medicamentos.map((m) => m.id);
+    await rechaza('emitir con una cuenta sin perfil', () => prescribing.emitir(consultaRx.documentId, { medicamentos: ids }, vet.id), 'no está enlazada');
+    const perfilVet = await d('api::identity.profile').create({ data: { firstName: 'Vet', lastName: 'Smoke', documentType: 'cc', documentNumber: 'SMOKE-RX', adminUser: vet.id } });
+    await rechaza('emitir sin tarjeta profesional en el perfil', () => prescribing.emitir(consultaRx.documentId, { medicamentos: ids }, vet.id), 'tarjeta profesional');
+    await d('api::identity.profile').update({ documentId: perfilVet.documentId, data: { professionalLicense: 'TP-SMOKE', licenseIssuer: 'COMVEZCOL' } });
+    await rechaza('emitir sin medicamentos', () => prescribing.emitir(consultaRx.documentId, { medicamentos: [] }, vet.id), 'al menos un medicamento');
+    await rechaza('emitir con un medicamento que no es del plan', () => prescribing.emitir(consultaRx.documentId, { medicamentos: [-1] }, vet.id), 'ya no está');
+    const rx1 = await acepta('emitir: número RX, copia de los dos medicamentos', () => prescribing.emitir(consultaRx.documentId, { medicamentos: ids }, vet.id),
+      (r) => /^RX-\d{6}$/.test(r.numero) && r.medicamentos === 2 && r.estado === 'issued');
+    const rx2 = await acepta('la segunda fórmula toma el número siguiente', () => prescribing.emitir(consultaRx.documentId, { medicamentos: [ids[1]] }, vet.id),
+      (r) => Number(r.numero.slice(3)) === Number(rx1?.numero.slice(3)) + 1);
+    await acepta('la ficha copia firmante, presentación, controlado e indicaciones', () => prescribing.ficha(rx1.documentId),
+      (f) => f.firmante.tarjeta === 'TP-SMOKE' && f.firmante.nombre === 'Vet Smoke' && f.medicamentos[0].presentacion === 'Amoxicilina SMOKE · Caja x 14 tabletas'
+        && f.medicamentos[0].principiosActivos === 'Amoxicilina 250 mg' && f.medicamentos[0].controlado === true && f.medicamentos[1].cantidad === 7
+        && f.instrucciones === 'Reposo SMOKE' && f.mascota?.nombre === 'Fido SMOKE');
+    await acepta('la etiqueta de búsqueda lleva número y mascota', () => d(RX).findOne({ documentId: rx1.documentId }),
+      (r) => r.searchLabel?.startsWith(`${rx1.numero} · Fido SMOKE`));
+    await d('api::identity.profile').update({ documentId: perfilVet.documentId, data: { professionalLicense: 'TP-NUEVA' } });
+    await acepta('cambiar la tarjeta del perfil no cambia la fórmula ya emitida', () => prescribing.ficha(rx1.documentId), (f) => f.firmante.tarjeta === 'TP-SMOKE');
+    await rechaza('editar una fórmula emitida', () => d(RX).update({ documentId: rx1.documentId, data: { vetLicense: 'OTRA' } }), 'no se edita');
+    await rechaza('anularla por el Document Service', () => d(RX).update({ documentId: rx1.documentId, data: { state: 'voided', voidReason: 'X' } }), 'no se edita');
+    await rechaza('borrar una fórmula', () => d(RX).delete({ documentId: rx1.documentId }), 'no se borra');
+    await acepta('…y la fórmula sigue entera', () => prescribing.ficha(rx1.documentId), (f) => f.medicamentos.length === 2);
+    await rechaza('archivar una consulta con fórmula vigente', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { archivedAt: new Date().toISOString() } }), 'fórmula médica');
+    await rechaza('borrar una consulta con fórmula', () => d('api::clinical.consultation').delete({ documentId: consultaRx.documentId }), 'respalda');
+    await acepta('editar el plan después de emitir no toca la fórmula', async () => {
+      await d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { sections: plan([{ drug: 'Otro SMOKE' }]) } });
+      return prescribing.ficha(rx1.documentId);
+    }, (f) => f.medicamentos.length === 2 && f.medicamentos[0].medicamento === 'Amoxicilina SMOKE');
+    await rechaza('anular sin motivo', () => prescribing.anular(rx1.documentId, '  ', { cuentaId: vet.id, puedeAnularAjenas: false }), 'motivo');
+    await rechaza('anular la de otra persona sin permiso', () => prescribing.anular(rx1.documentId, 'Error SMOKE', { cuentaId: -1, puedeAnularAjenas: false }), 'otra persona');
+    await acepta('anular la propia con motivo', () => prescribing.anular(rx1.documentId, 'Error SMOKE', { cuentaId: vet.id, puedeAnularAjenas: false }),
+      (r) => r.estado === 'voided' && r.motivoAnulacion === 'Error SMOKE' && !!r.anuladaEl);
+    await rechaza('anular dos veces', () => prescribing.anular(rx1.documentId, 'Otra vez', { cuentaId: vet.id, puedeAnularAjenas: false }), 'ya está anulada');
+    await acepta('la administración anula la de otra persona', () => prescribing.anular(rx2.documentId, 'Revisión SMOKE', { cuentaId: -1, puedeAnularAjenas: true }),
+      (r) => r.estado === 'voided');
+    await acepta('con las fórmulas anuladas la consulta ya se puede archivar', () =>
+      d('api::clinical.consultation').update({ documentId: consultaRx.documentId, data: { archivedAt: new Date().toISOString() } }), (r) => !!r.archivedAt);
+  }
 
   console.log('\n--- filtro de archivados ---');
   await d('api::pet.pet').update({ documentId: mascota.documentId, data: { archivedAt: new Date().toISOString() } });

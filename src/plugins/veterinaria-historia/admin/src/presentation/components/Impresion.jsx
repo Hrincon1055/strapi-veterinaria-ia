@@ -16,12 +16,14 @@ import { lightTheme } from '@strapi/design-system';
  *
  * Va con el tema claro aunque la cuenta use el oscuro: texto claro sobre un
  * papel blanco no se lee.
+ *
+ * `tamano`: la historia va en A4; la fórmula médica, en A5.
  */
 const EstilosImpresion = createGlobalStyle`
   .vh-impresion { display: none; }
 
   @media print {
-    @page { size: A4; margin: 12mm 12mm 14mm; }
+    @page { size: ${(p) => p.$tamano}; margin: ${(p) => (p.$tamano === 'A5' ? '10mm' : '12mm 12mm 14mm')}; }
 
     html, body {
       height: auto !important;
@@ -49,7 +51,7 @@ const EstilosImpresion = createGlobalStyle`
   }
 `;
 
-export function Impresion({ children }) {
+export function Impresion({ children, tamano = 'A4' }) {
   const [nodo, setNodo] = React.useState(null);
 
   React.useEffect(() => {
@@ -62,7 +64,7 @@ export function Impresion({ children }) {
 
   return (
     <>
-      <EstilosImpresion />
+      <EstilosImpresion $tamano={tamano} />
       {nodo && createPortal(<ThemeProvider theme={lightTheme}>{children}</ThemeProvider>, nodo)}
     </>
   );

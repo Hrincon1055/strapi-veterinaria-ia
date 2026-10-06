@@ -98,6 +98,21 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "admin::user"
+    },
+    "professionalLicense": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "licenseIssuer": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "signature": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }

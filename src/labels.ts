@@ -80,6 +80,13 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
     build: (e) => unir([fechaHora(e.consultedAt), e.pet?.name, e.reason?.slice(0, 40)]),
   },
 
+  // "RX-000123 · Kira · 2026-10-06": la fórmula se busca por número, y en
+  // el mostrador también por el nombre de la mascota.
+  'api::clinical.prescription': {
+    populate: ['pet'],
+    build: (e) => unir([e.number, e.pet?.name, soloFecha(e.issuedAt), e.state === 'voided' ? 'anulada' : null]),
+  },
+
   // Sustituye a `paymentMethodToken`, que es un campo privado y no debería
   // aparecer nunca como etiqueta.
   'api::billing.subscription': {

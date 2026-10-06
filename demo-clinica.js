@@ -102,8 +102,14 @@ const VETERINARIO = {
     documentNumber: '43118902',
     occupation: 'Médica veterinaria',
     gender: 'female',
+    // Registro profesional: sale en la fórmula médica. Número de demo.
+    professionalLicense: 'MV-12345',
+    licenseIssuer: 'COMVEZCOL',
   },
 };
+
+/** La visita cuya fórmula médica se emite en la demo (antibiótico y analgésico). */
+const VISITA_CON_FORMULA = '2025-06-05T13:00:00.000Z';
 
 // --- la historia -----------------------------------------------------------
 
@@ -232,8 +238,9 @@ const VISITAS = [
         {
           followUpOn: '2025-06-12',
           medications: [
-            { drug: 'Amoxicilina-clavulánico', dose: '12,5 mg/kg', route: 'oral', frequencyHours: 12, durationDays: 7 },
-            { drug: 'Meloxicam', dose: '0,1 mg/kg', route: 'oral', frequencyHours: 24, durationDays: 4, notes: 'Tras la comida' },
+            { drug: 'Amoxicilina-clavulánico 250 mg (tabletas)', dose: '1 tableta', route: 'oral', frequencyHours: 12, durationDays: 7, quantity: 14 },
+            // Enlazado al catálogo: la fórmula médica saca de ahí la presentación.
+            { drug: 'Meloxicam', producto: 'Meloxicam suspensión oral', dose: '0,1 mg/kg', route: 'oral', frequencyHours: 24, durationDays: 4, quantity: 1, notes: 'Tras la comida' },
           ],
           recomendaciones: [
             'Dieta blanda fraccionada durante 5 días. Reposo y collar isabelino.',
@@ -457,7 +464,17 @@ async function crearHistoria(app) {
         consultedAt: v.inicio,
         reason: v.reason,
         weightKg: v.weightKg,
-        sections: v.secciones,
+        // La medicación nombra su producto del catálogo por nombre (`producto`).
+        sections: v.secciones.map((s) =>
+          s.__component === 'clinical.treatment-plan' && s.medications
+            ? {
+                ...s,
+                medications: s.medications.map(({ producto, ...m }) =>
+                  producto ? { ...m, product: productos[producto].documentId } : m
+                ),
+              }
+            : s
+        ),
         // Servicios y productos: dynamic zone con una tarjeta por tipo. Sin
         // precio (será de la facturación, desde el catálogo); quien lo hizo
         // es `vet`. `label` lo pone el servidor.
@@ -505,7 +522,30 @@ async function crearHistoria(app) {
     creadas++;
   }
 
-  return { mascota: MASCOTA, visitas: creadas, vet: VETERINARIO.email };
+  const formula = await emitirFormula(app, mascota, vet);
+
+  return { mascota: MASCOTA, visitas: creadas, vet: VETERINARIO.email, formula };
+}
+
+/**
+ * La fórmula médica de la cirugía, como la emitiría la veterinaria desde el
+ * panel lateral de la consulta (`api::clinical.prescribing`). Idempotente: si
+ * la consulta ya tiene una, no emite otra.
+ */
+async function emitirFormula(app, mascota, vet) {
+  const d = (uid) => app.documents(uid);
+  const consulta = await d('api::clinical.consultation').findFirst({
+    filters: { pet: { documentId: mascota.documentId }, consultedAt: VISITA_CON_FORMULA },
+  });
+  if (!consulta) return null;
+
+  const ya = await d('api::clinical.prescription').findFirst({ filters: { consultation: { documentId: consulta.documentId } } });
+  if (ya) return ya.number;
+
+  const prescribing = app.service('api::clinical.prescribing');
+  const { medicamentos } = await prescribing.deConsulta(consulta.documentId, vet.id);
+  const f = await prescribing.emitir(consulta.documentId, { medicamentos: medicamentos.map((m) => m.id) }, vet.id);
+  return f.numero;
 }
 
 /** Borra la historia y el catálogo que creó este módulo. */
@@ -523,6 +563,18 @@ async function borrarHistoria(app) {
     for (const uid of ['api::clinical.pet-vaccination', 'api::clinical.allergy']) {
       for (const r of await d(uid).findMany({ filters: { pet: { documentId: mascota.documentId } } })) {
         await d(uid).delete({ documentId: r.documentId });
+        n++;
+      }
+    }
+
+    // Las fórmulas médicas no se borran (se anulan), y mientras existan la
+    // consulta tampoco. Se borran dentro de la marca del servicio y por el
+    // Document Service, que borra también sus renglones; el query engine los
+    // dejaría huérfanos.
+    const { enServicioDeFormulas } = require('./dist/src/api/clinical/domain/formula');
+    for (const c of consultas) {
+      for (const f of await d('api::clinical.prescription').findMany({ filters: { consultation: { documentId: c.documentId } } })) {
+        await enServicioDeFormulas(() => d('api::clinical.prescription').delete({ documentId: f.documentId }));
         n++;
       }
     }
