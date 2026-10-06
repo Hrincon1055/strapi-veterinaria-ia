@@ -5,20 +5,21 @@
     "singularName": "invoice-item",
     "pluralName": "invoice-items",
     "displayName": "Renglón de factura",
-    "description": "Un concepto cobrado. Si viene de una consulta, señala su línea por lineKey; lockKey impide que dos facturas vivas cobren la misma."
+    "description": "Un concepto cobrado. Si viene de una consulta o de una hospitalización, señala su concepto por lineKey; lockKey impide que dos facturas vivas cobren la misma."
   },
   "options": { "draftAndPublish": false },
   "attributes": {
     "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice", "inversedBy": "items" },
     "kind": {
       "type": "enumeration",
-      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom"],
+      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom", "hospitalization_stay", "hospitalization_product"],
       "required": true
     },
     "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
     "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
     "sourceConsultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "sourceHospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
     "sourceLineKey": { "type": "string", "maxLength": 36 },
     "lockKey": { "type": "string", "maxLength": 36 },
 

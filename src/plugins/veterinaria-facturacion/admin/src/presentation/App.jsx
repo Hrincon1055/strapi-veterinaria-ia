@@ -11,6 +11,7 @@ import { FacturaPage } from './paginas/FacturaPage';
  *
  *   /                    bandeja (pendientes de cobro y facturas)
  *   /consultas/:id       qué se puede cobrar de una consulta → borrador
+ *   /hospitalizaciones/:id   lo mismo para una hospitalización (días y tomas)
  *   /facturas/:id        detalle, edición del borrador, emisión, PDF, anulación
  */
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
     <Routes>
       <Route index element={<InicioPage />} />
       <Route path="consultas/:id" element={<ConsultaPage />} />
+      <Route path="hospitalizaciones/:id" element={<ConsultaPage origen="hospitalizacion" />} />
       <Route path="facturas/:id" element={<FacturaPage />} />
       <Route path="*" element={<Page.Error />} />
     </Routes>

@@ -18,7 +18,35 @@ const DISPARADORES: Record<string, string[]> = {
   'api::pet.pet': ['name', 'owner', 'breed', 'species'],
   'api::pet.species': ['name'],
   'api::pet.breed': ['name', 'species'],
+  // Hospitalización (5.6): su etiqueta lleva la jaula y la de sus órdenes la
+  // mascota; la de la orden, el nombre del producto.
+  'api::hospitalization.hospitalization': ['pet'],
+  'api::hospitalization.cage': ['name'],
+  'api::catalog.product': ['name'],
 };
+
+const HOSPITALIZACION = 'api::hospitalization.hospitalization';
+const ORDEN = 'api::hospitalization.treatment-order';
+
+/** Hospitalizaciones que cumplan el filtro, y las órdenes de cada una. */
+async function cascadaHospitalizaciones(strapi: Core.Strapi, filters: any): Promise<number> {
+  let n = 0;
+  const hospitalizaciones = await strapi.documents(HOSPITALIZACION as any).findMany({ filters, fields: ['documentId'] as any } as any);
+  for (const h of hospitalizaciones as any[]) {
+    if (await refrescarEtiqueta(strapi, HOSPITALIZACION, h.documentId)) n++;
+    n += await cascadaOrdenes(strapi, { hospitalization: { documentId: h.documentId } });
+  }
+  return n;
+}
+
+async function cascadaOrdenes(strapi: Core.Strapi, filters: any): Promise<number> {
+  let n = 0;
+  const ordenes = await strapi.documents(ORDEN as any).findMany({ filters, fields: ['documentId'] as any } as any);
+  for (const o of ordenes as any[]) {
+    if (await refrescarEtiqueta(strapi, ORDEN, o.documentId)) n++;
+  }
+  return n;
+}
 
 /** Una escritura que solo trae `searchLabel` es la nuestra: no se reprocesa. */
 const esEscrituraDeEtiqueta = (data: any): boolean =>
@@ -68,6 +96,9 @@ async function cascadaDesdePerfil(strapi: Core.Strapi, profileDocumentId: string
     for (const consulta of consultas) {
       if (await refrescarEtiqueta(strapi, 'api::clinical.consultation', consulta.documentId)) n++;
     }
+
+    // La etiqueta de la hospitalización lleva el apellido del dueño.
+    n += await cascadaHospitalizaciones(strapi, { pet: { documentId: mascota.documentId } });
   }
 
   return n;
@@ -110,6 +141,7 @@ async function cascadaDesdeMascota(strapi: Core.Strapi, petDocumentId: string): 
   for (const consulta of consultas) {
     if (await refrescarEtiqueta(strapi, 'api::clinical.consultation', consulta.documentId)) n++;
   }
+  n += await cascadaHospitalizaciones(strapi, { pet: { documentId: petDocumentId } });
   return n;
 }
 
@@ -137,6 +169,12 @@ export default (strapi: Core.Strapi): void => {
         tocados = await cascadaDesdePerfil(strapi, documentId);
       } else if (ctx.uid === 'api::pet.pet') {
         tocados = await cascadaDesdeMascota(strapi, documentId);
+      } else if (ctx.uid === HOSPITALIZACION) {
+        tocados = await cascadaOrdenes(strapi, { hospitalization: { documentId } });
+      } else if (ctx.uid === 'api::hospitalization.cage') {
+        tocados = await cascadaHospitalizaciones(strapi, { cage: { documentId } });
+      } else if (ctx.uid === 'api::catalog.product') {
+        tocados = await cascadaOrdenes(strapi, { product: { documentId } });
       } else {
         tocados = await cascadaCatalogo(strapi, ctx.uid, documentId);
       }

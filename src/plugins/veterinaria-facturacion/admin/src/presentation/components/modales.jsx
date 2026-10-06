@@ -2,7 +2,7 @@ import * as React from 'react';
 import {
   Modal, Button, Flex, Typography, Field, TextInput, Textarea, Box, Tabs, Checkbox, Loader, Alert,
 } from '@strapi/design-system';
-import { dinero, fecha, cantidad, ESTADO_CLINICO, mensajeDeError } from '../../domain/formato';
+import { dinero, fecha, cantidad, ESTADO_CLINICO, mensajeDeError, origenDe } from '../../domain/formato';
 
 /** Esqueleto común: título, cuerpo y pie con Cancelar + acción principal. */
 function Dialogo({ abierto, onCerrar, titulo, children, accion, onAccion, ocupado, peligro, deshabilitado }) {
@@ -200,9 +200,12 @@ export function ModalAgregar({ abierto, onCerrar, factura, busquedas, onAgregarD
     busquedas.pendientesDelCliente(factura.cliente.documentId).then(setConsultas).catch((e) => setError(mensajeDeError(e)));
   }, [abierto, factura?.cliente?.documentId, busquedas]);
 
-  const abrirConsulta = async (id) => {
+  const abrirConsulta = async (pendiente) => {
     setElegidas([]);
-    try { setAbierta(await busquedas.estadoConsulta(id)); } catch (e) { setError(mensajeDeError(e)); }
+    const o = origenDe(pendiente);
+    try {
+      setAbierta(o.tipo === 'hospitalizacion' ? await busquedas.estadoHospitalizacion(o.documentId) : await busquedas.estadoConsulta(o.documentId));
+    } catch (e) { setError(mensajeDeError(e)); }
   };
   const alternar = (k) => setElegidas((xs) => (xs.includes(k) ? xs.filter((x) => x !== k) : [...xs, k]));
 
@@ -215,7 +218,7 @@ export function ModalAgregar({ abierto, onCerrar, factura, busquedas, onAgregarD
           <Tabs.Root defaultValue="catalogo">
             <Tabs.List aria-label="Origen del concepto">
               <Tabs.Trigger value="catalogo">Del catálogo</Tabs.Trigger>
-              <Tabs.Trigger value="consultas">De otras consultas del cliente</Tabs.Trigger>
+              <Tabs.Trigger value="consultas">De consultas u hospitalizaciones del cliente</Tabs.Trigger>
             </Tabs.List>
 
             <Tabs.Content value="catalogo">
@@ -251,16 +254,19 @@ export function ModalAgregar({ abierto, onCerrar, factura, busquedas, onAgregarD
               <Flex direction="column" gap={3} alignItems="stretch" paddingTop={4}>
                 {consultas === null && <Loader small>Cargando…</Loader>}
                 {consultas?.length === 0 && (
-                  <Typography variant="pi" textColor="neutral600">Este cliente no tiene otras consultas con conceptos pendientes.</Typography>
+                  <Typography variant="pi" textColor="neutral600">Este cliente no tiene otras consultas ni hospitalizaciones con conceptos pendientes.</Typography>
                 )}
-                {!abierta && consultas?.map((c) => (
-                  <Button key={c.consulta.documentId} variant="tertiary" fullWidth onClick={() => abrirConsulta(c.consulta.documentId)}>
-                    {fecha(c.consulta.consultedAt)} · {c.mascota?.name ?? 'Mascota'} · {c.pendientes} pendiente(s) · {dinero(c.valorPendiente)}
-                  </Button>
-                ))}
+                {!abierta && consultas?.map((c) => {
+                  const o = origenDe(c);
+                  return (
+                    <Button key={o.documentId} variant="tertiary" fullWidth onClick={() => abrirConsulta(c)}>
+                      {o.rotulo} · {fecha(o.fecha)} · {c.mascota?.name ?? 'Mascota'} · {c.pendientes} pendiente(s) · {dinero(c.valorPendiente)}
+                    </Button>
+                  );
+                })}
                 {abierta && (
                   <>
-                    <Typography fontWeight="bold">{fecha(abierta.consulta.consultedAt)} · {abierta.mascota?.name}</Typography>
+                    <Typography fontWeight="bold">{origenDe(abierta).rotulo} · {fecha(origenDe(abierta).fecha)} · {abierta.mascota?.name}</Typography>
                     {abierta.lineas.filter((l) => l.estado === 'pendiente').map((l) => (
                       <Checkbox key={l.lineKey} checked={elegidas.includes(l.lineKey)} onCheckedChange={() => alternar(l.lineKey)}>
                         {l.label} · {cantidad(l.quantity)} · {ESTADO_CLINICO[l.state] ?? l.state}
@@ -268,10 +274,11 @@ export function ModalAgregar({ abierto, onCerrar, factura, busquedas, onAgregarD
                       </Checkbox>
                     ))}
                     <Flex gap={2}>
-                      <Button variant="tertiary" onClick={() => setAbierta(null)}>Otra consulta</Button>
+                      <Button variant="tertiary" onClick={() => setAbierta(null)}>Otro origen</Button>
                       <Button disabled={elegidas.length === 0}
                         onClick={async () => {
-                          const ok = await onAgregarConceptos(elegidas.map((k) => ({ consulta: abierta.consulta.documentId, lineKey: k })));
+                          const o = origenDe(abierta);
+                          const ok = await onAgregarConceptos(elegidas.map((k) => ({ [o.tipo]: o.documentId, lineKey: k })));
                           if (ok) onCerrar();
                         }}>
                         Añadir {elegidas.length || ''} concepto(s)

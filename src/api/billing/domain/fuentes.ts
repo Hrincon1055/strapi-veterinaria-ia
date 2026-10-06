@@ -9,7 +9,10 @@
  * - Una tarjeta nueva en `consultation.lines` = una entrada en `LINEAS_FACTURABLES`
  *   y un `kind` que la apunte.
  * - Un origen nuevo fuera de la consulta = un valor del enum `kind` del
- *   renglón y una entrada en `TIPOS_DE_RENGLON`.
+ *   renglón, una entrada en `TIPOS_DE_RENGLON` con su `origen`, la relación
+ *   de origen en el renglón (`sourceHospitalization`…) y quien sepa listar
+ *   sus conceptos con `lineKey` (para la hospitalización,
+ *   `api::hospitalization.hospitalization.conceptosFacturables`).
  */
 
 export type Relacion = 'service' | 'product' | 'subscription';
@@ -51,20 +54,33 @@ export const CATALOGOS: Record<Relacion, Catalogo> = {
   },
 };
 
+/** De dónde sale un concepto con `lineKey`, y la relación del renglón que lo señala. */
+export type Origen = 'consulta' | 'hospitalizacion';
+
+export const ORIGENES: Record<Origen, { uid: string; relacion: string }> = {
+  consulta: { uid: 'api::clinical.consultation', relacion: 'sourceConsultation' },
+  hospitalizacion: { uid: 'api::hospitalization.hospitalization', relacion: 'sourceHospitalization' },
+};
+
 export type TipoDeRenglon = {
   /** Relación con el catálogo que lleva el renglón, o null (cargo libre). */
   relacion: Relacion | null;
   /** Tarjeta de `consultation.lines` de la que sale, si sale de una consulta. */
   componente: string | null;
+  /** Origen del concepto, o null si el renglón no cobra nada que exista fuera de él. */
+  origen: Origen | null;
 };
 
 export const TIPOS_DE_RENGLON: Record<string, TipoDeRenglon> = {
-  consultation_service: { relacion: 'service', componente: 'clinical.service-line' },
-  consultation_product: { relacion: 'product', componente: 'clinical.product-line' },
-  subscription: { relacion: 'subscription', componente: null },
-  direct_service: { relacion: 'service', componente: null },
-  direct_product: { relacion: 'product', componente: null },
-  custom: { relacion: null, componente: null },
+  consultation_service: { relacion: 'service', componente: 'clinical.service-line', origen: 'consulta' },
+  consultation_product: { relacion: 'product', componente: 'clinical.product-line', origen: 'consulta' },
+  subscription: { relacion: 'subscription', componente: null, origen: null },
+  direct_service: { relacion: 'service', componente: null, origen: null },
+  direct_product: { relacion: 'product', componente: null, origen: null },
+  custom: { relacion: null, componente: null, origen: null },
+  // Hospitalización (5.6): un día de estancia y una toma dada.
+  hospitalization_stay: { relacion: 'service', componente: null, origen: 'hospitalizacion' },
+  hospitalization_product: { relacion: 'product', componente: null, origen: 'hospitalizacion' },
 };
 
 /**

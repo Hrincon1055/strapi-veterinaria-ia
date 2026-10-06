@@ -23,6 +23,8 @@ const ORDEN = [
   'api::billing.subscription',
   'api::billing.invoice',
   'api::catalog.product',
+  'api::hospitalization.hospitalization',
+  'api::hospitalization.treatment-order',
 
   'api::notification.notification-recipient',
   'api::marketing.campaign-metric',

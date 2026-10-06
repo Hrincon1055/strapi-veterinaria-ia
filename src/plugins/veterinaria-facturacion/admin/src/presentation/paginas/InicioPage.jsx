@@ -8,7 +8,7 @@ import {
 import { Plus } from '@strapi/icons';
 import { useFacturacionStore } from '../store';
 import { usePendientes, useFacturas, usePermisos, useVentaDirecta } from '../../application/useFacturacion';
-import { dinero, fecha, fechaHora, ESTADO_FACTURA, ESTADO_PAGO } from '../../domain/formato';
+import { dinero, fecha, fechaHora, ESTADO_FACTURA, ESTADO_PAGO, origenDe } from '../../domain/formato';
 import { Insignia, RUTA } from '../components/comunes';
 import { ModalVentaDirecta } from '../components/modales';
 
@@ -36,7 +36,10 @@ function FiltroFecha({ etiqueta, valor, onCambio }) {
   );
 }
 
-/** Consultas con algún concepto pendiente de cobro o atendidas sin cargo de consulta. */
+/**
+ * Consultas y hospitalizaciones con algún concepto pendiente de cobro, o
+ * consultas atendidas sin cargo de consulta.
+ */
 function Pendientes() {
   const navigate = useNavigate();
   const { filtrosPendientes: f, setFiltrosPendientes } = useFacturacionStore();
@@ -45,16 +48,25 @@ function Pendientes() {
   return (
     <Flex direction="column" gap={4} alignItems="stretch">
       <Flex gap={4} alignItems="flex-end" wrap="wrap">
-        <FiltroFecha etiqueta="Consultas desde" valor={f.desde} onCambio={(desde) => setFiltrosPendientes({ desde })} />
+        <FiltroFecha etiqueta="Desde" valor={f.desde} onCambio={(desde) => setFiltrosPendientes({ desde })} />
         <FiltroFecha etiqueta="Hasta" valor={f.hasta} onCambio={(hasta) => setFiltrosPendientes({ hasta })} />
       </Flex>
-      <Estado cargando={cargando} error={error} vacio={datos?.length === 0 && 'No hay consultas con conceptos pendientes de cobro en ese periodo.'}>
+      <Estado cargando={cargando} error={error} vacio={datos?.length === 0 && 'No hay consultas ni hospitalizaciones con conceptos pendientes de cobro en ese periodo.'}>
         <Table colCount={6} rowCount={(datos?.length ?? 0) + 1}>
-          <Cabecera columnas={['Consulta', 'Mascota', 'Cliente', 'Pendientes', 'Valor estimado', '']} />
+          <Cabecera columnas={['Origen', 'Mascota', 'Cliente', 'Pendientes', 'Valor estimado', '']} />
           <Tbody>
-            {(datos ?? []).map((c) => (
-              <Tr key={c.consulta.documentId} onClick={() => navigate(`${RUTA}/consultas/${c.consulta.documentId}`)} style={{ cursor: 'pointer' }}>
-                <Td><Typography>{fechaHora(c.consulta.consultedAt)}</Typography></Td>
+            {(datos ?? []).map((c) => {
+              const o = origenDe(c);
+              return (
+              <Tr key={o.documentId} onClick={() => navigate(`${RUTA}/${o.ruta}/${o.documentId}`)} style={{ cursor: 'pointer' }}>
+                <Td>
+                  <Typography>{fechaHora(o.fecha)}</Typography>
+                  {o.tipo === 'hospitalizacion' && (
+                    <Typography variant="pi" textColor="neutral600">
+                      {' '}· Hospitalización{c.hospitalizacion.state === 'active' ? ' (ingresada)' : ''}
+                    </Typography>
+                  )}
+                </Td>
                 <Td><Typography>{c.mascota?.name ?? '—'}</Typography></Td>
                 <Td><Typography>{c.cliente?.nombre ?? '—'}</Typography></Td>
                 <Td>
@@ -63,12 +75,16 @@ function Pendientes() {
                     {c.sinCargoDeConsulta && (
                       <Badge backgroundColor="warning100" textColor="warning700">Sin cargo de consulta</Badge>
                     )}
+                    {c.sinServicioDeEstancia && (
+                      <Badge backgroundColor="warning100" textColor="warning700">Días sin servicio</Badge>
+                    )}
                   </Flex>
                 </Td>
                 <Td><Typography>{dinero(c.valorPendiente)}</Typography></Td>
                 <Td><Button size="S" variant="secondary">Facturar</Button></Td>
               </Tr>
-            ))}
+              );
+            })}
           </Tbody>
         </Table>
       </Estado>
@@ -76,7 +92,9 @@ function Pendientes() {
         El valor es una estimación con el catálogo de hoy; el precio se fija al crear el borrador.
         Una línea sin precio o sin perfil de IVA en el catálogo no suma aquí y no se puede facturar hasta corregirla.
         "Sin cargo de consulta": atendida sin ningún servicio registrado; si se cobra, añade el servicio al
-        facturarla. Una cortesía se factura con descuento del 100 % en el renglón.
+        facturarla. Una cortesía se factura con descuento del 100 % en el renglón. Una hospitalización
+        cobra cada día de estancia iniciado y cada toma administrada; "Días sin servicio": ni la jaula ni Clínica
+        tienen servicio de hospitalización por día.
       </Typography>
     </Flex>
   );

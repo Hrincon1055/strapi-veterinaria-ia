@@ -8,6 +8,7 @@ import clinic from './clinic';
 import clinical from './clinical';
 import customer from './customer';
 import documents from './documents';
+import hospitalization from './hospitalization';
 import identity from './identity';
 import labels from './labels';
 import notification from './notification';
@@ -46,6 +47,7 @@ export default (strapi: Core.Strapi): void => {
   scheduling(strapi);
   staffSchedule(strapi);
   billing(strapi);
+  hospitalization(strapi);
   catalog(strapi);
   travel(strapi);
   documents(strapi);

@@ -119,6 +119,27 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     resolve: './src/plugins/veterinaria-historia',
   },
 
+  /**
+   * Hospitalización: tablero de jaulas, hoja de evolución por hora (signos y
+   * tomas), órdenes de tratamiento, traslados y alta. Plugin local, en
+   * src/plugins/. La lógica está en `api::hospitalization.ward`; solo aplica
+   * si Clínica tiene "Hospitaliza pacientes".
+   */
+  'veterinaria-hospitalizacion': {
+    enabled: true,
+    resolve: './src/plugins/veterinaria-hospitalizacion',
+  },
+
+  /**
+   * Botón "CSV/Excel" en la lista del Content Manager. Sin restricciones el
+   * plugin exporta cualquier colección a cualquier cuenta del panel, con
+   * campos privados y hashes de contraseña en las relaciones: SOLO catálogos,
+   * según el rol, en src/extensions/collection-exporter/strapi-server.ts.
+   */
+  'collection-exporter': {
+    enabled: true,
+  },
+
   /** Diagrama de los content types y sus relaciones. Sin configuración. */
   'schema-visualizer': {
     enabled: true,

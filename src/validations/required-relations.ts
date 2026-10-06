@@ -39,6 +39,12 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::marketing.campaign-metric': ['campaign'],
   'api::notification.notification-recipient': ['notification', 'recipient'],
   'api::notification.notification-delivery': ['recipient'],
+  'api::hospitalization.cage': ['room'],
+  'api::hospitalization.hospitalization': ['pet', 'cage', 'responsibleVet'],
+  'api::hospitalization.treatment-order': ['hospitalization', 'product'],
+  'api::hospitalization.evolution-entry': ['hospitalization'],
+  // `product` también, pero sale de la orden: lo exige `validations/hospitalization.ts`.
+  'api::hospitalization.medication-administration': ['hospitalization'],
 };
 
 export default (strapi: Core.Strapi): void => {

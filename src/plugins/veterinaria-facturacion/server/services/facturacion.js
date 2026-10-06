@@ -36,6 +36,7 @@ function aResumen(f) {
 
 function aRenglon(r) {
   const c = r.sourceConsultation;
+  const h = r.sourceHospitalization;
   return {
     documentId: r.documentId,
     kind: r.kind,
@@ -50,10 +51,11 @@ function aRenglon(r) {
     subtotal: r.lineSubtotal ?? 0,
     impuesto: r.lineTax ?? 0,
     total: r.lineTotal ?? 0,
-    // Un renglón de consulta toma su cantidad de la línea: no se edita aquí.
-    cantidadEditable: !String(r.kind).startsWith('consultation_'),
+    // Un renglón de consulta u hospitalización toma su cantidad del origen: no se edita aquí.
+    cantidadEditable: !/^(consultation|hospitalization)_/.test(String(r.kind)),
     retenida: Boolean(r.lockKey),
     consulta: c ? { documentId: c.documentId, fecha: c.consultedAt, mascota: c.pet?.name ?? null } : null,
+    hospitalizacion: h ? { documentId: h.documentId, fecha: h.admittedAt, mascota: h.pet?.name ?? null } : null,
   };
 }
 
@@ -72,7 +74,10 @@ module.exports = ({ strapi }) => {
         subscription: { fields: ['searchLabel'] },
         items: {
           sort: 'sortOrder:asc',
-          populate: { sourceConsultation: { fields: ['consultedAt'], populate: { pet: { fields: ['name'] } } } },
+          populate: {
+            sourceConsultation: { fields: ['consultedAt'], populate: { pet: { fields: ['name'] } } },
+            sourceHospitalization: { fields: ['admittedAt'], populate: { pet: { fields: ['name'] } } },
+          },
         },
       },
       // Una factura archivada también se abre desde su enlace.
@@ -115,6 +120,7 @@ module.exports = ({ strapi }) => {
     pendientes: (q) => invoicing().pendientes({ desde: texto(q.desde), hasta: texto(q.hasta), cliente: texto(q.cliente) }),
 
     estadoConsulta: (id) => invoicing().estadoDeConsulta(id),
+    estadoHospitalizacion: (id) => invoicing().estadoDeHospitalizacion(id),
 
     async listar(q) {
       const pagina = Math.max(1, Number(q.page) || 1);

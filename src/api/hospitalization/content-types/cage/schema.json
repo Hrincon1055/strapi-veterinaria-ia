@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cages",
+  "info": {
+    "singularName": "cage",
+    "pluralName": "cages",
+    "displayName": "Jaula",
+    "description": "Puesto de hospitalización dentro de una sala de tipo hospitalización. Aloja un paciente a la vez."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
+    "size": { "type": "enumeration", "enum": ["small", "medium", "large", "xlarge"], "default": "medium", "required": true },
+    "cageType": { "type": "enumeration", "enum": ["standard", "isolation", "icu", "oxygen"], "default": "standard", "required": true },
+    "dailyService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isActive": { "type": "boolean", "default": true },
+    "notes": { "type": "text" }
+  }
+}

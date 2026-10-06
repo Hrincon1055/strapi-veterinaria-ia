@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 38 content types (uno es single type) across 13 API domains, 40 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
+Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 43 content types (uno es single type) across 14 API domains, 41 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
 Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
@@ -22,8 +22,8 @@ npm run upgrade:dry  # preview a Strapi version upgrade (then `npm run upgrade`)
 ```bash
 npx strapi ts:generate-types      # regenerate types/generated/ after a schema change, without a full boot
 npx tsc --noEmit                  # typecheck server code
-node smoke-validations.js         # 40 live assertions against the business rules (boots Strapi, self-cleaning)
-node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
+node smoke-validations.js         # 164 live assertions against the business rules (boots Strapi, self-cleaning)
+node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, the hospitalization ward (Rocco ingresado, Nube de alta), 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone (en el panel: menú "Historia clínica", imprimible)
 node factura-pdf.js <FE129|documentId> [salida]   # PDF de una factura (o vista previa de un borrador) en .tmp/facturas/
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
@@ -92,7 +92,7 @@ Queda un hueco por la API: `esEscrituraDeEtiqueta()` deja pasar sin recalcular u
 - **Sin `admin::users.read` el selector muestra el `documentId`.** Strapi declara ese permiso como alias de "leer `admin::user`" en el Content Manager (`admin-actions.js`, `aliases`), y `sanitizeMainField` cae a `documentId` si no se puede leer el main field. Por eso los tres roles lo llevan; el precio es que ven la lista de cuentas en Ajustes → Usuarios, solo lectura.
 - **Cambiar el destino de una relación en SQLite no cambia su clave foránea.** `admin::user` y el `user` de users-permissions comparten `singularName`, así que la tabla de enlace conserva la columna `user_id`; Strapi actualiza su instantánea pero no puede alterar la FK (SQLite no admite `ALTER` de FK sin recrear la tabla). La tabla sigue apuntando a `up_users` sin aviso. La migración vacía esas tablas, las borra, vacía `strapi_database_schema` y deja que Strapi las recree — la trampa 3 de abajo, en otra forma.
 - **Un token de API de acceso total sí ve esas relaciones**; ningún rol de users-permissions puede, porque `admin::user.find` no existe ahí.
-- Los scripts de demo crean el personal con `demo-staff.js` (`cuentaDelPanel`), que deja el perfil enlazado. Contraseña de demo del staff: `Clinica12345`; la de los clientes, `Demo12345`. Hay una cuenta por rol del panel: Recepción (`andres.mejia`), Veterinario (`laura.gomez`, `sofia.arango`) y Administrador de clínica (`marta.lozano`), todas `@veterinaria.test`.
+- Los scripts de demo crean el personal con `demo-staff.js` (`cuentaDelPanel`), que deja el perfil enlazado. Contraseña de demo del staff: `Clinica12345`; la de los clientes, `Demo12345`. Hay una cuenta por rol del panel: Recepción (`andres.mejia`), Veterinario (`laura.gomez`, `sofia.arango`), Auxiliar de hospitalización (`camila.rios`) y Administrador de clínica (`marta.lozano`), todas `@veterinaria.test`.
 
 **El panel está en español en tres capas distintas**, y cada una vive en un sitio:
 
@@ -258,6 +258,20 @@ Cuatro cosas que hay que saber antes de tocarlo:
 
 `strapi-admin.js` tiene que ser **ESM con `export default`** (`export { default } from './admin/src/index.jsx'`); en CommonJS el empaquetador del panel falla con *"default" is not exported*. `strapi-server.js` en cambio es CommonJS. Y el código del plugin va en `.js`, no en `.ts`: `config/plugins.ts` lo resuelve desde `./src/plugins/…`, así que Strapi cargaría el fuente sin compilar.
 
+**La hospitalización es un dominio propio, `src/api/hospitalization/`, con un cuarto plugin, `src/plugins/veterinaria-hospitalizacion/`.** Diseño y decisiones H1–H9 en la sección 5.6 del documento de modelo. Cinco content types: `cage` (jaula, dentro de una `clinic-room` de tipo `hospitalization`), `hospitalization` (ingreso, traslados en `cageStays`, alta), `treatment-order`, `evolution-entry` (signos) y `medication-administration` (cada toma dada u omitida). Las reglas, en `src/validations/hospitalization.ts`. Lo que no es obvio:
+
+- **Solo funciona si Clínica tiene `offersHospitalization`** (H1): la regla rechaza el ingreso y la página lo explica en vez de pintar un tablero vacío.
+- **Las fechas son instantes UTC reales, no hora de pared como las citas** (H9). Día de estancia y hora de la hoja se calculan en la zona de Clínica (`domain/tiempo.ts`); el servidor manda las horas ya formateadas (`horaTexto`) para que la rejilla no dependa de la zona del navegador.
+- **Las tomas programadas no se guardan**: salen de la orden (`startAt` + k·`frequencyHours`, `domain/tomas.ts`). Una administración cubre una toma por `scheduledFor`, que tiene que ser una toma real de su orden; dos `given` para la misma toma se rechazan (H6, comparando con ±1 s porque la base devuelve otra precisión).
+- **`cageStays` lo escribe solo el servidor**: lo entrante se descarta y se reescribe al ingresar, al cambiar `cage` y al dar el alta. Por eso una jaula que solo sale en el historial de traslados tampoco se deja borrar: sus días se cobran con su servicio.
+- **La facturación tiene un segundo origen.** `fuentes.ts` lleva `ORIGENES` y cada `kind` su `origen`; `invoice-item.sourceHospitalization` es la relación. Los conceptos los lista `api::hospitalization.hospitalization.conceptosFacturables` y los usan tanto la regla del renglón como `invoicing` (`estadoDeHospitalizacion`, `pendientes` con `origen`, `crearBorrador` con `{ hospitalizacion, lineKey }`), así los dos ven lo mismo. Un día es `<documentId>:<AAAA-MM-DD>` (cabe en los 36 de `lockKey`); una toma, un UUID. Mover el ingreso o el alta, o trasladar, se rechaza si quita un día cobrado o le cambia el servicio: se recalcula con `diasConServicio`, la misma función que factura.
+- **Alta = congelada** (H7): después solo cambian resumen, indicaciones, medicación de alta y control, comparando con lo guardado (el panel reenvía el formulario entero). Al alta las órdenes activas pasan a `completed` — esa escritura la admite la regla de la orden aunque la hospitalización ya no esté activa. Una hospitalización con hoja de evolución no se borra.
+- **El cliente ve su hospitalización con una lista blanca** que impone el controlador (`controllers/hospitalization.ts`): rehace `fields`/`populate` para el rol `client` y rechaza filtros sobre campos que no están en la lista (filtrar por `reason` revelaría el motivo). Órdenes, signos y tomas no tienen permiso para ningún rol de la API.
+- **El plugin no tiene lógica**: delega en `api::hospitalization.ward` (tablero, hoja, búsquedas y escrituras), igual que facturación delega en `invoicing`. Permisos `hospitalizacion.ver` / `registrar` / `prescribir` con la política OR `tiene-permiso`. Recepción solo ve; el Auxiliar ve y registra (sin escritura en el Content Manager: todo por la página); el Veterinario prescribe, traslada y da el alta. Verificado por HTTP con las cuatro cuentas de la demo (52 comprobaciones, también la API del cliente).
+- **Paneles laterales** en la ficha de mascota y de consulta; botón "Facturar" en la hoja (lleva a `veterinaria-facturacion/hospitalizaciones/:id`, que reutiliza la página de la consulta con `origen`). El resumen de alta se imprime con el mismo mecanismo de portal que la historia, con clases `vho-*` propias.
+- **`create` devuelve el documento sin la etiqueta recalculada** (`validations/labels.ts` la escribe después): para comprobar un `searchLabel` hay que volver a leer. Pasó en las pruebas de humo de la orden.
+- **No hay icono "pausa" en `@strapi/icons`**: la orden se suspende con `CrossCircle`. El menú usa `Stethoscope`.
+
 **Types are generated, not authored.** `types/generated/contentTypes.d.ts` and `components.d.ts` are regenerated by Strapi on `develop`/`build` from the schema JSON files. Never edit them by hand; change the schema (or use the admin Content-Type Builder in dev) and let them regenerate.
 
 **Config is env-driven.** Every `config/*.ts` exports either a plain object or an `({ env }) => object` factory. Non-default choices already made here, worth preserving:
@@ -268,7 +282,7 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - `config/middlewares.ts` — the default ordered stack; order is significant, insert custom middleware at a deliberate position rather than appending.
 - `config/admin.ts`, `config/server.ts` — secrets and `APP_KEYS` come from env with non-null assertions, so a missing var fails loudly at boot.
 
-**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the users-permissions `client` role if missing (and Public's permissions) and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/admin-roles.ts` does the same for the three panel roles (`Recepción`, `Veterinario`, `Administrador de clínica`) with `addPermissions` — never `assignPermissions`, which replaces the whole list. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
+**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the users-permissions `client` role if missing (and Public's permissions) and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/admin-roles.ts` does the same for the four panel roles (`Recepción`, `Veterinario`, `Auxiliar de hospitalización`, `Administrador de clínica`) with `addPermissions` — never `assignPermissions`, which replaces the whole list. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
 
 **Admin customization** is opt-in: `src/admin/app.example.tsx` and `vite.config.example.ts` must be renamed (drop `.example`) to take effect. `src/admin/` has its own tsconfig and is excluded from the server compilation.
 
@@ -276,7 +290,7 @@ Cuatro cosas que hay que saber antes de tocarlo:
 
 ## Plugins
 
-Four plugins beyond the defaults, all Strapi 5 compatible, configured in `config/plugins.ts`:
+Five plugins beyond the defaults, all Strapi 5 compatible, configured in `config/plugins.ts`:
 
 | Plugin | Where it shows up | Configuration |
 | --- | --- | --- |
@@ -284,12 +298,15 @@ Four plugins beyond the defaults, all Strapi 5 compatible, configured in `config
 | `color-picker` | Service form | Applied to `service.colorHex` as a custom field; the stored type is still `string`, so no data migration. |
 | `strapi-calendar` | Admin menu | Solo **visualiza** `appointment` (colección y campos de fecha en Ajustes → Calendar, no en `plugins.ts`). Los horarios y los huecos son del sistema propio. **Ver la nota de seguridad.** |
 | `schema-visualizer` | Admin menu | None. |
+| `collection-exporter` | Botón "CSV/Excel" en la lista del Content Manager | **Solo catálogos y según el rol**, en `src/extensions/collection-exporter/strapi-server.ts`. **Ver la nota de seguridad.** |
 
 **`@offset-dev/strapi-calendar` ships all six of its routes with `auth: false`.** Unauthenticated, `GET /strapi-calendar/collections` dumps the schema of every content type, `POST /strapi-calendar/settings` repoints the calendar at any collection, and `GET /strapi-calendar/` then returns that collection's rows — chained, that is an anonymous read of patient data. `src/middlewares/protect-calendar.ts` (registered in `config/middlewares.ts`, right after `strapi::errors`) requires an active admin session on `/strapi-calendar/*`. The plugin's own admin UI uses `getFetchClient`, which sends that token, so the panel still works. Verified: the six routes return 401 anonymously and pass with a real panel token. **Do not remove that middleware while this plugin is installed.**
 
 **Ese middleware valida con `strapi.sessionManager`, no con `jwt.verify`.** Desde 5.55 la estrategia `admin` ya no acepta un JWT suelto: exige un *access token* con `sessionId` y una sesión viva (`@strapi/admin/.../strategies/admin.js`). Comprobar solo la firma contra `admin.auth.secret` estaba mal en los dos sentidos y así estuvo escrito aquí: el token real del panel lleva `{ userId, sessionId, type: 'access' }` y no `{ id }`, así que **rechazaba al panel legítimo** (401 verificado), mientras que un JWT `{ id: 1 }` firmado a mano **sí pasaba**, porque nadie miraba si la sesión seguía activa. Ahora usa `validateAccessToken` + `isSessionActive`, igual que la estrategia de Strapi. Lo mismo vale para cualquier script de prueba: un token de administrador no se fabrica firmando, se pide con `strapi.sessionManager('admin').generateRefreshToken(...)` y luego `generateAccessToken(...)`.
 
 La colección que pinta el calendario se configura en Ajustes → Calendar y vive en el plugin store: `api::scheduling.appointment` / `startAt` / `endAt`, título `title`, 45 min, de 7:00 a 18:00. Si `GET /strapi-calendar/` responde 500, es que esa configuración está vacía. El otro plugin de terceros (`schema-visualizer`) usa rutas `type: admin` y ya está protegido (401 sin token).
+
+**`strapi-plugin-collection-exporter` exporta cualquier colección a cualquier cuenta del panel.** Sus rutas solo exigen `admin::isAuthenticatedAdmin` (no el RBAC), solo quita los atributos `password` (los `private` salen) y puebla cada relación entera sin sanear: `profile.user` devuelve el hash bcrypt del cliente. `src/extensions/collection-exporter/strapi-server.ts` envuelve su controlador y su servicio: solo los uids de `EXPORTABLES` (catálogos, nunca datos personales), solo si el rol puede leerlos en el Content Manager, solo los campos legibles y no privados, relaciones como `{ id, documentId }` y solo si se puede leer el destino, `sortBy` y la búsqueda limitados a esos campos. `src/admin/app.tsx` oculta el botón donde `/collection-exporter/content-types` (ya filtrado) no lo incluye; es comodidad, el 403 lo pone el servidor. Verificado con las tres cuentas de rol: Recepción y Veterinario exportan 11 catálogos, Administrador de clínica además `supplier`; `profile`/`customer` dan 403. **No quites esa extensión mientras el plugin esté instalado**, y añadir un uid a `EXPORTABLES` es decidir que puede salir de la clínica en un archivo.
 
 **`strapi-csv-import-export` se desinstaló** (daba errores en el panel; era un 0.0.6 de terceros). Si algún día hace falta importar o exportar CSV, la decisión que había tomada sigue siendo válida: habilitar **solo catálogos**, nunca tablas con datos personales — el plugin filtra por colección y no por rol, así que exponer `profile` o `customer` daría a cualquier administrador una exportación completa de la base de pacientes en un clic.
 

@@ -23,6 +23,15 @@ const { ValidationError } = errors;
 const FACTURA = 'api::billing.invoice';
 const RENGLON = 'api::billing.invoice-item';
 const CONSULTA = 'api::clinical.consultation';
+const HOSPITALIZACION = 'api::hospitalization.hospitalization';
+
+/** Un concepto a facturar: una línea de consulta o un concepto de hospitalización. */
+export type Concepto = {
+  consulta?: string;
+  hospitalizacion?: string;
+  lineKey: string;
+  discountAmount?: number;
+};
 
 /** Qué `kind` de renglón corresponde a cada tarjeta de la consulta. */
 const KIND_DE_COMPONENTE: Record<string, string> = Object.fromEntries(
@@ -61,13 +70,20 @@ function motivoNoFacturable(linea: any): string | null {
  */
 function estimar(linea: any): { unitPrice: number | null; lineTotal: number | null; problema: string | null } {
   const regla = LINEAS_FACTURABLES[linea.__component];
-  const destino = regla ? linea[regla.relacion] : null;
+  return estimarDestino(regla ? linea[regla.relacion] : null, (regla?.relacion ?? 'service') as 'service' | 'product', linea.quantity);
+}
+
+function estimarDestino(
+  destino: any,
+  relacion: 'service' | 'product',
+  quantity: number
+): { unitPrice: number | null; lineTotal: number | null; problema: string | null } {
   if (!destino) return { unitPrice: null, lineTotal: null, problema: 'sin servicio o producto' };
-  const precio = destino[CATALOGOS[regla.relacion].precio as string];
+  const precio = destino[CATALOGOS[relacion].precio as string];
   if (precio == null) return { unitPrice: null, lineTotal: null, problema: 'sin precio de venta en el catálogo' };
   if (!destino.tax?.ivaTreatment) return { unitPrice: precio, lineTotal: null, problema: 'sin perfil tributario (IVA) en el catálogo' };
   const c = calcularRenglon({
-    quantity: linea.quantity,
+    quantity,
     unitPrice: precio,
     taxTreatment: destino.tax.ivaTreatment,
     taxRate: destino.tax.ivaRate,
@@ -89,6 +105,90 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     } as any);
   }
 
+  /** Renglones que cobran conceptos de estas hospitalizaciones, vivos y anulados. */
+  async function renglonesDeHospitalizaciones(ids: string[]): Promise<any[]> {
+    if (ids.length === 0) return [];
+    return strapi.documents(RENGLON as any).findMany({
+      filters: { sourceHospitalization: { documentId: { $in: ids } } } as any,
+      fields: ['sourceLineKey', 'lockKey', 'lineTotal'] as any,
+      populate: {
+        sourceHospitalization: { fields: ['documentId'] },
+        invoice: { fields: ['documentId', 'fullNumber', 'state', 'searchLabel'], filters: includeArchived(FACTURA) },
+      } as any,
+    } as any);
+  }
+
+  /**
+   * Estado de facturación de una hospitalización (5.6): sus días de estancia y
+   * tomas dadas, con la misma forma que el de una consulta para que el panel
+   * los pinte igual.
+   */
+  async function construirEstadoHospitalizacion(h: any, renglones: any[]) {
+    const conceptos: any[] = (await strapi.service(HOSPITALIZACION as any).conceptosFacturables(h.documentId)) ?? [];
+    const propios = renglones.filter((r) => r.sourceHospitalization?.documentId === h.documentId);
+    const vivos = new Map(propios.filter((r) => r.lockKey).map((r) => [r.lockKey, r]));
+
+    const lineas = conceptos.map((c) => {
+      const vivo = vivos.get(c.lineKey);
+      const estado: EstadoLinea = vivo ? 'facturada' : c.facturable ? 'pendiente' : 'no_facturable';
+      return {
+        lineKey: c.lineKey,
+        componente: null,
+        tipo: c.relacion === 'service' ? 'servicio' : 'producto',
+        kind: c.kind,
+        label: c.label,
+        state: c.kind === 'hospitalization_stay' ? 'stay' : 'given',
+        quantity: c.quantity,
+        [c.relacion]: c.destino ? { documentId: c.destino.documentId, name: c.destino.name } : null,
+        estado,
+        motivo: c.motivo,
+        estimado: estado === 'pendiente' ? estimarDestino(c.destino, c.relacion, c.quantity) : null,
+        factura: vivo?.invoice
+          ? { documentId: vivo.invoice.documentId, fullNumber: vivo.invoice.fullNumber, state: vivo.invoice.state }
+          : null,
+        anteriores: propios
+          .filter((r) => !r.lockKey && r.sourceLineKey === c.lineKey && r.invoice)
+          .map((r) => ({ documentId: r.invoice.documentId, fullNumber: r.invoice.fullNumber, state: r.invoice.state })),
+      };
+    });
+
+    const cobrables = lineas.filter((l) => l.estado !== 'no_facturable');
+    const facturadas = cobrables.filter((l) => l.estado === 'facturada').length;
+    const resumen =
+      cobrables.length === 0 ? 'sin_conceptos'
+        : facturadas === 0 ? 'sin_facturar'
+          : facturadas === cobrables.length ? 'facturada'
+            : 'parcial';
+    const owner = h.pet?.owner;
+    const pendientes = lineas.filter((l) => l.estado === 'pendiente');
+    return {
+      origen: 'hospitalizacion' as const,
+      fecha: h.admittedAt,
+      hospitalizacion: {
+        documentId: h.documentId,
+        admittedAt: h.admittedAt,
+        dischargedAt: h.dischargedAt ?? null,
+        state: h.state,
+        reason: h.reason,
+        jaula: h.cage?.name ?? null,
+      },
+      mascota: h.pet ? { documentId: h.pet.documentId, name: h.pet.name } : null,
+      cliente: owner ? { documentId: owner.documentId, nombre: nombre(owner.profile) } : null,
+      resumen,
+      sinCargoDeConsulta: false,
+      // Días sin servicio con que cobrarlos: Clínica o la jaula a medio configurar.
+      sinServicioDeEstancia: lineas.some((l) => l.kind === 'hospitalization_stay' && l.estado === 'no_facturable'),
+      pendientes: pendientes.length,
+      valorPendiente: pendientes.reduce((acc: number, l: any) => acc + (l.estimado?.lineTotal ?? 0), 0),
+      lineas,
+    };
+  }
+
+  const POPULATE_HOSPITALIZACION = {
+    pet: { populate: { owner: { populate: ['profile'] } } },
+    cage: { fields: ['name'] },
+  };
+
   /** Estado de facturación de una consulta ya cargada, dados sus renglones. */
   function construirEstado(consulta: any, renglones: any[]) {
     const propios = renglones.filter((r) => r.sourceConsultation?.documentId === consulta.documentId);
@@ -105,6 +205,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         return {
           lineKey: l.lineKey,
           componente: l.__component,
+          tipo: regla.relacion === 'service' ? 'servicio' : 'producto',
           kind: KIND_DE_COMPONENTE[l.__component],
           label: l.label,
           state: l.state,
@@ -145,6 +246,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
 
     const owner = consulta.pet?.owner;
     return {
+      origen: 'consulta' as const,
+      fecha: consulta.consultedAt,
       consulta: {
         documentId: consulta.documentId,
         consultedAt: consulta.consultedAt,
@@ -164,14 +267,13 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
   }
 
   /**
-   * Convierte `{ consulta, lineKey }` en los datos de un renglón. El `kind`
-   * depende de la tarjeta de la línea. Lo demás (que sea facturable, del
-   * cliente y no esté cobrada) lo decide la regla del renglón al crearlo.
+   * Convierte los conceptos elegidos en los datos de cada renglón:
+   * `{ consulta, lineKey }` (el `kind` depende de la tarjeta de la línea) o
+   * `{ hospitalizacion, lineKey }` (día de estancia o toma). Lo demás (que sea
+   * facturable, del cliente y no esté cobrado) lo decide la regla del renglón
+   * al crearlo.
    */
-  async function renglonesDeConceptos(
-    conceptos: Array<{ consulta: string; lineKey: string; discountAmount?: number }>,
-    ordenInicial: number
-  ) {
+  async function renglonesDeConceptos(conceptos: Concepto[], ordenInicial: number) {
     if (!Array.isArray(conceptos) || conceptos.length === 0) {
       throw new ValidationError('Elige al menos un concepto para facturar');
     }
@@ -179,16 +281,43 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     if (new Set(claves).size !== claves.length) {
       throw new ValidationError('Hay un concepto repetido en la selección');
     }
+    for (const c of conceptos) {
+      if (!c?.lineKey || !(c.consulta || c.hospitalizacion) || (c.consulta && c.hospitalizacion)) {
+        throw new ValidationError('Cada concepto indica su línea (lineKey) y su consulta o su hospitalización');
+      }
+    }
 
-    const consultaIds = [...new Set(conceptos.map((c) => c.consulta))];
-    const consultas: any[] = await strapi.documents(CONSULTA as any).findMany({
+    const consultaIds = [...new Set(conceptos.filter((c) => c.consulta).map((c) => c.consulta as string))];
+    const consultas: any[] = consultaIds.length === 0 ? [] : await strapi.documents(CONSULTA as any).findMany({
       filters: { documentId: { $in: consultaIds } } as any,
       populate: { pet: { populate: ['owner'] }, lines: { on: { 'clinical.service-line': true, 'clinical.product-line': true } } } as any,
     } as any);
     const porId = new Map(consultas.map((c) => [c.documentId, c]));
 
+    const hospitalizacionIds = [...new Set(conceptos.filter((c) => c.hospitalizacion).map((c) => c.hospitalizacion as string))];
+    const hospitalizaciones = new Map<string, { h: any; conceptos: any[] }>();
+    for (const id of hospitalizacionIds) {
+      const h: any = await strapi.documents(HOSPITALIZACION as any).findOne({
+        documentId: id,
+        populate: { pet: { populate: ['owner'] } } as any,
+      } as any);
+      if (!h) throw new ValidationError(`La hospitalización ${id} no existe`);
+      hospitalizaciones.set(id, { h, conceptos: (await strapi.service(HOSPITALIZACION as any).conceptosFacturables(id)) ?? [] });
+    }
+
     const renglones = conceptos.map((c, i) => {
-      const consulta = porId.get(c.consulta);
+      if (c.hospitalizacion) {
+        const concepto = hospitalizaciones.get(c.hospitalizacion)?.conceptos.find((x: any) => x.lineKey === c.lineKey);
+        if (!concepto) throw new ValidationError(`El concepto ${c.lineKey} no está en la hospitalización ${c.hospitalizacion}`);
+        return {
+          kind: concepto.kind,
+          sourceHospitalization: c.hospitalizacion,
+          sourceLineKey: c.lineKey,
+          discountAmount: c.discountAmount ?? 0,
+          sortOrder: ordenInicial + i,
+        };
+      }
+      const consulta = porId.get(c.consulta as string);
       if (!consulta) throw new ValidationError(`La consulta ${c.consulta} no existe o está archivada`);
       const linea = (consulta.lines ?? []).find((l: any) => l.lineKey === c.lineKey);
       if (!linea) throw new ValidationError(`La línea ${c.lineKey} no está en la consulta ${c.consulta}`);
@@ -203,7 +332,11 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       };
     });
 
-    return { renglones, duenoDeLaPrimera: porId.get(conceptos[0].consulta)?.pet?.owner?.documentId as string | undefined };
+    const primero = conceptos[0];
+    const duenoDeLaPrimera = (primero.hospitalizacion
+      ? hospitalizaciones.get(primero.hospitalizacion)?.h?.pet?.owner?.documentId
+      : porId.get(primero.consulta as string)?.pet?.owner?.documentId) as string | undefined;
+    return { renglones, duenoDeLaPrimera };
   }
 
   /** Orden para el próximo renglón: detrás del último. */
@@ -238,6 +371,16 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       return construirEstado(consulta, await renglonesDe([consulta.documentId]));
     },
 
+    /** Lo mismo para una hospitalización: días de estancia y tomas dadas. */
+    async estadoDeHospitalizacion(documentId: string) {
+      const h: any = await strapi.documents(HOSPITALIZACION as any).findOne({
+        documentId,
+        populate: POPULATE_HOSPITALIZACION as any,
+      } as any);
+      if (!h) return null;
+      return construirEstadoHospitalizacion(h, await renglonesDeHospitalizaciones([h.documentId]));
+    },
+
     /**
      * Bandeja: consultas con algún concepto pendiente de cobro o atendidas
      * sin cargo de consulta (`sinCargoDeConsulta`), la más
@@ -262,18 +405,42 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       } as any);
 
       const renglones = await renglonesDe(consultas.map((c) => c.documentId));
-      return consultas
+      const deConsultas: any[] = consultas
         .map((c) => construirEstado(c, renglones))
         .filter((e) => e.pendientes > 0 || e.sinCargoDeConsulta)
         .map(({ lineas, ...resto }) => resto);
+
+      // Hospitalizaciones (5.6) cuya estancia toca el periodo.
+      const filtrosH: any = {};
+      if (hasta) filtrosH.admittedAt = { $lte: `${hasta}T23:59:59.999Z` };
+      if (desde) filtrosH.$or = [{ dischargedAt: { $null: true } }, { dischargedAt: { $gte: `${desde}T00:00:00.000Z` } }];
+      if (cliente) filtrosH.pet = { owner: { documentId: cliente } };
+      const hospitalizaciones: any[] = await strapi.documents(HOSPITALIZACION as any).findMany({
+        filters: filtrosH,
+        populate: POPULATE_HOSPITALIZACION as any,
+        sort: 'admittedAt:desc',
+        limit: limite,
+      } as any);
+      const renglonesH = await renglonesDeHospitalizaciones(hospitalizaciones.map((h) => h.documentId));
+      const deHospitalizaciones: any[] = [];
+      for (const h of hospitalizaciones) {
+        const e = await construirEstadoHospitalizacion(h, renglonesH);
+        if (e.pendientes > 0 || e.sinServicioDeEstancia) {
+          const { lineas, ...resto } = e;
+          deHospitalizaciones.push(resto);
+        }
+      }
+
+      return [...deConsultas, ...deHospitalizaciones].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
     },
 
     /**
      * Crea un borrador con los conceptos elegidos, todo o nada.
      *
-     * `conceptos`: líneas de consulta, como `{ consulta, lineKey }`; pueden ser
-     * de varias consultas si todas son de mascotas del mismo cliente (D1).
-     * `cliente` es opcional: si falta, es el dueño de la primera consulta.
+     * `conceptos`: líneas de consulta, como `{ consulta, lineKey }`, o
+     * conceptos de hospitalización, como `{ hospitalizacion, lineKey }`;
+     * pueden ser de varios orígenes si todos son de mascotas del mismo
+     * cliente (D1). `cliente` es opcional: si falta, es el dueño del primero.
      * Descuento por renglón opcional (`discountAmount`).
      */
     async crearBorrador({
@@ -282,7 +449,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       notas,
     }: {
       cliente?: string;
-      conceptos: Array<{ consulta: string; lineKey: string; discountAmount?: number }>;
+      conceptos: Concepto[];
       notas?: string;
     }) {
       const { renglones, duenoDeLaPrimera } = await renglonesDeConceptos(conceptos, 0);
@@ -315,7 +482,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     },
 
     /** Añade líneas de consulta a un borrador existente, todo o nada. */
-    async agregarConceptos(facturaDocumentId: string, conceptos: Array<{ consulta: string; lineKey: string; discountAmount?: number }>) {
+    async agregarConceptos(facturaDocumentId: string, conceptos: Concepto[]) {
       const siguiente = await siguienteOrden(facturaDocumentId);
       const { renglones } = await renglonesDeConceptos(conceptos, siguiente);
       return strapi.db.transaction(async () => {

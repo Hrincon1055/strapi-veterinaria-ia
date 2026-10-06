@@ -28,6 +28,7 @@ module.exports = {
       // Lectura
       { method: 'GET', path: '/pending', handler: 'facturacion.pendientes', config: ver },
       { method: 'GET', path: '/consultations/:id', handler: 'facturacion.estadoConsulta', config: ver },
+      { method: 'GET', path: '/hospitalizations/:id', handler: 'facturacion.estadoHospitalizacion', config: ver },
       { method: 'GET', path: '/invoices', handler: 'facturacion.listar', config: ver },
       { method: 'GET', path: '/invoices/:id', handler: 'facturacion.detalle', config: ver },
       { method: 'GET', path: '/invoices/:id/pdf', handler: 'facturacion.pdf', config: ver },

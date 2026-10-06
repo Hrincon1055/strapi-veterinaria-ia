@@ -12,6 +12,8 @@ import { on } from './helpers';
  * regla vive aquí y lee la sesión con `strapi.requestContext`.
  *
  *  - customer-note.author            -> la cuenta del panel que escribe.
+ *  - admittedBy, prescribedBy, recordedBy, administeredBy (hospitalización)
+ *                                    -> la cuenta del panel que escribe.
  *  - appointment.bookedBy            -> el PERFIL de quien agenda.
  *  - signed-document-event.performedBy -> el PERFIL de quien actúa.
  *
@@ -41,15 +43,41 @@ async function perfilDe(strapi: Core.Strapi, s: Sesion): Promise<string | null> 
   return perfil?.documentId ?? null;
 }
 
+/**
+ * La cuenta del panel que hace la petición, como documentId de `admin::user`,
+ * o null fuera de una sesión del panel. La usa también
+ * `validations/hospitalization.ts` para `dischargedBy`, que no se pone al
+ * crear sino al dar el alta.
+ */
+export async function cuentaDelPanel(strapi: Core.Strapi): Promise<string | null> {
+  const s = sesionActual(strapi);
+  if (s?.tipo !== 'panel') return null;
+  const cuenta = await strapi.db.query('admin::user').findOne({ where: { id: s.id }, select: ['documentId'] });
+  return cuenta?.documentId ?? null;
+}
+
+/**
+ * Campos que apuntan a la cuenta del panel que crea el registro. Solo el
+ * staff escribe en estos content types, así que solo se mira la sesión del
+ * panel.
+ */
+const AUTOR_DEL_PANEL: Array<[string, string]> = [
+  ['api::customer.customer-note', 'author'],
+  // Hospitalización (5.6).
+  ['api::hospitalization.hospitalization', 'admittedBy'],
+  ['api::hospitalization.treatment-order', 'prescribedBy'],
+  ['api::hospitalization.evolution-entry', 'recordedBy'],
+  ['api::hospitalization.medication-administration', 'administeredBy'],
+];
+
 export default (strapi: Core.Strapi): void => {
-  on(strapi, 'api::customer.customer-note', ['create'], async (ctx, next) => {
-    const s = sesionActual(strapi);
-    if (s?.tipo === 'panel') {
-      const autor = await strapi.db.query('admin::user').findOne({ where: { id: s.id }, select: ['documentId'] });
-      ctx.params.data = { ...(ctx.params.data ?? {}), author: autor?.documentId };
-    }
-    return next();
-  });
+  for (const [uid, campo] of AUTOR_DEL_PANEL) {
+    on(strapi, uid, ['create'], async (ctx, next) => {
+      const cuenta = await cuentaDelPanel(strapi);
+      if (cuenta) ctx.params.data = { ...(ctx.params.data ?? {}), [campo]: cuenta };
+      return next();
+    });
+  }
 
   for (const [uid, campo] of [
     ['api::scheduling.appointment', 'bookedBy'],

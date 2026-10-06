@@ -148,7 +148,9 @@
       "openingHours": "Horario de atención",
       "timezone": "Zona horaria",
       "emergencyPhone": "Teléfono de urgencias",
-      "defaultConsultationService": "Servicio de consulta por defecto"
+      "defaultConsultationService": "Servicio de consulta por defecto",
+      "offersHospitalization": "Hospitaliza pacientes",
+      "defaultHospitalizationDayService": "Servicio de hospitalización por día"
     },
     "api::clinical.allergy": {
       "allergen": "Alérgeno",
@@ -365,7 +367,8 @@
       "sterilizationState": "Esterilización",
       "sterilizedOn": "Esterilizado el",
       "vaccinations": "Vacunas aplicadas",
-      "allergies": "Alergias"
+      "allergies": "Alergias",
+      "hospitalizations": "Hospitalizaciones"
     },
     "api::pet.species": {
       "isActive": "Activa"
@@ -583,10 +586,76 @@
       "lineTax": "IVA del renglón",
       "lineTotal": "Total del renglón",
       "unitCost": "Costo unitario",
-      "sortOrder": "Orden"
+      "sortOrder": "Orden",
+      "sourceHospitalization": "Hospitalización de origen"
     },
     "billing.party-snapshot": {
       "address": "Dirección"
+    },
+    "api::hospitalization.cage": {
+      "size": "Tamaño",
+      "cageType": "Tipo de jaula",
+      "dailyService": "Servicio por día",
+      "sortOrder": "Orden"
+    },
+    "api::hospitalization.hospitalization": {
+      "cage": "Jaula",
+      "responsibleVet": "Veterinario responsable",
+      "admittedBy": "Ingresado por",
+      "admittedAt": "Ingreso",
+      "admissionNotes": "Notas de ingreso",
+      "dischargeType": "Tipo de alta",
+      "dischargedAt": "Alta",
+      "dischargedBy": "Alta dada por",
+      "dischargeSummary": "Resumen de alta",
+      "homeInstructions": "Indicaciones para casa",
+      "dischargeMedications": "Medicación de alta",
+      "followUpOn": "Control el",
+      "cageStays": "Estancias en jaula (automático)"
+    },
+    "api::hospitalization.treatment-order": {
+      "hospitalization": "Hospitalización",
+      "product": "Producto",
+      "dose": "Dosis",
+      "doseQuantity": "Cantidad por toma (unidades de venta)",
+      "route": "Vía",
+      "frequencyHours": "Cada (horas)",
+      "isPrn": "Si es necesario",
+      "startAt": "Desde",
+      "endAt": "Hasta",
+      "prescribedBy": "Prescrita por"
+    },
+    "api::hospitalization.evolution-entry": {
+      "hospitalization": "Hospitalización",
+      "recordedAt": "Registrado el",
+      "recordedBy": "Registrado por",
+      "temperatureC": "Temperatura (°C)",
+      "heartRateBpm": "Frecuencia cardíaca (lpm)",
+      "respiratoryRateRpm": "Frecuencia respiratoria (rpm)",
+      "mucousMembranes": "Mucosas",
+      "capillaryRefillSeconds": "Llenado capilar (s)",
+      "hydrationState": "Hidratación",
+      "painScore": "Dolor (0–10)",
+      "mentation": "Estado mental",
+      "appetite": "Apetito",
+      "urinated": "Orinó",
+      "defecated": "Defecó",
+      "vomited": "Vomitó"
+    },
+    "api::hospitalization.medication-administration": {
+      "hospitalization": "Hospitalización",
+      "order": "Orden",
+      "product": "Producto",
+      "scheduledFor": "Toma programada",
+      "administeredAt": "Administrada el",
+      "omissionReason": "Motivo de omisión",
+      "administeredBy": "Administrada por",
+      "lineKey": "Clave de factura (automática)"
+    },
+    "hospitalization.cage-stay": {
+      "cage": "Jaula",
+      "fromAt": "Desde",
+      "toAt": "Hasta"
     }
   }
 }

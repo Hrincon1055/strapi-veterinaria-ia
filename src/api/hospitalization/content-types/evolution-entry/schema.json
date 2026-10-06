@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "evolution_entries",
+  "info": {
+    "singularName": "evolution-entry",
+    "pluralName": "evolution-entries",
+    "displayName": "Registro de evolución",
+    "description": "Una toma de signos y observaciones de un paciente hospitalizado, a una hora concreta."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "recordedAt": { "type": "datetime", "required": true },
+    "recordedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "temperatureC": { "type": "decimal", "min": 30, "max": 45 },
+    "heartRateBpm": { "type": "integer", "min": 0, "max": 400 },
+    "respiratoryRateRpm": { "type": "integer", "min": 0, "max": 200 },
+    "mucousMembranes": { "type": "enumeration", "enum": ["normal", "pale", "congested", "icteric", "cyanotic"] },
+    "capillaryRefillSeconds": { "type": "decimal", "min": 0, "max": 10 },
+    "hydrationState": { "type": "enumeration", "enum": ["normal", "mild", "moderate", "severe"] },
+    "weightKg": { "type": "decimal", "min": 0 },
+    "painScore": { "type": "integer", "min": 0, "max": 10 },
+    "mentation": { "type": "enumeration", "enum": ["alert", "depressed", "obtunded", "stuporous", "comatose"] },
+    "appetite": { "type": "enumeration", "enum": ["normal", "reduced", "none"] },
+    "urinated": { "type": "boolean" },
+    "defecated": { "type": "boolean" },
+    "vomited": { "type": "boolean" },
+    "notes": { "type": "text" }
+  }
+}

@@ -39,6 +39,9 @@
     "timezone": { "type": "string", "default": "America/Bogota", "maxLength": 60 },
     "emergencyPhone": { "type": "string", "maxLength": 20 },
 
-    "defaultConsultationService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" }
+    "defaultConsultationService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+
+    "offersHospitalization": { "type": "boolean", "default": false },
+    "defaultHospitalizationDayService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" }
   }
 }

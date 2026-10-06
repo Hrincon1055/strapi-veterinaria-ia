@@ -46,6 +46,7 @@ module.exports = ({ strapi }) => {
     },
 
     estadoConsulta: (ctx) => responder(ctx, () => svc().estadoConsulta(ctx.params.id)),
+    estadoHospitalizacion: (ctx) => responder(ctx, () => svc().estadoHospitalizacion(ctx.params.id)),
 
     async listar(ctx) {
       const q = ctx.query ?? {};
@@ -81,7 +82,7 @@ module.exports = ({ strapi }) => {
     async crear(ctx) {
       const { cliente, conceptos, notas } = ctx.request.body ?? {};
       if (!cliente && !(Array.isArray(conceptos) && conceptos.length > 0)) {
-        return ctx.badRequest('Elige conceptos de una consulta o, para una venta directa, el cliente');
+        return ctx.badRequest('Elige conceptos de una consulta u hospitalización o, para una venta directa, el cliente');
       }
       await responder(ctx, () => svc().crear({ cliente, conceptos, notas }));
     },
@@ -100,7 +101,7 @@ module.exports = ({ strapi }) => {
     async agregar(ctx) {
       const { conceptos, directo } = ctx.request.body ?? {};
       if (!(Array.isArray(conceptos) && conceptos.length > 0) && !directo) {
-        return ctx.badRequest('Indica los conceptos de consulta o el servicio/producto a añadir');
+        return ctx.badRequest('Indica los conceptos (de consulta u hospitalización) o el servicio/producto a añadir');
       }
       await responder(ctx, () => svc().agregar(ctx.params.id, { conceptos, directo }));
     },

@@ -717,6 +717,20 @@ export interface DocumentsDocumentFile extends Struct.ComponentSchema {
   };
 }
 
+export interface HospitalizationCageStay extends Struct.ComponentSchema {
+  collectionName: 'components_hospitalization_cage_stays';
+  info: {
+    description: 'Tramo de la hospitalizaci\u00F3n en una jaula. Lo escribe el servidor al ingresar y en cada traslado.';
+    displayName: 'Estancia en jaula';
+    icon: 'house';
+  };
+  attributes: {
+    cage: Schema.Attribute.Relation<'manyToOne', 'api::hospitalization.cage'>;
+    fromAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    toAt: Schema.Attribute.DateTime;
+  };
+}
+
 export interface MarketingRuleCity extends Struct.ComponentSchema {
   collectionName: 'components_marketing_rule_cities';
   info: {
@@ -1130,6 +1144,7 @@ declare module '@strapi/strapi' {
       'clinical.treatment-plan': ClinicalTreatmentPlan;
       'customer.consents': CustomerConsents;
       'documents.document-file': DocumentsDocumentFile;
+      'hospitalization.cage-stay': HospitalizationCageStay;
       'marketing.rule-city': MarketingRuleCity;
       'marketing.rule-last-visit': MarketingRuleLastVisit;
       'marketing.rule-referral': MarketingRuleReferral;

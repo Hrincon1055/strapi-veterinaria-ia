@@ -93,6 +93,12 @@
       "target": "api::clinical.allergy",
       "mappedBy": "pet"
     },
+    "hospitalizations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hospitalization.hospitalization",
+      "mappedBy": "pet"
+    },
     "archivedAt": {
       "type": "datetime"
     },

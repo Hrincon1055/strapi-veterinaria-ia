@@ -136,7 +136,7 @@ export function FacturaPage() {
               )}
             >
               {factura.renglones.length === 0 ? (
-                <Typography textColor="neutral600">El borrador no tiene conceptos. Añádelos del catálogo o de las consultas del cliente.</Typography>
+                <Typography textColor="neutral600">El borrador no tiene conceptos. Añádelos del catálogo o de las consultas y hospitalizaciones del cliente.</Typography>
               ) : (
                 <Table colCount={editable ? 8 : 7} rowCount={factura.renglones.length + 1}>
                   <Thead>
@@ -154,6 +154,11 @@ export function FacturaPage() {
                           <Box>
                             <Typography variant="pi" textColor="neutral600">
                               {TIPO_RENGLON[r.kind] ?? r.kind}
+                              {r.hospitalizacion && (
+                                <> · <Link tag={RouterLink} to={`${RUTA}/hospitalizaciones/${r.hospitalizacion.documentId}`}>
+                                  hospitalización del {fecha(r.hospitalizacion.fecha)}{r.hospitalizacion.mascota ? ` · ${r.hospitalizacion.mascota}` : ''}
+                                </Link></>
+                              )}
                               {r.consulta && (
                                 <> · <Link tag={RouterLink} to={`${RUTA}/consultas/${r.consulta.documentId}`}>
                                   consulta del {fecha(r.consulta.fecha)}{r.consulta.mascota ? ` · ${r.consulta.mascota}` : ''}

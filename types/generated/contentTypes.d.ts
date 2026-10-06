@@ -609,7 +609,7 @@ export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
 export interface ApiBillingInvoiceItem extends Struct.CollectionTypeSchema {
   collectionName: 'invoice_items';
   info: {
-    description: 'Un concepto cobrado. Si viene de una consulta, se\u00F1ala su l\u00EDnea por lineKey; lockKey impide que dos facturas vivas cobren la misma.';
+    description: 'Un concepto cobrado. Si viene de una consulta o de una hospitalizaci\u00F3n, se\u00F1ala su concepto por lineKey; lockKey impide que dos facturas vivas cobren la misma.';
     displayName: 'Rengl\u00F3n de factura';
     pluralName: 'invoice-items';
     singularName: 'invoice-item';
@@ -643,6 +643,8 @@ export interface ApiBillingInvoiceItem extends Struct.CollectionTypeSchema {
         'direct_service',
         'direct_product',
         'custom',
+        'hospitalization_stay',
+        'hospitalization_product',
       ]
     > &
       Schema.Attribute.Required;
@@ -700,6 +702,10 @@ export interface ApiBillingInvoiceItem extends Struct.CollectionTypeSchema {
     sourceConsultation: Schema.Attribute.Relation<
       'manyToOne',
       'api::clinical.consultation'
+    >;
+    sourceHospitalization: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hospitalization.hospitalization'
     >;
     sourceLineKey: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
@@ -1153,6 +1159,10 @@ export interface ApiClinicClinic extends Struct.SingleTypeSchema {
     >;
     defaultCurrency: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'COP'>;
+    defaultHospitalizationDayService: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::scheduling.service'
+    >;
     documentNumber: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -1193,6 +1203,8 @@ export interface ApiClinicClinic extends Struct.SingleTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 40;
       }>;
+    offersHospitalization: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     openingHours: Schema.Attribute.Component<'clinic.opening-hours', true>;
     personType: Schema.Attribute.Enumeration<['juridica', 'natural']> &
       Schema.Attribute.Required &
@@ -1734,6 +1746,346 @@ export interface ApiDocumentsSignedDocumentSigner
   };
 }
 
+export interface ApiHospitalizationCage extends Struct.CollectionTypeSchema {
+  collectionName: 'cages';
+  info: {
+    description: 'Puesto de hospitalizaci\u00F3n dentro de una sala de tipo hospitalizaci\u00F3n. Aloja un paciente a la vez.';
+    displayName: 'Jaula';
+    pluralName: 'cages';
+    singularName: 'cage';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    cageType: Schema.Attribute.Enumeration<
+      ['standard', 'isolation', 'icu', 'oxygen']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'standard'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dailyService: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::scheduling.service'
+    >;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.cage'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    room: Schema.Attribute.Relation<'manyToOne', 'api::scheduling.clinic-room'>;
+    size: Schema.Attribute.Enumeration<['small', 'medium', 'large', 'xlarge']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'medium'>;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHospitalizationEvolutionEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'evolution_entries';
+  info: {
+    description: 'Una toma de signos y observaciones de un paciente hospitalizado, a una hora concreta.';
+    displayName: 'Registro de evoluci\u00F3n';
+    pluralName: 'evolution-entries';
+    singularName: 'evolution-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    appetite: Schema.Attribute.Enumeration<['normal', 'reduced', 'none']>;
+    capillaryRefillSeconds: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    defecated: Schema.Attribute.Boolean;
+    heartRateBpm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 400;
+          min: 0;
+        },
+        number
+      >;
+    hospitalization: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hospitalization.hospitalization'
+    >;
+    hydrationState: Schema.Attribute.Enumeration<
+      ['normal', 'mild', 'moderate', 'severe']
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.evolution-entry'
+    > &
+      Schema.Attribute.Private;
+    mentation: Schema.Attribute.Enumeration<
+      ['alert', 'depressed', 'obtunded', 'stuporous', 'comatose']
+    >;
+    mucousMembranes: Schema.Attribute.Enumeration<
+      ['normal', 'pale', 'congested', 'icteric', 'cyanotic']
+    >;
+    notes: Schema.Attribute.Text;
+    painScore: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      >;
+    publishedAt: Schema.Attribute.DateTime;
+    recordedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    recordedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    respiratoryRateRpm: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 200;
+          min: 0;
+        },
+        number
+      >;
+    temperatureC: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 45;
+          min: 30;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    urinated: Schema.Attribute.Boolean;
+    vomited: Schema.Attribute.Boolean;
+    weightKg: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
+export interface ApiHospitalizationHospitalization
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hospitalizations';
+  info: {
+    description: 'Ingreso de una mascota: jaula, veterinario responsable, traslados y alta. La hoja de evoluci\u00F3n cuelga de aqu\u00ED.';
+    displayName: 'Hospitalizaci\u00F3n';
+    pluralName: 'hospitalizations';
+    singularName: 'hospitalization';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    admissionNotes: Schema.Attribute.Blocks;
+    admittedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    admittedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    cage: Schema.Attribute.Relation<'manyToOne', 'api::hospitalization.cage'>;
+    cageStays: Schema.Attribute.Component<'hospitalization.cage-stay', true>;
+    consultation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::clinical.consultation'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dischargedAt: Schema.Attribute.DateTime;
+    dischargedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    dischargeMedications: Schema.Attribute.Component<
+      'clinical.medication',
+      true
+    >;
+    dischargeSummary: Schema.Attribute.Blocks;
+    dischargeType: Schema.Attribute.Enumeration<
+      ['medical', 'voluntary', 'transfer', 'deceased']
+    >;
+    followUpOn: Schema.Attribute.Date;
+    homeInstructions: Schema.Attribute.Blocks;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.hospitalization'
+    > &
+      Schema.Attribute.Private;
+    pet: Schema.Attribute.Relation<'manyToOne', 'api::pet.pet'>;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text & Schema.Attribute.Required;
+    responsibleVet: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    state: Schema.Attribute.Enumeration<['active', 'discharged']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHospitalizationMedicationAdministration
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'medication_administrations';
+  info: {
+    description: 'Una toma dada u omitida de una orden de tratamiento (o una dosis \u00FAnica). Si se dio, es un concepto facturable: lineKey.';
+    displayName: 'Administraci\u00F3n';
+    pluralName: 'medication-administrations';
+    singularName: 'medication-administration';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    administeredAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    administeredBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    hospitalization: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hospitalization.hospitalization'
+    >;
+    lineKey: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 36;
+      }>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.medication-administration'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    omissionReason: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hospitalization.treatment-order'
+    >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    scheduledFor: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<['given', 'omitted']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'given'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHospitalizationTreatmentOrder
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'treatment_orders';
+  info: {
+    description: 'Lo que el veterinario prescribe durante la hospitalizaci\u00F3n: producto del cat\u00E1logo, dosis, v\u00EDa y cada cu\u00E1ntas horas. De aqu\u00ED salen las tomas de la hoja.';
+    displayName: 'Orden de tratamiento';
+    pluralName: 'treatment-orders';
+    singularName: 'treatment-order';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dose: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    doseQuantity: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0.01;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    endAt: Schema.Attribute.DateTime;
+    frequencyHours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 168;
+          min: 1;
+        },
+        number
+      >;
+    hospitalization: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hospitalization.hospitalization'
+    >;
+    isPrn: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.treatment-order'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    prescribedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::catalog.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    route: Schema.Attribute.Enumeration<
+      ['oral', 'sc', 'im', 'iv', 'topical', 'otic', 'ophthalmic', 'other']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'oral'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    startAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    state: Schema.Attribute.Enumeration<['active', 'suspended', 'completed']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiIdentityProfile extends Struct.CollectionTypeSchema {
   collectionName: 'profiles';
   info: {
@@ -2162,6 +2514,10 @@ export interface ApiPetPet extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    hospitalizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hospitalization.hospitalization'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::pet.pet'> &
       Schema.Attribute.Private;
@@ -2340,7 +2696,15 @@ export interface ApiSchedulingClinicRoom extends Struct.CollectionTypeSchema {
       }>;
     publishedAt: Schema.Attribute.DateTime;
     roomType: Schema.Attribute.Enumeration<
-      ['consultation', 'surgery', 'grooming', 'imaging', 'lab', 'other']
+      [
+        'consultation',
+        'surgery',
+        'grooming',
+        'imaging',
+        'lab',
+        'hospitalization',
+        'other',
+      ]
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'consultation'>;
@@ -3256,6 +3620,11 @@ declare module '@strapi/strapi' {
       'api::documents.signed-document': ApiDocumentsSignedDocument;
       'api::documents.signed-document-event': ApiDocumentsSignedDocumentEvent;
       'api::documents.signed-document-signer': ApiDocumentsSignedDocumentSigner;
+      'api::hospitalization.cage': ApiHospitalizationCage;
+      'api::hospitalization.evolution-entry': ApiHospitalizationEvolutionEntry;
+      'api::hospitalization.hospitalization': ApiHospitalizationHospitalization;
+      'api::hospitalization.medication-administration': ApiHospitalizationMedicationAdministration;
+      'api::hospitalization.treatment-order': ApiHospitalizationTreatmentOrder;
       'api::identity.profile': ApiIdentityProfile;
       'api::marketing.campaign': ApiMarketingCampaign;
       'api::marketing.campaign-metric': ApiMarketingCampaignMetric;

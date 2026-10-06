@@ -56,6 +56,7 @@ src/
     notification/content-types/{notification,notification-recipient,notification-delivery}/schema.json
     clinic/content-types/clinic/schema.json          ← single type
     catalog/content-types/{product,product-category,supplier}/schema.json
+    hospitalization/content-types/{cage,hospitalization,treatment-order,evolution-entry,medication-administration}/schema.json
   components/
     clinic/opening-hours.json
     shared/address.json
@@ -68,12 +69,13 @@ src/
     travel/{health-certificate,rabies-titer,microchip-check,antiparasitic,import-permit,crate,other-requirement}.json
     marketing/{rule-species,rule-last-visit,rule-subscription,rule-vaccination-due,rule-city,rule-referral}.json
     documents/document-file.json
+    hospitalization/cage-stay.json
   extensions/users-permissions/content-types/user/schema.json
   index.(ts|js)            ← middlewares de validación (sección 8)
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **38 content types (uno de ellos single type), 40 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **43 content types (uno de ellos single type), 41 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -82,7 +84,7 @@ Cada content type necesita además sus archivos estándar de `controllers`, `rou
 3. Personas: `profile`, extensión de `user`, `contact`, `verification-code`, `customer`, `customer-note`.
 4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`.
 5. Facturación: `subscription`, `benefit-usage`, `invoice`, `invoice-item`.
-6. Viajes, documentos, marketing, notificaciones.
+6. Viajes, documentos, marketing, notificaciones, hospitalización (`cage`, `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`).
 7. Middlewares de validación, migración de índices, roles y permisos, seed de catálogos.
 8. Arrancar Strapi y verificar los criterios de aceptación (sección 11).
 
@@ -1074,6 +1076,15 @@ _No aparece en la zona: se anida dentro de `clinical.treatment-plan`._
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::scheduling.service"
+    },
+    "offersHospitalization": {
+      "type": "boolean",
+      "default": false
+    },
+    "defaultHospitalizationDayService": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::scheduling.service"
     }
   }
 }
@@ -1086,6 +1097,7 @@ Decisiones que conviene no revertir:
 - **`verificationDigit` se valida contra el NIT** con el módulo 11 de la DIAN (`src/validations/clinic.ts`). Un DV mal escrito hace que la DIAN rechace todas las facturas, y el error no aparece hasta que se intenta emitir.
 - **`fiscalResponsibilities` es un componente repetible** porque un contribuyente puede tener varias, y Strapi no tiene enumeración múltiple.
 - **`fiscalAddress` reutiliza `shared.address`** en lugar de repetir los campos.
+- **`offersHospitalization` enciende el módulo de hospitalización** (5.6, H1) y `defaultHospitalizationDayService` es el servicio con el que se cobra un día de estancia cuando la jaula no tiene el suyo (H4).
 - **`defaultConsultationService` es el cargo que se propone al finalizar una atención sin servicios** (ver la regla del cargo en 7.5). Es una relación y no un nombre fijo en el código, para que renombrar el servicio en el catálogo no rompa la propuesta.
 
 Reglas en `src/validations/clinic.ts`, todas verificadas: DV coherente con el NIT; una sola resolución activa; rango final mayor que el inicial; consecutivo dentro del rango; vigencia coherente; la resolución activa no puede estar vencida ni con el rango agotado (con aviso por log a menos de 100 números); y los horarios no pueden cerrar antes de abrir ni repetir día. Además, `currentNumber` ("último número usado") lo lleva el servidor: en una resolución ya guardada se conserva el valor almacenado aunque el formulario mande otro (así guardar Clínica mientras se factura no hace retroceder el consecutivo), y solo se acepta al crear la resolución; una resolución ya usada —con facturas emitidas que la citan, no con `currentNumber` puesto, porque una resolución puede arrancar a mitad de rango— no cambia de número, prefijo ni rango, y no se puede quitar de la lista (se desactiva).
@@ -1755,6 +1767,48 @@ Datos del receptor tal como salen en la factura, copiados del perfil del cliente
 }
 ```
 
+## 5.6 Hospitalización: diseño y decisiones
+
+Módulo opcional: **solo aplica si la clínica hospitaliza** (`clinic.offersHospitalization`). Flujo: **ingreso (mascota + jaula + veterinario responsable) → órdenes de tratamiento → hoja de evolución por hora (signos y tomas dadas u omitidas) → traslados → alta**. Dominio `src/api/hospitalization/` (cinco content types) y plugin de panel `veterinaria-hospitalizacion`.
+
+Decisiones (aprobadas 2026-10-06):
+
+| # | Decisión |
+| --- | --- |
+| H1 | Interruptor en Clínica: `offersHospitalization` (por defecto `false`). Sin él no se ingresa a nadie y la página del panel lo dice en vez de pintar un tablero vacío. |
+| H2 | La jaula (`cage`) es su propio content type dentro de una sala `clinic-room` de tipo `hospitalization`. Aloja un paciente a la vez. |
+| H3 | La hospitalización se factura como **origen propio**, no escribiendo líneas en `consultation.lines`: hacerlo durante días pisaría el formulario de consulta que el veterinario tiene abierto. El renglón lleva `sourceHospitalization` y `kind` `hospitalization_stay` / `hospitalization_product`. |
+| H4 | Día de estancia = **día calendario iniciado** en la zona horaria de Clínica, del día del ingreso al del alta (o a hoy) incluidos. Se cobra con el `dailyService` de la jaula ocupada al final de ese día (al alta, el último), o con `clinic.defaultHospitalizationDayService` si la jaula no tiene. Sin servicio: no facturable, con el motivo. Clave del día: `<documentId>:<AAAA-MM-DD>`. |
+| H5 | Cada administración `given` es un concepto facturable con su producto y su `quantity` (por defecto la `doseQuantity` de la orden). `omitted` nunca. Clave: `lineKey` UUID puesto por el servidor. |
+| H6 | Una orden no puede tener dos tomas `given` con el mismo `scheduledFor`: evita la dosis doble cuando dos personas registran la misma toma. |
+| H7 | El alta congela la hospitalización: después solo cambian `dischargeSummary`, `homeInstructions`, `dischargeMedications` y `followUpOn`. No hay "reabrir". Al dar el alta las órdenes activas pasan a `completed`. |
+| H8 | Rol del panel nuevo **Auxiliar de hospitalización**: ve el tablero y registra signos y tomas; no prescribe, no da altas, no factura. Sin escritura en el Content Manager. |
+| H9 | Las fechas de la hospitalización son **instantes reales (UTC)**, no hora de pared como las citas: casi todas son "ahora" y el Content Manager las muestra en la hora local del navegador. Día y hora de la hoja se calculan en la zona de Clínica. |
+
+**Ciclo.** `state` `active → discharged`. El ingreso abre el primer tramo de `cageStays`; cambiar `cage` en una hospitalización activa cierra el tramo abierto y abre otro (lo hace el servidor: `cageStays` entrante se ignora). El alta exige `dischargeType` y `dischargedAt ≥ admittedAt` (por defecto, ahora), y `dischargeSummary` si es `medical`.
+
+**Tomas programadas.** No se guardan: salen de cada orden (`startAt` + k·`frequencyHours` hasta `endAt` o el alta), con una función pura (`src/api/hospitalization/domain/tomas.ts`). Una toma está pendiente, dada, omitida o **atrasada** (más de 60 min sin registrar). Una orden `isPrn` ("si es necesario") no programa tomas: se registran cuando se dan.
+
+**Facturación.** `api::hospitalization.hospitalization.conceptosFacturables(documentId)` devuelve los días y las tomas con su `lineKey`, y `api::billing.invoicing` los trata como los de una consulta: `estadoDeHospitalizacion`, `pendientes()` (con `origen`), `crearBorrador`/`agregarConceptos` con `{ hospitalizacion, lineKey }`. Un concepto cobrado por un renglón vivo bloquea lo que lo define: la toma no se borra ni cambia de producto, cantidad o estado; la hospitalización no se borra ni cambia de mascota, y mover `admittedAt`/`dischargedAt` o la jaula no puede hacer desaparecer ni cambiar de servicio un día cobrado.
+
+**Portal.** El cliente ve sus hospitalizaciones (`GET /api/hospitalizations`, policy `is-owner`) con una lista blanca de campos: mascota, ingreso, estado, alta, resumen e indicaciones, medicación de alta y control. No ve órdenes, hoja de evolución ni tomas.
+
+### `src/components/hospitalization/cage-stay.json`
+
+Tramo de la hospitalización en una jaula. Lo escribe el servidor.
+```json
+{
+  "collectionName": "components_hospitalization_cage_stays",
+  "info": { "displayName": "Estancia en jaula", "icon": "house", "description": "Tramo de la hospitalización en una jaula. Lo escribe el servidor al ingresar y en cada traslado." },
+  "options": {},
+  "attributes": {
+    "cage": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.cage" },
+    "fromAt": { "type": "datetime", "required": true },
+    "toAt": { "type": "datetime" }
+  }
+}
+```
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -1934,6 +1988,7 @@ El acceso del cliente al portal se obtiene por `profile.user`. No existe relaci�
     "consultations": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.consultation", "mappedBy": "pet" },
     "vaccinations": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.pet-vaccination", "mappedBy": "pet" },
     "allergies": { "type": "relation", "relation": "oneToMany", "target": "api::clinical.allergy", "mappedBy": "pet" },
+    "hospitalizations": { "type": "relation", "relation": "oneToMany", "target": "api::hospitalization.hospitalization", "mappedBy": "pet" },
     "archivedAt": { "type": "datetime" }
   }
 }
@@ -2155,7 +2210,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
-    "roomType": { "type": "enumeration", "enum": ["consultation", "surgery", "grooming", "imaging", "lab", "other"], "default": "consultation", "required": true },
+    "roomType": { "type": "enumeration", "enum": ["consultation", "surgery", "grooming", "imaging", "lab", "hospitalization", "other"], "default": "consultation", "required": true },
     "isActive": { "type": "boolean", "default": true }
   }
 }
@@ -2305,20 +2360,21 @@ Cabecera. Ya no tiene `consultation` (D1): la consulta la lleva cada renglón, y
     "singularName": "invoice-item",
     "pluralName": "invoice-items",
     "displayName": "Renglón de factura",
-    "description": "Un concepto cobrado. Si viene de una consulta, señala su línea por lineKey; lockKey impide que dos facturas vivas cobren la misma."
+    "description": "Un concepto cobrado. Si viene de una consulta o de una hospitalización, señala su concepto por lineKey; lockKey impide que dos facturas vivas cobren la misma."
   },
   "options": { "draftAndPublish": false },
   "attributes": {
     "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice", "inversedBy": "items" },
     "kind": {
       "type": "enumeration",
-      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom"],
+      "enum": ["consultation_service", "consultation_product", "subscription", "direct_service", "direct_product", "custom", "hospitalization_stay", "hospitalization_product"],
       "required": true
     },
     "service": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
     "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
     "subscription": { "type": "relation", "relation": "manyToOne", "target": "api::billing.subscription" },
     "sourceConsultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "sourceHospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
     "sourceLineKey": { "type": "string", "maxLength": 36 },
     "lockKey": { "type": "string", "maxLength": 36 },
 
@@ -2847,6 +2903,177 @@ Proveedor. El dígito de verificación del NIT se valida con el módulo 11 de la
 }
 ```
 
+### 7.13 Hospitalization
+
+Ver sección 5.6. Todo el dominio es del staff salvo `hospitalization`, que el cliente lee con una lista blanca de campos.
+
+#### `api::hospitalization.cage`
+
+Catálogo: lo mantiene la administración. Main field `name`. `dailyService` es lo que se cobra por día en esta jaula (H4).
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "cages",
+  "info": {
+    "singularName": "cage",
+    "pluralName": "cages",
+    "displayName": "Jaula",
+    "description": "Puesto de hospitalización dentro de una sala de tipo hospitalización. Aloja un paciente a la vez."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
+    "room": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.clinic-room" },
+    "size": { "type": "enumeration", "enum": ["small", "medium", "large", "xlarge"], "default": "medium", "required": true },
+    "cageType": { "type": "enumeration", "enum": ["standard", "isolation", "icu", "oxygen"], "default": "standard", "required": true },
+    "dailyService": { "type": "relation", "relation": "manyToOne", "target": "api::scheduling.service" },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isActive": { "type": "boolean", "default": true },
+    "notes": { "type": "text" }
+  }
+}
+```
+
+#### `api::hospitalization.hospitalization`
+
+Main field `searchLabel` (mascota · dueño · jaula · fecha de ingreso). `admittedBy` y `dischargedBy` los pone el servidor con la cuenta del panel; `cageStays` también (traslados).
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "hospitalizations",
+  "info": {
+    "singularName": "hospitalization",
+    "pluralName": "hospitalizations",
+    "displayName": "Hospitalización",
+    "description": "Ingreso de una mascota: jaula, veterinario responsable, traslados y alta. La hoja de evolución cuelga de aquí."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "hospitalizations" },
+    "cage": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.cage" },
+    "responsibleVet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "admittedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "admittedAt": { "type": "datetime", "required": true },
+    "reason": { "type": "text", "required": true },
+    "admissionNotes": { "type": "blocks" },
+    "state": { "type": "enumeration", "enum": ["active", "discharged"], "default": "active", "required": true },
+    "dischargeType": { "type": "enumeration", "enum": ["medical", "voluntary", "transfer", "deceased"] },
+    "dischargedAt": { "type": "datetime" },
+    "dischargedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "dischargeSummary": { "type": "blocks" },
+    "homeInstructions": { "type": "blocks" },
+    "dischargeMedications": { "type": "component", "repeatable": true, "component": "clinical.medication" },
+    "followUpOn": { "type": "date" },
+    "cageStays": { "type": "component", "repeatable": true, "component": "hospitalization.cage-stay" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+
+#### `api::hospitalization.treatment-order`
+
+Main field `searchLabel` (producto · dosis · frecuencia — mascota). `prescribedBy` lo pone el servidor. `doseQuantity` son unidades de venta del producto por toma: es lo que se factura. Una orden `isPrn` no lleva frecuencia.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "treatment_orders",
+  "info": {
+    "singularName": "treatment-order",
+    "pluralName": "treatment-orders",
+    "displayName": "Orden de tratamiento",
+    "description": "Lo que el veterinario prescribe durante la hospitalización: producto del catálogo, dosis, vía y cada cuántas horas. De aquí salen las tomas de la hoja."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "dose": { "type": "string", "maxLength": 80 },
+    "doseQuantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "route": {
+      "type": "enumeration",
+      "enum": ["oral", "sc", "im", "iv", "topical", "otic", "ophthalmic", "other"],
+      "default": "oral",
+      "required": true
+    },
+    "frequencyHours": { "type": "integer", "min": 1, "max": 168 },
+    "isPrn": { "type": "boolean", "default": false },
+    "startAt": { "type": "datetime", "required": true },
+    "endAt": { "type": "datetime" },
+    "state": { "type": "enumeration", "enum": ["active", "suspended", "completed"], "default": "active", "required": true },
+    "prescribedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+
+#### `api::hospitalization.evolution-entry`
+
+Mismos rangos y valores que `clinical.physical-exam`, más dolor (0–10), estado mental, apetito y eliminaciones. `recordedBy` lo pone el servidor.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "evolution_entries",
+  "info": {
+    "singularName": "evolution-entry",
+    "pluralName": "evolution-entries",
+    "displayName": "Registro de evolución",
+    "description": "Una toma de signos y observaciones de un paciente hospitalizado, a una hora concreta."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "recordedAt": { "type": "datetime", "required": true },
+    "recordedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "temperatureC": { "type": "decimal", "min": 30, "max": 45 },
+    "heartRateBpm": { "type": "integer", "min": 0, "max": 400 },
+    "respiratoryRateRpm": { "type": "integer", "min": 0, "max": 200 },
+    "mucousMembranes": { "type": "enumeration", "enum": ["normal", "pale", "congested", "icteric", "cyanotic"] },
+    "capillaryRefillSeconds": { "type": "decimal", "min": 0, "max": 10 },
+    "hydrationState": { "type": "enumeration", "enum": ["normal", "mild", "moderate", "severe"] },
+    "weightKg": { "type": "decimal", "min": 0 },
+    "painScore": { "type": "integer", "min": 0, "max": 10 },
+    "mentation": { "type": "enumeration", "enum": ["alert", "depressed", "obtunded", "stuporous", "comatose"] },
+    "appetite": { "type": "enumeration", "enum": ["normal", "reduced", "none"] },
+    "urinated": { "type": "boolean" },
+    "defecated": { "type": "boolean" },
+    "vomited": { "type": "boolean" },
+    "notes": { "type": "text" }
+  }
+}
+```
+
+#### `api::hospitalization.medication-administration`
+
+`product` sale de la orden si la hay; `administeredBy` y `lineKey` los pone el servidor. `scheduledFor` es la toma programada que cubre (vacío en una dosis única o una orden `isPrn`).
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "medication_administrations",
+  "info": {
+    "singularName": "medication-administration",
+    "pluralName": "medication-administrations",
+    "displayName": "Administración",
+    "description": "Una toma dada u omitida de una orden de tratamiento (o una dosis única). Si se dio, es un concepto facturable: lineKey."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.treatment-order" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "scheduledFor": { "type": "datetime" },
+    "administeredAt": { "type": "datetime", "required": true },
+    "state": { "type": "enumeration", "enum": ["given", "omitted"], "default": "given", "required": true },
+    "omissionReason": { "type": "string", "maxLength": 255 },
+    "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "administeredBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "notes": { "type": "text" },
+    "lineKey": { "type": "string", "maxLength": 36 }
+  }
+}
+```
+
 ## 8. Validaciones de negocio (middleware del Document Service)
 
 En Strapi 5 las relaciones viven en tablas de enlace (`*_lnk`), por lo que **ninguna regla que combine una relación con otro campo puede ser un índice de base de datos**. Implementa estas reglas en `src/index.(ts|js)` → `register()` con `strapi.documents.use(...)`, lanzando `errors.ValidationError` de `@strapi/utils`. Aplican a las acciones `create` y `update` salvo que se indique otra cosa.
@@ -2908,6 +3135,12 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::notification.notification-recipient` | `notification`, `recipient` |
 | `api::notification.notification-delivery` | `recipient` |
 | componente `scheduling.appointment-service` | `service` |
+| `api::hospitalization.cage` | `room` |
+| `api::hospitalization.hospitalization` | `pet`, `cage`, `responsibleVet` |
+| `api::hospitalization.treatment-order` | `hospitalization`, `product` |
+| `api::hospitalization.evolution-entry` | `hospitalization` |
+| `api::hospitalization.medication-administration` | `hospitalization`, `product` (se copia de la orden si la hay) |
+| componente `hospitalization.cage-stay` | `cage` (lo escribe el servidor) |
 
 ### Unicidad compuesta
 
@@ -2928,6 +3161,8 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | componente `scheduling.appointment-service` | sin `service` repetido dentro de la misma cita |
 | componente `shared.address` | máximo un `isPrimary = true` por perfil |
 | componente `documents.document-file` | máximo un `final_signed_pdf` por documento |
+| `api::hospitalization.hospitalization` | una sola `active` por mascota y una sola `active` por jaula |
+| `api::hospitalization.medication-administration` | como mucho una `given` por `(order, scheduledFor)` (H6) |
 
 ### Reglas condicionales
 
@@ -2948,13 +3183,18 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
 | `api::billing.invoice` | nace en `draft`; transiciones `draft → issued/dian_error`, `issued ↔ dian_error`, `issued/dian_error → voided` (con `voidReason`); fuera de borrador solo cambian `state`, `paymentState`, `dianState`, `pdfUrl`, `xmlUrl`, `dataicoInvoiceId`, `voidedAt`, `voidReason`, `searchLabel`, `archivedAt` (se compara con lo guardado: reenviar el formulario sin cambios no cuenta); numeración, resolución, `buyer`, `issuerSnapshot` e `issuedAt` solo en el paso de emisión, y ese paso solo dentro del servicio de emisión; no se emite sin renglones; solo se borra un borrador (y con él sus renglones); anular pone `lockKey = null` en sus renglones; una emitida con `dataicoInvoiceId` (ya enviada a la DIAN) no se anula, requiere nota crédito; `paymentState` ≠ `unpaid` solo si está emitida (o anulada); archivar solo anuladas o borradores sin renglones; la suscripción, si la hay, es del mismo cliente; notas crédito aún no admitidas |
-| `api::billing.invoice-item` | solo en una factura en borrador (en una anulada solo se admite liberar `lockKey`); no cambia de factura; la relación coincide con `kind`; en `consultation_*`: la línea `sourceLineKey` existe en `sourceConsultation`, es de la tarjeta que corresponde, es facturable (`applied`/`dispensed`), su mascota es del cliente de la factura, la consulta no está archivada y ninguna otra factura viva la cobra; su servicio/producto y cantidad salen de la línea; el catálogo debe tener precio y perfil tributario; un precio distinto del catálogo (o de lo guardado) solo entra por `api::billing.invoicing.cambiarPrecio` y con `priceOverrideReason` (D5), también desde el Content Manager; gravado lleva tarifa 5 o 19; el descuento no supera el bruto |
+| `api::billing.invoice-item` | solo en una factura en borrador (en una anulada solo se admite liberar `lockKey`); no cambia de factura; la relación coincide con `kind`; en `hospitalization_*`: el concepto `sourceLineKey` (día o toma) existe en `sourceHospitalization`, es de ese tipo, es facturable, la mascota es del cliente y ninguna otra factura viva lo cobra; su servicio/producto y cantidad salen del concepto; en `consultation_*`: la línea `sourceLineKey` existe en `sourceConsultation`, es de la tarjeta que corresponde, es facturable (`applied`/`dispensed`), su mascota es del cliente de la factura, la consulta no está archivada y ninguna otra factura viva la cobra; su servicio/producto y cantidad salen de la línea; el catálogo debe tener precio y perfil tributario; un precio distinto del catálogo (o de lo guardado) solo entra por `api::billing.invoicing.cambiarPrecio` y con `priceOverrideReason` (D5), también desde el Content Manager; gravado lleva tarifa 5 o 19; el descuento no supera el bruto |
 | `api::travel.travel-case` | cada requisito con `isCompleted = true` exige `verifiedBy`; asignar `verifiedAt` al completarlo |
 | `api::documents.signed-document` | exactamente uno de `consultation`, `customer`, `pet`; `voidedAt` y `voidReason` obligatorios si `state = voided`; si `state = signed`, solo se permite pasar a `voided` |
 | `api::documents.signed-document-signer` | `signOrder` obligatorio si el documento es secuencial; `signatureMethod` y `signedAt` obligatorios si `state = signed` |
 | `api::documents.signed-document-event` | rechazar `update` y `delete` |
 | `api::customer.customer` | actualizar `consents.lastChangedAt` cuando cambie cualquier consentimiento |
 | `api::marketing.campaign` | al resolver el segmento, incluir solo clientes con `consents.marketing = true` |
+| `api::hospitalization.cage` | la sala (`room`) es de tipo `hospitalization`; no se desactiva una jaula ocupada |
+| `api::hospitalization.hospitalization` | crear exige `clinic.offersHospitalization`; nace `active` (por defecto `admittedAt` = ahora); mascota no archivada; jaula activa y libre; `admittedBy`/`dischargedBy` = cuenta del panel autenticada; `cageStays` lo escribe el servidor (abre un tramo al ingresar y otro en cada cambio de `cage`); `discharged` exige `dischargeType`, `dischargedAt ≥ admittedAt` (por defecto ahora) y, si es `medical`, `dischargeSummary`; `discharged → active` no se admite; tras el alta solo cambian `dischargeSummary`, `homeInstructions`, `dischargeMedications`, `followUpOn` y `searchLabel` (comparado con lo guardado); al dar el alta las órdenes `active` pasan a `completed` con `endAt` = alta; con conceptos en una factura viva no se borra ni cambia de mascota, y `admittedAt`/`dischargedAt`/la jaula no pueden quitar un día cobrado ni cambiar su servicio |
+| `api::hospitalization.treatment-order` | solo en una hospitalización `active` (crear); producto activo de tipo `medication`, `vaccine` o `supply`; `frequencyHours` obligatorio salvo `isPrn`; `startAt` (por defecto ahora) dentro de la estancia; `endAt > startAt`; `prescribedBy` = cuenta del panel; `suspended`/`completed` fijan `endAt` si falta; una orden con tomas no se borra (se suspende) |
+| `api::hospitalization.evolution-entry` | `recordedAt` (por defecto ahora) dentro de la estancia y no futuro (5 min de tolerancia); `recordedBy` = cuenta del panel |
+| `api::hospitalization.medication-administration` | `administeredAt` (por defecto ahora) dentro de la estancia y no futuro (5 min de tolerancia); la orden es de la misma hospitalización y su producto manda; sin orden, producto obligatorio; `quantity` por defecto la `doseQuantity` de la orden; `omitted` exige `omissionReason`; H6; `administeredBy` = cuenta del panel; `lineKey` lo pone el servidor; cobrada por un renglón vivo: no se borra ni cambia de producto, cantidad o estado |
 
 ### Filtro de archivados
 
@@ -2995,6 +3235,12 @@ module.exports = {
       ON signed_documents (state, expires_at)`);
     await knex.raw(`CREATE INDEX IF NOT EXISTS idx_notifications_event
       ON notifications (event_type, created_at)`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_hospitalizations_state
+      ON hospitalizations (state, admitted_at)`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_med_admin_scheduled
+      ON medication_administrations (scheduled_for)`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_evolution_recorded
+      ON evolution_entries (recorded_at)`);
   },
 };
 ```
@@ -3012,15 +3258,16 @@ Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógi
 | Rol (users-permissions) | Permisos |
 | --- | --- |
 | Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`, `product-category`, `product` (sin `referenceCost`, que es privado); `register`/`callback` nativos |
-| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `subscription`, `invoice`, `invoice-item`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
+| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `hospitalization` (lista blanca de campos, 5.6), `subscription`, `invoice`, `invoice-item`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
 
 **Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda.
 
 | Rol del panel | Permisos |
 | --- | --- |
-| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye registrar pagos; no cambia precios) |
-| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula) |
-| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios |
+| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye registrar pagos; no cambia precios); lectura de `hospitalization` y `cage`; hospitalización: ver |
+| Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula); CRUD de `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`; hospitalización: ver, registrar y prescribir (ingreso, órdenes, traslado, alta) |
+| Auxiliar de hospitalización | lectura de `hospitalization`, `treatment-order`, `cage`, `pet` y `allergy`; hospitalización: ver, registrar signos y tomas (no prescribe, no da altas) |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `cage`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios; hospitalización: todo |
 
 Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
@@ -3035,7 +3282,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 38 content types y 40 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 43 content types y 41 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

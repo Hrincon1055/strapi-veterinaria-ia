@@ -1,4 +1,6 @@
-import type { StrapiApp } from '@strapi/strapi/admin';
+import { createElement, useEffect, useState, type ComponentType } from 'react';
+import { useLocation } from 'react-router-dom';
+import { getFetchClient, type StrapiApp } from '@strapi/strapi/admin';
 
 /**
  * Personalización del panel.
@@ -30,6 +32,8 @@ const CON_ETIQUETA = [
   'api::shared.contact',
   'api::notification.notification-recipient',
   'api::marketing.campaign-metric',
+  'api::hospitalization.hospitalization',
+  'api::hospitalization.treatment-order',
 ];
 
 const PREFIJO = 'STRAPI_LIST_VIEW_DISPLAYED_HEADERS:';
@@ -63,11 +67,61 @@ const mostrarEtiquetas = () => {
   }
 };
 
+/**
+ * Botón "CSV/Excel" de `strapi-plugin-collection-exporter`: solo se pinta en
+ * las colecciones que esta cuenta puede exportar.
+ *
+ * El plugin lo inyecta en la lista de TODAS las colecciones. Quien decide qué
+ * se exporta es el servidor (`src/extensions/collection-exporter/`), y
+ * `/collection-exporter/content-types` devuelve ya filtrado por catálogo y
+ * por rol; se pregunta una vez por carga del panel. Ocultarlo es comodidad,
+ * no protección: las rutas responden 403 igualmente.
+ */
+const BOTON_EXPORTAR = 'collection-exporter.view-data-button';
+
+let exportables: Promise<Set<string>> | null = null;
+const cargarExportables = () =>
+  (exportables ??= getFetchClient()
+    .get<{ uid: string }[]>('/collection-exporter/content-types')
+    .then(({ data }) => new Set<string>((data ?? []).map((t) => t.uid)))
+    .catch(() => {
+      exportables = null; // reintenta en la siguiente lista
+      return new Set<string>();
+    }));
+
+const soloExportables = (Boton: ComponentType) => () => {
+  const { pathname } = useLocation();
+  const partes = pathname.split('/');
+  const i = partes.indexOf('collection-types');
+  const uid = i === -1 ? null : partes[i + 1];
+  const [permitidos, setPermitidos] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    cargarExportables().then((s) => vivo && setPermitidos(s));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  return uid && permitidos?.has(uid) ? createElement(Boton) : null;
+};
+
+const restringirExportador = (app: StrapiApp) => {
+  const acciones: { name: string; Component: ComponentType }[] | undefined = (
+    app.getPlugin('content-manager') as any
+  )?.injectionZones?.listView?.actions;
+  const boton = acciones?.find((a) => a.name === BOTON_EXPORTAR);
+  if (boton) boton.Component = soloExportables(boton.Component);
+};
+
 export default {
   config: {
     locales: ['es'],
   },
-  bootstrap(_app: StrapiApp) {
+  // Corre después del `bootstrap` de los plugins, así que el botón ya está inyectado.
+  bootstrap(app: StrapiApp) {
     mostrarEtiquetas();
+    restringirExportador(app);
   },
 };

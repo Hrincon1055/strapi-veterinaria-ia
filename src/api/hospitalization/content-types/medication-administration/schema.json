@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "medication_administrations",
+  "info": {
+    "singularName": "medication-administration",
+    "pluralName": "medication-administrations",
+    "displayName": "Administración",
+    "description": "Una toma dada u omitida de una orden de tratamiento (o una dosis única). Si se dio, es un concepto facturable: lineKey."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.treatment-order" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "scheduledFor": { "type": "datetime" },
+    "administeredAt": { "type": "datetime", "required": true },
+    "state": { "type": "enumeration", "enum": ["given", "omitted"], "default": "given", "required": true },
+    "omissionReason": { "type": "string", "maxLength": 255 },
+    "quantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "administeredBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "notes": { "type": "text" },
+    "lineKey": { "type": "string", "maxLength": 36 }
+  }
+}

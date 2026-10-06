@@ -28,6 +28,7 @@ export function crearFacturacionApi(fetchClient) {
 
     pendientes: async (filtros) => (await get('/pending', filtros)).data,
     estadoConsulta: async (id) => (await get(`/consultations/${id}`)).data,
+    estadoHospitalizacion: async (id) => (await get(`/hospitalizations/${id}`)).data,
     /** `{ data, paginacion }` */
     facturas: (filtros) => get('/invoices', filtros),
     factura: async (id) => (await get(`/invoices/${id}`)).data,

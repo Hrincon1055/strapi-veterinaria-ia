@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hospitalizations",
+  "info": {
+    "singularName": "hospitalization",
+    "pluralName": "hospitalizations",
+    "displayName": "Hospitalización",
+    "description": "Ingreso de una mascota: jaula, veterinario responsable, traslados y alta. La hoja de evolución cuelga de aquí."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "pet": { "type": "relation", "relation": "manyToOne", "target": "api::pet.pet", "inversedBy": "hospitalizations" },
+    "cage": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.cage" },
+    "responsibleVet": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "admittedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "consultation": { "type": "relation", "relation": "manyToOne", "target": "api::clinical.consultation" },
+    "admittedAt": { "type": "datetime", "required": true },
+    "reason": { "type": "text", "required": true },
+    "admissionNotes": { "type": "blocks" },
+    "state": { "type": "enumeration", "enum": ["active", "discharged"], "default": "active", "required": true },
+    "dischargeType": { "type": "enumeration", "enum": ["medical", "voluntary", "transfer", "deceased"] },
+    "dischargedAt": { "type": "datetime" },
+    "dischargedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "dischargeSummary": { "type": "blocks" },
+    "homeInstructions": { "type": "blocks" },
+    "dischargeMedications": { "type": "component", "repeatable": true, "component": "clinical.medication" },
+    "followUpOn": { "type": "date" },
+    "cageStays": { "type": "component", "repeatable": true, "component": "hospitalization.cage-stay" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

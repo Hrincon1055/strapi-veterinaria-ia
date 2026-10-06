@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "treatment_orders",
+  "info": {
+    "singularName": "treatment-order",
+    "pluralName": "treatment-orders",
+    "displayName": "Orden de tratamiento",
+    "description": "Lo que el veterinario prescribe durante la hospitalización: producto del catálogo, dosis, vía y cada cuántas horas. De aquí salen las tomas de la hoja."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "hospitalization": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.hospitalization" },
+    "product": { "type": "relation", "relation": "manyToOne", "target": "api::catalog.product" },
+    "dose": { "type": "string", "maxLength": 80 },
+    "doseQuantity": { "type": "decimal", "required": true, "default": 1, "min": 0.01 },
+    "route": {
+      "type": "enumeration",
+      "enum": ["oral", "sc", "im", "iv", "topical", "otic", "ophthalmic", "other"],
+      "default": "oral",
+      "required": true
+    },
+    "frequencyHours": { "type": "integer", "min": 1, "max": 168 },
+    "isPrn": { "type": "boolean", "default": false },
+    "startAt": { "type": "datetime", "required": true },
+    "endAt": { "type": "datetime" },
+    "state": { "type": "enumeration", "enum": ["active", "suspended", "completed"], "default": "active", "required": true },
+    "prescribedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

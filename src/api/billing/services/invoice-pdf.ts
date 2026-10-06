@@ -55,7 +55,10 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           customer: { populate: { profile: { populate: { addresses: { populate: ['country'] }, contacts: true } } } },
           items: {
             sort: 'sortOrder:asc',
-            populate: { sourceConsultation: { fields: ['consultedAt'], populate: { pet: { fields: ['name'] } } } },
+            populate: {
+              sourceConsultation: { fields: ['consultedAt'], populate: { pet: { fields: ['name'] } } },
+              sourceHospitalization: { fields: ['admittedAt'], populate: { pet: { fields: ['name'] } } },
+            },
           },
         } as any,
         filters: includeArchived(FACTURA) as any,
@@ -96,9 +99,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           : null,
         renglones: (f.items ?? []).map((r: any) => {
           const consulta = r.sourceConsultation;
+          const hospitalizacion = r.sourceHospitalization;
           const detalle = consulta
             ? `Consulta del ${String(consulta.consultedAt ?? '').slice(0, 10)}${consulta.pet?.name ? ` · ${consulta.pet.name}` : ''}`
-            : null;
+            : hospitalizacion
+              ? `Hospitalización desde el ${String(hospitalizacion.admittedAt ?? '').slice(0, 10)}${hospitalizacion.pet?.name ? ` · ${hospitalizacion.pet.name}` : ''}`
+              : null;
           return {
             descripcion: r.description,
             detalle,

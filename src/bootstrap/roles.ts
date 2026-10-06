@@ -40,6 +40,9 @@ const CLIENT_READ = [
   'api::clinical.consultation',
   'api::clinical.pet-vaccination',
   'api::clinical.allergy',
+  // Estado y alta de sus mascotas; el controlador recorta los campos (lista
+  // blanca). Órdenes, hoja de evolución y tomas no se conceden.
+  'api::hospitalization.hospitalization',
   'api::billing.subscription',
   'api::billing.invoice',
   'api::billing.invoice-item',

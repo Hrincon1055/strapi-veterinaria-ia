@@ -67,7 +67,17 @@ export const RESUMEN_CONSULTA = {
   facturada: { rotulo: 'Facturada', color: 'success' },
 };
 
-export const ESTADO_CLINICO = { applied: 'Aplicado', dispensed: 'Entregado', recommended: 'Recomendado' };
+export const ESTADO_CLINICO = {
+  applied: 'Aplicado', dispensed: 'Entregado', recommended: 'Recomendado',
+  // Conceptos de hospitalización (5.6).
+  stay: 'Estancia', given: 'Administrado',
+};
+
+/** Ruta, fecha y nombre de un origen de la bandeja (consulta u hospitalización). */
+export const origenDe = (e) =>
+  e.origen === 'hospitalizacion'
+    ? { tipo: 'hospitalizacion', documentId: e.hospitalizacion.documentId, fecha: e.hospitalizacion.admittedAt, ruta: 'hospitalizaciones', rotulo: 'Hospitalización' }
+    : { tipo: 'consulta', documentId: e.consulta.documentId, fecha: e.consulta.consultedAt, ruta: 'consultas', rotulo: 'Consulta' };
 
 export const TIPO_RENGLON = {
   consultation_service: 'Servicio de consulta',
@@ -76,6 +86,8 @@ export const TIPO_RENGLON = {
   direct_service: 'Servicio',
   direct_product: 'Producto',
   custom: 'Cargo libre',
+  hospitalization_stay: 'Día de hospitalización',
+  hospitalization_product: 'Producto de hospitalización',
 };
 
 export const UNIDAD = {

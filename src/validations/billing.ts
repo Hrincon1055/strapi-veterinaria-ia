@@ -17,6 +17,7 @@ import { cambiandoPrecio } from '../api/billing/domain/cambio-precio';
 
 const FACTURA = 'api::billing.invoice';
 const RENGLON = 'api::billing.invoice-item';
+const HOSPITALIZACION = 'api::hospitalization.hospitalization';
 
 /**
  * Lo único que puede cambiar en una factura que ya salió de borrador: su
@@ -414,7 +415,7 @@ export default (strapi: Core.Strapi): void => {
 
   on(strapi, RENGLON, ['create', 'update'], async (ctx, next) => {
     const data = ctx.params.data ?? {};
-    const actual = await loadCurrent(strapi, ctx, ['invoice', 'service', 'product', 'subscription', 'sourceConsultation']);
+    const actual = await loadCurrent(strapi, ctx, ['invoice', 'service', 'product', 'subscription', 'sourceConsultation', 'sourceHospitalization']);
 
     const facturaId = effectiveRelation(data, actual, 'invoice');
     if (!facturaId) return next(); // `required-relations` lo rechaza.
@@ -448,11 +449,64 @@ export default (strapi: Core.Strapi): void => {
 
     const clienteId = factura.customer?.documentId;
 
-    // --- renglón que sale de una línea de consulta ---
+    // --- renglón que sale de una línea de consulta o de una hospitalización ---
     const consultaId = effectiveRelation(data, actual, 'sourceConsultation');
+    const hospitalizacionId = effectiveRelation(data, actual, 'sourceHospitalization');
     const lineKey = effective<string>(data, actual, 'sourceLineKey');
 
-    if (tipo.componente) {
+    /**
+     * Última defensa amistosa; la definitiva es el índice único parcial
+     * `ux_invoice_items_lock`, que también cubre dos borradores simultáneos.
+     */
+    const exigirNoCobrado = async (nombre: string) => {
+      const otro: any = await strapi.documents(RENGLON as any).findFirst({
+        filters: {
+          lockKey: lineKey,
+          ...(ctx.params.documentId ? { documentId: { $ne: ctx.params.documentId } } : {}),
+        } as any,
+        populate: { invoice: { filters: includeArchived(FACTURA) } } as any,
+      } as any);
+      if (otro) {
+        throw new ValidationError(`"${nombre}" ya se está cobrando en ${nombreFactura(otro.invoice)}`);
+      }
+      data.lockKey = lineKey;
+    };
+
+    if (tipo.origen === 'hospitalizacion') {
+      if (consultaId) throw new ValidationError(`Un renglón "${kind}" no lleva consulta de origen`);
+      if (!hospitalizacionId || !lineKey) {
+        throw new ValidationError('Un renglón de hospitalización debe indicar la hospitalización (sourceHospitalization) y el concepto (sourceLineKey)');
+      }
+      const h: any = await strapi.documents(HOSPITALIZACION as any).findOne({
+        documentId: hospitalizacionId,
+        populate: { pet: { populate: ['owner'] } } as any,
+      } as any);
+      if (!h) throw new ValidationError('La hospitalización indicada no existe');
+      if (h.pet?.owner?.documentId !== clienteId) {
+        throw new ValidationError('Esa hospitalización es de una mascota de otro cliente');
+      }
+      const conceptos: any[] = (await strapi.service(HOSPITALIZACION as any).conceptosFacturables(hospitalizacionId)) ?? [];
+      const concepto = conceptos.find((c) => c.lineKey === lineKey);
+      if (!concepto) {
+        throw new ValidationError('Ese concepto no existe en la hospitalización (un día fuera de la estancia o una toma que ya no consta como dada)');
+      }
+      if (concepto.kind !== kind) {
+        throw new ValidationError(`El concepto "${concepto.label}" es "${concepto.kind}", no corresponde a un renglón "${kind}"`);
+      }
+      if (!concepto.facturable) throw new ValidationError(`"${concepto.label}" no es facturable: ${concepto.motivo}`);
+
+      // El concepto manda: su servicio o producto y su cantidad.
+      const rel: Relacion = concepto.relacion;
+      const pedido = rel in data && !esDiferenciaVacia(data[rel]) ? toDocumentId(data[rel]) : undefined;
+      if (pedido && pedido !== concepto.destino?.documentId) {
+        throw new ValidationError(`El ${rel} del renglón no coincide con el del concepto de la hospitalización`);
+      }
+      data[rel] = concepto.destino?.documentId;
+      data.quantity = Number(concepto.quantity);
+      if (!effective(data, actual, 'description')) data.description = concepto.label;
+      await exigirNoCobrado(concepto.label);
+    } else if (tipo.componente) {
+      if (hospitalizacionId) throw new ValidationError(`Un renglón "${kind}" no lleva hospitalización de origen`);
       if (!consultaId || !lineKey) {
         throw new ValidationError('Un renglón de consulta debe indicar la consulta (sourceConsultation) y la línea (sourceLineKey)');
       }
@@ -492,22 +546,10 @@ export default (strapi: Core.Strapi): void => {
       data.quantity = Number(linea.quantity);
       if (!effective(data, actual, 'description')) data.description = linea.label ?? undefined;
 
-      // Última defensa amistosa; la definitiva es el índice único parcial
-      // `ux_invoice_items_lock`, que también cubre dos borradores simultáneos.
-      const otro: any = await strapi.documents(RENGLON as any).findFirst({
-        filters: {
-          lockKey: lineKey,
-          ...(ctx.params.documentId ? { documentId: { $ne: ctx.params.documentId } } : {}),
-        } as any,
-        populate: { invoice: { filters: includeArchived(FACTURA) } } as any,
-      } as any);
-      if (otro) {
-        throw new ValidationError(`"${linea.label ?? 'Esa línea'}" ya se está cobrando en ${nombreFactura(otro.invoice)}`);
-      }
-      data.lockKey = lineKey;
+      await exigirNoCobrado(linea.label ?? 'Esa línea');
     } else {
-      if (consultaId || lineKey) {
-        throw new ValidationError(`Un renglón "${kind}" no lleva consulta de origen`);
+      if (consultaId || hospitalizacionId || lineKey) {
+        throw new ValidationError(`Un renglón "${kind}" no lleva consulta ni hospitalización de origen`);
       }
       data.lockKey = null;
     }

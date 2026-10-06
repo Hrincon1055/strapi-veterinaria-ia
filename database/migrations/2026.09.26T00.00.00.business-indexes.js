@@ -99,6 +99,26 @@ const INDEXES = [
     sql: `CREATE INDEX IF NOT EXISTS idx_notifications_event
             ON notifications (event_type, created_at)`,
   },
+  // Hospitalización (5.6): el tablero lee las activas; la hoja, las tomas y
+  // los signos de un día.
+  {
+    name: 'idx_hospitalizations_state',
+    table: 'hospitalizations',
+    sql: `CREATE INDEX IF NOT EXISTS idx_hospitalizations_state
+            ON hospitalizations (state, admitted_at)`,
+  },
+  {
+    name: 'idx_med_admin_scheduled',
+    table: 'medication_administrations',
+    sql: `CREATE INDEX IF NOT EXISTS idx_med_admin_scheduled
+            ON medication_administrations (scheduled_for)`,
+  },
+  {
+    name: 'idx_evolution_recorded',
+    table: 'evolution_entries',
+    sql: `CREATE INDEX IF NOT EXISTS idx_evolution_recorded
+            ON evolution_entries (recorded_at)`,
+  },
 ];
 
 /**

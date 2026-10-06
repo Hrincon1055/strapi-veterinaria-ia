@@ -67,10 +67,16 @@ export function useFacturas() {
   return useCarga(() => api.facturas(filtros), [api, filtros]);
 }
 
-/** Una consulta: qué se puede cobrar y crear el borrador con lo elegido. */
-export function useConsulta(documentId) {
+/**
+ * Un origen (consulta u hospitalización): qué se puede cobrar y crear el
+ * borrador con lo elegido.
+ */
+export function useConsulta(documentId, origen = 'consulta') {
   const { api, avisar } = useApi();
-  const carga = useCarga(() => api.estadoConsulta(documentId), [api, documentId]);
+  const carga = useCarga(
+    () => (origen === 'hospitalizacion' ? api.estadoHospitalizacion(documentId) : api.estadoConsulta(documentId)),
+    [api, documentId, origen]
+  );
   const [creando, setCreando] = useState(false);
 
   /** Devuelve el documentId del borrador creado, o null si falló. */
@@ -181,5 +187,6 @@ export function useBusquedas() {
     buscarCatalogo: useCallback((q) => api.buscarCatalogo(q), [api]),
     pendientesDelCliente: useCallback((cliente) => api.pendientes({ cliente }), [api]),
     estadoConsulta: useCallback((id) => api.estadoConsulta(id), [api]),
+    estadoHospitalizacion: useCallback((id) => api.estadoHospitalizacion(id), [api]),
   };
 }

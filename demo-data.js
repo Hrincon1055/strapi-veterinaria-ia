@@ -3,8 +3,9 @@
 /**
  * Datos de muestra para ver el modelo funcionando: 3 clientes con sus
  * mascotas, el personal (cuentas del panel con horario), la historia clínica
- * de Kira, la ficha de la clínica, las citas de la semana en curso y tres
- * facturas de muestra (emitida y pagada, anulada, borrador).
+ * de Kira, la ficha de la clínica, las citas de la semana en curso, la sala de
+ * hospitalización (Rocco ingresado, Nube dada de alta) y tres facturas de
+ * muestra (emitida y pagada, anulada, borrador).
  *
  *   node demo-data.js           crea los datos (idempotente, se puede repetir)
  *   node demo-data.js --reset   los borra, y además los restos sin mascota que
@@ -23,6 +24,7 @@ const { crearClinica, borrarClinica } = require('./demo-clinic');
 const { crearHorarios, borrarHorarios } = require('./demo-horarios');
 const { crearAgenda, borrarAgenda } = require('./demo-agenda');
 const { crearFacturas, borrarFacturas } = require('./demo-facturas');
+const { crearHospitalizacion, borrarHospitalizacion } = require('./demo-hospitalizacion');
 
 /**
  * Registros que no pueden existir sin mascota (la relación es obligatoria).
@@ -34,6 +36,14 @@ const CUELGAN_DE_LA_MASCOTA = [
   'api::clinical.allergy',
   'api::clinical.consultation',
   'api::scheduling.appointment',
+  'api::hospitalization.hospitalization',
+];
+
+/** Lo que cuelga de una hospitalización: sin borrarlo antes, no se deja borrar. */
+const CUELGAN_DE_LA_HOSPITALIZACION = [
+  'api::hospitalization.medication-administration',
+  'api::hospitalization.evolution-entry',
+  'api::hospitalization.treatment-order',
 ];
 
 async function borrarHuerfanos(app) {
@@ -49,6 +59,14 @@ async function borrarHuerfanos(app) {
       pagination: { limit: -1 },
     });
     for (const h of huerfanos) {
+      if (uid === 'api::hospitalization.hospitalization') {
+        for (const hijo of CUELGAN_DE_LA_HOSPITALIZACION) {
+          for (const r of await app.documents(hijo).findMany({ filters: { hospitalization: { documentId: h.documentId } }, fields: ['documentId'] })) {
+            await app.documents(hijo).delete({ documentId: r.documentId });
+            n++;
+          }
+        }
+      }
       await app.documents(uid).delete({ documentId: h.documentId });
       n++;
     }
@@ -345,6 +363,8 @@ async function borrar(app) {
   // citas y consultas quedarían huérfanas y ya no se podrían encontrar.
   // Las facturas, lo primero: una consulta cobrada no se puede borrar.
   let n = await borrarFacturas(app);
+  // Antes que la historia: la hospitalización usa productos de su catálogo.
+  n += await borrarHospitalizacion(app);
   n += await borrarAgenda(app);
   n += await borrarHistoria(app);
   n += await borrarClinica(app);
@@ -421,6 +441,7 @@ async function borrar(app) {
   const historia = await crearHistoria(app);
   const clinica = await crearClinica(app);
   await crearAgenda(app);
+  const hospitalizacion = await crearHospitalizacion(app, { password: 'Clinica12345' });
   const facturas = await crearFacturas(app, { password: 'Clinica12345' });
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
@@ -440,6 +461,10 @@ async function borrar(app) {
   console.log(`Historia clínica de ${historia.mascota}: ${historia.visitas} visitas nuevas`);
   console.log(`Personal: entra al panel (/admin) con su correo / Clinica12345 — p. ej. ${historia.vet}`);
   console.log(`Administración (puede anular facturas): ${facturas.admin}`);
+  console.log(hospitalizacion.creadas
+    ? `Hospitalización: Rocco ingresado (${hospitalizacion.tomas} tomas, ${hospitalizacion.signos} registros de signos) y Nube dada de alta — panel → Hospitalización`
+    : 'Hospitalización: ya existía');
+  console.log(`Auxiliar de hospitalización: ${hospitalizacion.auxiliar}`);
   console.log(facturas.creadas
     ? `Facturas de muestra: ${facturas.numeros.join(' (pagada), ')} (anulada) y un borrador — panel → Facturación`
     : 'Facturas de muestra: ya existían');

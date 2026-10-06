@@ -1,8 +1,8 @@
 import type { Core } from '@strapi/strapi';
 
 /**
- * Roles del PANEL para el staff: Recepción, Veterinario y Administrador de
- * clínica. El staff trabaja en el panel con cuentas `admin::user`; el rol
+ * Roles del PANEL para el staff: Recepción, Veterinario, Auxiliar de
+ * hospitalización y Administrador de clínica. El staff trabaja en el panel con cuentas `admin::user`; el rol
  * Cliente sigue en users-permissions (ver `roles.ts`).
  *
  * Reparten lo mismo que repartían los roles de users-permissions que
@@ -33,6 +33,7 @@ const CATALOGOS = [
   'api::clinical.vaccine',
   'api::catalog.product-category',
   'api::catalog.product',
+  'api::hospitalization.cage',
 ];
 
 const RECEPCION_CRUD = [
@@ -56,6 +57,11 @@ const VETERINARIO_CRUD = [
   'api::clinical.allergy',
   'api::documents.signed-document',
   'api::documents.signed-document-signer',
+  // Hospitalización (5.6): el veterinario ingresa, prescribe y da el alta.
+  'api::hospitalization.hospitalization',
+  'api::hospitalization.treatment-order',
+  'api::hospitalization.evolution-entry',
+  'api::hospitalization.medication-administration',
 ];
 
 type Concesion = { subjects: string[]; verbos: string[] };
@@ -110,9 +116,21 @@ const FACTURACION = {
  */
 const HISTORIA = 'plugin::veterinaria-historia.historia.ver';
 
+/**
+ * Hospitalización (plugin `veterinaria-hospitalizacion`, 5.6). Recepción ve
+ * quién está ingresado (atiende al dueño que llama y factura la estancia); el
+ * auxiliar registra signos y tomas; ingresar, prescribir, trasladar y dar el
+ * alta es del veterinario.
+ */
+const HOSPITALIZACION = {
+  ver: 'plugin::veterinaria-hospitalizacion.hospitalizacion.ver',
+  registrar: 'plugin::veterinaria-hospitalizacion.hospitalizacion.registrar',
+  prescribir: 'plugin::veterinaria-hospitalizacion.hospitalizacion.prescribir',
+};
+
 const recepcion: Concesion[] = [
   { subjects: RECEPCION_CRUD, verbos: CRUD },
-  { subjects: [...CATALOGOS, 'api::clinical.consultation', 'api::clinic.clinic'], verbos: READ },
+  { subjects: [...CATALOGOS, 'api::clinical.consultation', 'api::clinic.clinic', 'api::hospitalization.hospitalization'], verbos: READ },
   // Recepción asocia la cuenta de la app al perfil del cliente.
   { subjects: ['plugin::users-permissions.user'], verbos: READ },
 ];
@@ -136,6 +154,25 @@ const administracion: Concesion[] = [
   { subjects: ['api::catalog.supplier'], verbos: CRUD },
 ];
 
+/**
+ * Auxiliar de hospitalización (H8): lee lo que necesita para atender al
+ * paciente —ingreso, órdenes, jaula, mascota y sus alergias— y escribe solo
+ * por la página de hospitalización, cuyo servidor vuelve a comprobar el
+ * permiso. Nada de escritura en el Content Manager.
+ */
+const auxiliar: Concesion[] = [
+  {
+    subjects: [
+      'api::hospitalization.hospitalization',
+      'api::hospitalization.treatment-order',
+      'api::hospitalization.cage',
+      'api::pet.pet',
+      'api::clinical.allergy',
+    ],
+    verbos: READ,
+  },
+];
+
 type RolPanel = { name: string; description: string; concesiones: Concesion[]; otras: string[] };
 
 export const ROLES_PANEL: RolPanel[] = [
@@ -144,20 +181,28 @@ export const ROLES_PANEL: RolPanel[] = [
     description: 'Front desk: agenda, clientes, mascotas, facturación y viajes.',
     concesiones: recepcion,
     // Recepción mira la agenda de todos y es quien reserva en los huecos.
-    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar, FACTURACION.ver, FACTURACION.preparar, FACTURACION.emitir],
+    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar, FACTURACION.ver, FACTURACION.preparar, FACTURACION.emitir, HOSPITALIZACION.ver],
   },
   {
     name: 'Veterinario',
     description: 'Todo lo de recepción más la historia clínica y los documentos firmados.',
     concesiones: veterinario,
     // El veterinario atiende lo que ya tiene agendado: ve su agenda, no reserva.
-    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver, HISTORIA],
+    otras: [...COMUNES_PANEL, AGENDA.propia, AGENDA.finalizar, FACTURACION.ver, HISTORIA, ...Object.values(HOSPITALIZACION)],
+  },
+  {
+    name: 'Auxiliar de hospitalización',
+    description: 'Enfermería: ve el tablero de hospitalización y registra signos y tomas. No prescribe ni da altas.',
+    concesiones: auxiliar,
+    // `admin::users.read` para que los selectores muestren el correo; sin
+    // biblioteca de medios: no adjunta archivos.
+    otras: ['admin::users.read', HOSPITALIZACION.ver, HOSPITALIZACION.registrar],
   },
   {
     name: 'Administrador de clínica',
     description: 'Todo lo anterior más catálogos, campañas, notificaciones y datos de la clínica.',
     concesiones: administracion,
-    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA],
+    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA, ...Object.values(HOSPITALIZACION)],
   },
 ];
 

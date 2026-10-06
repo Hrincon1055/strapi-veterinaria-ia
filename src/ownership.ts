@@ -64,6 +64,8 @@ export const OWNERSHIP_RULES: Record<string, OwnershipRule> = {
   'api::clinical.pet-vaccination': porMascota(),
   'api::clinical.allergy': porMascota(),
   'api::travel.travel-case': porMascota(),
+  // Solo estado y alta: el controlador recorta los campos para el cliente.
+  'api::hospitalization.hospitalization': porMascota(),
   'api::billing.subscription': porCliente(),
   'api::billing.invoice': porCliente(),
   'api::billing.invoice-item': {

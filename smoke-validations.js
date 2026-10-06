@@ -81,6 +81,15 @@ async function limpiar(app) {
     ['api::billing.subscription', { plan: { name: 'Plan SMOKE' } }],
     ['api::billing.plan-benefit', { name: 'Baño SMOKE' }],
     ['api::billing.plan', { name: 'Plan SMOKE' }],
+    // Hospitalización: primero lo que cuelga de ella (una hospitalización con
+    // hoja de evolución no se borra, ni una orden con tomas).
+    ['api::hospitalization.medication-administration', { hospitalization: { pet: { name: 'Fido SMOKE' } } }],
+    ['api::hospitalization.evolution-entry', { hospitalization: { pet: { name: 'Fido SMOKE' } } }],
+    ['api::hospitalization.treatment-order', { hospitalization: { pet: { name: 'Fido SMOKE' } } }],
+    ['api::hospitalization.hospitalization', { pet: { name: 'Fido SMOKE' } }],
+    ['api::hospitalization.cage', { name: { $endsWith: 'SMOKE' } }],
+    ['api::scheduling.clinic-room', { name: 'Hospitalización SMOKE' }],
+    ['api::scheduling.service', { name: 'Hospitalización día SMOKE' }],
     ['api::scheduling.appointment', { pet: { name: 'Fido SMOKE' } }],
     ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
     ['api::scheduling.service', { name: 'Consulta SMOKE' }],
@@ -90,6 +99,7 @@ async function limpiar(app) {
     ['api::scheduling.clinic-room', { name: 'Consultorio SMOKE' }],
     ['api::clinical.consultation', { pet: { name: 'Fido SMOKE' } }],
     ['api::pet.pet', { name: 'Fido SMOKE' }],
+    ['api::pet.pet', { name: 'Toby SMOKE' }],
     ['api::pet.pet', { name: 'Fido SMOKE', archivedAt: { $notNull: true } }],
     ['api::pet.breed', { name: 'Siamés SMOKE' }],
     ['api::shared.contact', { profile: { documentNumber: { $startsWith: 'SMOKE-' } } }],
@@ -636,6 +646,148 @@ async function limpiar(app) {
   console.log('\n--- alergias y documentos ---');
   await rechaza('alergia inactiva sin resolvedOn', () => d('api::clinical.allergy').create({ data: { pet: mascota.documentId, allergen: 'Polen', isActive: false } }), 'resolvedOn');
   await rechaza('documento firmado sin destinatario único', () => d('api::documents.signed-document').create({ data: { documentType: 'consent', title: 'X', customer: cliente.documentId, pet: mascota.documentId } }), 'exactamente');
+
+  console.log('\n--- hospitalización ---');
+  // 5.6: ingreso, jaula, órdenes, tomas por hora, alta y facturación como
+  // segundo origen. La clínica de la demo puede o no hospitalizar: se anota
+  // y se devuelve como estaba.
+  const H = 'api::hospitalization.hospitalization';
+  const J = 'api::hospitalization.cage';
+  const O = 'api::hospitalization.treatment-order';
+  const E = 'api::hospitalization.evolution-entry';
+  const A = 'api::hospitalization.medication-administration';
+  const sala_ = app.service(H);
+  const ward = app.service('api::hospitalization.ward');
+  const ofrecia = (await d('api::clinic.clinic').findFirst({}))?.offersHospitalization === true;
+  const ofrecer = (v) => app.service('api::clinic.clinic').createOrUpdate({ data: { offersHospitalization: v } });
+  const hora = 3600_000;
+  const iso = (t) => new Date(t).toISOString();
+
+  const salaH = await d('api::scheduling.clinic-room').create({ data: { name: 'Hospitalización SMOKE', roomType: 'hospitalization' } });
+  await rechaza('jaula en una sala que no es de hospitalización',
+    () => d(J).create({ data: { name: 'Jaula X SMOKE', room: sala.documentId } }), 'no es de hospitalización');
+  const servicioDia = await d('api::scheduling.service').create({
+    data: { category: categoria.documentId, name: 'Hospitalización día SMOKE', defaultDurationMinutes: 30, basePrice: 80000, tax: { ivaTreatment: 'gravado', ivaRate: 19 } },
+  });
+  const jaula1 = await d(J).create({ data: { name: 'Jaula 1 SMOKE', room: salaH.documentId, dailyService: servicioDia.documentId } });
+  const jaula2 = await d(J).create({ data: { name: 'Jaula 2 SMOKE', room: salaH.documentId, dailyService: servicioDia.documentId } });
+  const mascota2 = await d('api::pet.pet').create({ data: { name: 'Toby SMOKE', owner: cliente.documentId, species: especie.documentId } });
+
+  const ingreso = (extra = {}) => ({ pet: mascota.documentId, cage: jaula1.documentId, responsibleVet: vet.documentId, reason: 'Gastroenteritis SMOKE', ...extra });
+  await ofrecer(false);
+  await rechaza('ingresar si la clínica no hospitaliza (H1)', () => d(H).create({ data: ingreso() }), 'no tiene hospitalización');
+  await ofrecer(true);
+
+  const inicio = Date.now() - 2 * 24 * hora - hora;
+  await rechaza('ingreso con fecha futura', () => d(H).create({ data: ingreso({ admittedAt: iso(Date.now() + 24 * hora) }) }), 'futuro');
+  await rechaza('ingresar ya dada de alta', () => d(H).create({ data: ingreso({ state: 'discharged' }) }), 'nace activa');
+  const hosp = await acepta('ingreso válido: nace activa y abre su tramo de jaula',
+    () => d(H).create({ data: ingreso({ admittedAt: iso(inicio), cageStays: [{ cage: jaula2.documentId, fromAt: iso(inicio) }] }), populate: { cageStays: { populate: ['cage'] } } }),
+    (r) => r.state === 'active' && r.cageStays?.length === 1 && r.cageStays[0].cage?.documentId === jaula1.documentId && !r.cageStays[0].toAt);
+  await acepta('etiqueta de búsqueda con mascota, dueño y jaula', () => d(H).findOne({ documentId: hosp.documentId }),
+    (r) => /Fido SMOKE/.test(r.searchLabel) && /Ruiz/.test(r.searchLabel) && /Jaula 1 SMOKE/.test(r.searchLabel));
+  await rechaza('la misma mascota ingresada dos veces', () => d(H).create({ data: ingreso({ cage: jaula2.documentId }) }), 'ya está hospitalizada');
+  await rechaza('dos pacientes en la misma jaula', () => d(H).create({ data: ingreso({ pet: mascota2.documentId }) }), 'ocupada');
+  await rechaza('desactivar una jaula ocupada', () => d(J).update({ documentId: jaula1.documentId, data: { isActive: false } }), 'ocupada');
+  await rechaza('alta sin tipo de alta', () => d(H).update({ documentId: hosp.documentId, data: { state: 'discharged' } }), 'tipo de alta');
+
+  // --- órdenes ---
+  const pelota = await d('api::catalog.product').findFirst({ filters: { name: 'Pelota SMOKE' } });
+  const orden = (extra = {}) => ({ hospitalization: hosp.documentId, product: medicamento.documentId, dose: '0,1 mg/kg', doseQuantity: 1, route: 'oral', frequencyHours: 12, startAt: iso(inicio), ...extra });
+  await rechaza('orden sin frecuencia ni "si es necesario"', () => d(O).create({ data: orden({ frequencyHours: null }) }), 'frequencyHours');
+  await rechaza('prescribir un juguete', () => d(O).create({ data: orden({ product: pelota.documentId }) }), 'solo se prescriben');
+  await rechaza('orden que empieza antes del ingreso', () => d(O).create({ data: orden({ startAt: iso(inicio - 5 * hora) }) }), 'antes del ingreso');
+  // La etiqueta se calcula después de guardar: se lee de nuevo.
+  const o1 = await acepta('orden válida, con su etiqueta', async () => d(O).findOne({ documentId: (await d(O).create({ data: orden() })).documentId }),
+    (r) => r.state === 'active' && /Meloxicam SMOKE/.test(r.searchLabel) && /c\/12 h/.test(r.searchLabel) && /Fido SMOKE/.test(r.searchLabel));
+
+  // --- tomas ---
+  const toma = (extra = {}) => ({ hospitalization: hosp.documentId, order: o1.documentId, scheduledFor: iso(inicio), administeredAt: iso(inicio + 5 * 60_000), ...extra });
+  await rechaza('toma en una hora que la orden no programa', () => d(A).create({ data: toma({ scheduledFor: iso(inicio + hora) }) }), 'no es una toma programada');
+  const t1 = await acepta('toma dada: producto y cantidad salen de la orden; clave de factura del servidor',
+    () => d(A).create({ data: toma({ lineKey: 'FALSA' }), populate: ['product'] }),
+    (r) => r.product?.documentId === medicamento.documentId && Number(r.quantity) === 1 && UUID.test(r.lineKey) && r.state === 'given');
+  await rechaza('la misma toma dada dos veces (H6)', () => d(A).create({ data: toma({ administeredAt: iso(inicio + 10 * 60_000) }) }), 'no se registra dos veces');
+  await rechaza('toma omitida sin motivo', () => d(A).create({ data: toma({ scheduledFor: iso(inicio + 12 * hora), administeredAt: iso(inicio + 12 * hora), state: 'omitted' }) }), 'motivo');
+  await acepta('toma omitida con motivo', () => d(A).create({ data: toma({ scheduledFor: iso(inicio + 12 * hora), administeredAt: iso(inicio + 12 * hora), state: 'omitted', omissionReason: 'Vomitó SMOKE' }) }),
+    (r) => r.state === 'omitted');
+  await rechaza('toma con fecha futura', () => d(A).create({ data: toma({ scheduledFor: null, administeredAt: iso(Date.now() + 24 * hora) }) }), 'futura');
+  await rechaza('toma anterior al ingreso', () => d(A).create({ data: toma({ scheduledFor: null, administeredAt: iso(inicio - 2 * hora) }) }), 'anterior al ingreso');
+  await rechaza('toma de otro producto que el de la orden', () => d(A).create({ data: toma({ scheduledFor: iso(inicio + 24 * hora), administeredAt: iso(inicio + 24 * hora), product: vacunaProducto.documentId }) }), 'otro producto');
+  await rechaza('dosis única sin producto', () => d(A).create({ data: { hospitalization: hosp.documentId } }), 'producto');
+
+  // --- hoja de evolución ---
+  await acepta('signos: la hora se pone sola', () => d(E).create({ data: { hospitalization: hosp.documentId, temperatureC: 39.4, heartRateBpm: 110, painScore: 3 } }), (r) => !!r.recordedAt);
+  await rechaza('signos con hora futura', () => d(E).create({ data: { hospitalization: hosp.documentId, recordedAt: iso(Date.now() + 2 * hora) } }), 'futura');
+  await acepta('la hoja del primer día: la toma dada y la omitida', () => ward.hoja(hosp.documentId, null),
+    (h) => h.ordenes.length === 1 && h.mascota?.nombre === 'Fido SMOKE' && h.diaAnterior !== null);
+  await acepta('el tablero muestra al paciente en su jaula', () => ward.tablero(),
+    (t) => t.salas.some((s) => s.jaulas.some((j) => j.documentId === jaula1.documentId && j.paciente?.documentId === hosp.documentId)));
+
+  // --- traslado ---
+  await acepta('trasladar cierra el tramo y abre otro (el panel manda cageStays: se ignora)',
+    () => d(H).update({
+      documentId: hosp.documentId,
+      data: { cage: { connect: [{ documentId: jaula2.documentId }], disconnect: [{ documentId: jaula1.documentId }] }, cageStays: [] },
+      populate: { cageStays: { populate: ['cage'] }, cage: true },
+    }),
+    (r) => r.cage?.documentId === jaula2.documentId && r.cageStays?.length === 2 && !!r.cageStays[0].toAt && r.cageStays[1].cage?.documentId === jaula2.documentId);
+
+  // --- facturación (H3–H5) ---
+  const conceptos = await sala_.conceptosFacturables(hosp.documentId);
+  const dias = conceptos.filter((c) => c.kind === 'hospitalization_stay');
+  const ultimoDia = dias[dias.length - 1];
+  await acepta('conceptos: un día por día calendario iniciado y la toma dada (no la omitida)', () => Promise.resolve(conceptos),
+    (c) => dias.length >= 3 && dias.every((x) => x.facturable && x.destino?.documentId === servicioDia.documentId) &&
+      c.filter((x) => x.kind === 'hospitalization_product').length === 1 && c.some((x) => x.lineKey === t1.lineKey));
+  await acepta('la bandeja de pendientes incluye la hospitalización', () => fact.pendientes({ cliente: cliente.documentId }),
+    (p) => p.some((e) => e.origen === 'hospitalizacion' && e.hospitalizacion.documentId === hosp.documentId && e.pendientes === dias.length + 1));
+  const fh = await acepta('borrador con el último día y la toma: precio e IVA del catálogo',
+    () => fact.crearBorrador({ conceptos: [{ hospitalizacion: hosp.documentId, lineKey: ultimoDia.lineKey }, { hospitalizacion: hosp.documentId, lineKey: t1.lineKey }] }),
+    (f) => f.items.length === 2 && f.items[0].kind === 'hospitalization_stay' && f.items[0].unitPrice === 80000 && f.items[0].taxRate === 19 &&
+      f.items[0].lockKey === ultimoDia.lineKey && /^Hospitalización/.test(f.items[0].description) &&
+      f.items[1].kind === 'hospitalization_product' && f.items[1].unitPrice === 42000 && f.customer?.documentId === cliente.documentId);
+  await rechaza('cobrar dos veces el mismo día', () => fact.crearBorrador({ conceptos: [{ hospitalizacion: hosp.documentId, lineKey: ultimoDia.lineKey }] }), 'ya se está cobrando');
+  await rechaza('un día que no es de la estancia', () => fact.crearBorrador({ conceptos: [{ hospitalizacion: hosp.documentId, lineKey: `${hosp.documentId}:2000-01-01` }] }), 'no está en la hospitalización');
+  await rechaza('renglón de hospitalización con el concepto de otro tipo',
+    () => d(R).create({ data: { invoice: fh.documentId, kind: 'hospitalization_product', sourceHospitalization: hosp.documentId, sourceLineKey: dias[0].lineKey } }), 'no corresponde');
+  await rechaza('borrar una toma cobrada', () => d(A).delete({ documentId: t1.documentId }), 'se está cobrando');
+  await rechaza('cambiar la cantidad de una toma cobrada', () => d(A).update({ documentId: t1.documentId, data: { quantity: 2 } }), 'se está cobrando');
+  await rechaza('cambiar de mascota una hospitalización cobrada', () => d(H).update({ documentId: hosp.documentId, data: { pet: mascota2.documentId } }), 'cambiar de mascota');
+  await rechaza('dar el alta antes del día cobrado', () => d(H).update({ documentId: hosp.documentId, data: { state: 'discharged', dischargeType: 'voluntary', dischargedAt: iso(inicio + hora) } }), 'dejaría de ser un día');
+  await acepta('borrar el borrador libera los conceptos', async () => { await d(F).delete({ documentId: fh.documentId }); return fact.estadoDeHospitalizacion(hosp.documentId); },
+    (e) => e.resumen === 'sin_facturar' && e.pendientes === dias.length + 1);
+
+  // --- alta (H7) ---
+  await rechaza('alta anterior al último registro de la hoja', () => d(H).update({ documentId: hosp.documentId, data: { state: 'discharged', dischargeType: 'voluntary', dischargedAt: iso(inicio + hora) } }), 'último registro');
+  await rechaza('alta médica sin resumen', () => d(H).update({ documentId: hosp.documentId, data: { state: 'discharged', dischargeType: 'medical' } }), 'resumen');
+  const resumen = [{ type: 'paragraph', children: [{ type: 'text', text: 'Evolución favorable SMOKE' }] }];
+  await acepta('alta médica: cierra el tramo de jaula y completa las órdenes',
+    async () => {
+      await d(H).update({ documentId: hosp.documentId, data: { state: 'discharged', dischargeType: 'medical', dischargeSummary: resumen } });
+      const [h, o] = await Promise.all([d(H).findOne({ documentId: hosp.documentId, populate: ['cageStays'] }), d(O).findOne({ documentId: o1.documentId })]);
+      return { h, o };
+    },
+    ({ h, o }) => h.state === 'discharged' && !!h.dischargedAt && h.cageStays.every((t) => !!t.toAt) && o.state === 'completed' && !!o.endAt);
+  await rechaza('cambiar el motivo tras el alta', () => d(H).update({ documentId: hosp.documentId, data: { reason: 'Otro SMOKE' } }), 'ya tiene el alta');
+  await acepta('las indicaciones sí cambian tras el alta', () => d(H).update({ documentId: hosp.documentId, data: { homeInstructions: resumen } }), (r) => !!r);
+  const actualH = await d(H).findOne({ documentId: hosp.documentId, populate: { cageStays: { populate: ['cage'] }, dischargeMedications: true } });
+  await acepta('guardar desde el panel una dada de alta sin tocar nada',
+    () => d(H).update({
+      documentId: hosp.documentId,
+      data: {
+        pet: { connect: [], disconnect: [] }, cage: { connect: [], disconnect: [] }, responsibleVet: { connect: [], disconnect: [] },
+        reason: actualH.reason, admittedAt: actualH.admittedAt, state: 'discharged', dischargeType: 'medical', dischargedAt: actualH.dischargedAt,
+        dischargeSummary: actualH.dischargeSummary, cageStays: actualH.cageStays, dischargeMedications: [],
+      },
+    }), (r) => !!r);
+  await rechaza('reabrir una hospitalización dada de alta', () => d(H).update({ documentId: hosp.documentId, data: { state: 'active' } }), 'no se reabre');
+  await rechaza('prescribir tras el alta', () => d(O).create({ data: orden({ startAt: iso(Date.now() - hora) }) }), 'dada de alta');
+  await rechaza('borrar una hospitalización con hoja de evolución', () => d(H).delete({ documentId: hosp.documentId }), 'historia clínica');
+  await acepta('la jaula vuelve a estar libre', () => ward.jaulasLibres(), (l) => l.some((j) => j.documentId === jaula2.documentId) && l.some((j) => j.documentId === jaula1.documentId));
+  await rechaza('borrar una jaula con hospitalizaciones', () => d(J).delete({ documentId: jaula1.documentId }), 'desactívala');
+
+  await ofrecer(ofrecia);
 
   console.log('\n--- filtro de archivados ---');
   await d('api::pet.pet').update({ documentId: mascota.documentId, data: { archivedAt: new Date().toISOString() } });

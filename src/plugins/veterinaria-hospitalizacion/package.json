@@ -1,0 +1,16 @@
+{
+  "name": "veterinaria-hospitalizacion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hospitalización: tablero de jaulas, hoja de evolución por hora, órdenes de tratamiento y alta.",
+  "strapi": {
+    "name": "veterinaria-hospitalizacion",
+    "displayName": "Hospitalización",
+    "description": "Ingreso, jaulas, signos y medicación por hora, y alta de pacientes hospitalizados.",
+    "kind": "plugin"
+  },
+  "exports": {
+    "./strapi-admin": { "source": "./admin/src/index.jsx", "default": "./admin/src/index.jsx" },
+    "./strapi-server": { "source": "./strapi-server.js", "default": "./strapi-server.js" }
+  }
+}

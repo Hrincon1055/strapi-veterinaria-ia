@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_hospitalization_cage_stays",
+  "info": { "displayName": "Estancia en jaula", "icon": "house", "description": "Tramo de la hospitalización en una jaula. Lo escribe el servidor al ingresar y en cada traslado." },
+  "options": {},
+  "attributes": {
+    "cage": { "type": "relation", "relation": "manyToOne", "target": "api::hospitalization.cage" },
+    "fromAt": { "type": "datetime", "required": true },
+    "toAt": { "type": "datetime" }
+  }
+}

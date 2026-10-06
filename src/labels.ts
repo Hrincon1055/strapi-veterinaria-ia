@@ -113,6 +113,34 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
     build: (e) => unir([e.name, e.presentation, e.brand]),
   },
 
+  // En el selector de una toma o de una factura hay que reconocer al paciente
+  // y el ingreso sin abrirlo: mascota, dueño, jaula y día de ingreso.
+  'api::hospitalization.hospitalization': {
+    populate: { pet: { populate: { owner: { populate: ['profile'] } } }, cage: true },
+    build: (e) =>
+      unir([
+        e.pet?.name,
+        e.pet?.owner?.profile?.lastName ?? nombrePersona(e.pet?.owner?.profile),
+        e.cage?.name,
+        soloFecha(e.admittedAt),
+      ]),
+  },
+
+  // "Meloxicam 0,1 mg/kg c/24 h — Kira": la toma se registra contra una orden.
+  'api::hospitalization.treatment-order': {
+    populate: { product: true, hospitalization: { populate: ['pet'] } },
+    build: (e) =>
+      unir([
+        unir([
+          e.product?.name,
+          e.dose,
+          e.isPrn ? 'si es necesario' : e.frequencyHours ? `c/${e.frequencyHours} h` : null,
+          e.state !== 'active' ? e.state : null,
+        ]),
+        e.hospitalization?.pet?.name,
+      ], ' — '),
+  },
+
   'api::marketing.campaign-metric': {
     populate: ['campaign'],
     build: (e) => unir([e.campaign?.name, soloFecha(e.createdAt)]),

@@ -5,7 +5,7 @@
   "options": { "draftAndPublish": false },
   "attributes": {
     "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
-    "roomType": { "type": "enumeration", "enum": ["consultation", "surgery", "grooming", "imaging", "lab", "other"], "default": "consultation", "required": true },
+    "roomType": { "type": "enumeration", "enum": ["consultation", "surgery", "grooming", "imaging", "lab", "hospitalization", "other"], "default": "consultation", "required": true },
     "isActive": { "type": "boolean", "default": true }
   }
 }

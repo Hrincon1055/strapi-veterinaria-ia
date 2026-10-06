@@ -27,6 +27,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.30.3",
+    "strapi-plugin-collection-exporter": "^1.2.0",
     "strapi-plugin-schema-visualizer": "^1.0.5",
     "styled-components": "^6.0.0",
     "zustand": "^5.0.15"

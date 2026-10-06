@@ -34,6 +34,10 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::notification.notification-recipient': 'searchLabel',
   
   'api::marketing.campaign-metric': 'searchLabel',
+  'api::hospitalization.hospitalization': 'searchLabel',
+  'api::hospitalization.treatment-order': 'searchLabel',
+  // El nombre de la jaula es único ("Jaula 3", "UCI 1"): ya identifica.
+  'api::hospitalization.cage': 'name',
 
   /**
    * Las cuentas se identifican por su correo, no por el `username`.
@@ -109,6 +113,12 @@ const SOLO_LECTURA: Record<string, string[]> = {
     'issuedAt', 'voidedAt', 'buyer', 'issuerSnapshot',
   ],
   'api::billing.invoice-item': ['lockKey', 'lineSubtotal', 'lineTax', 'lineTotal'],
+  // Hospitalización (5.6): quién lo hizo, traslados y claves de factura los
+  // pone el servidor (`validations/actor.ts`, `validations/hospitalization.ts`).
+  'api::hospitalization.hospitalization': ['admittedBy', 'dischargedBy', 'cageStays'],
+  'api::hospitalization.treatment-order': ['prescribedBy'],
+  'api::hospitalization.evolution-entry': ['recordedBy'],
+  'api::hospitalization.medication-administration': ['administeredBy', 'lineKey'],
 };
 
 /**
