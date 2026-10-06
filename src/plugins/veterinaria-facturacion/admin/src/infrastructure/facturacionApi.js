@@ -44,7 +44,6 @@ export function crearFacturacionApi(fetchClient) {
     quitarRenglon: async (id, renglon) => (await del(`/invoices/${id}/items/${renglon}`)).data,
 
     emitir: async (id, cuerpo) => (await post(`/invoices/${id}/issue`, cuerpo)).data,
-    pago: async (id, estado) => (await put(`/invoices/${id}/payment`, { estado })).data,
     anular: async (id, motivo) => (await post(`/invoices/${id}/void`, { motivo })).data,
 
     /**

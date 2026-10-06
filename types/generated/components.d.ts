@@ -116,6 +116,37 @@ export interface BillingTaxProfile extends Struct.ComponentSchema {
   };
 }
 
+export interface CashDenominationCount extends Struct.ComponentSchema {
+  collectionName: 'components_cash_denomination_counts';
+  info: {
+    description: 'Cu\u00E1ntos billetes o monedas de una denominaci\u00F3n hay en la caja al abrir o al cerrar.';
+    displayName: 'Conteo por denominaci\u00F3n';
+    icon: 'hashtag';
+  };
+  attributes: {
+    denomination: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    kind: Schema.Attribute.Enumeration<['bill', 'coin']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'bill'>;
+    quantity: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface CatalogAccessoryDetails extends Struct.ComponentSchema {
   collectionName: 'components_catalog_accessory_details';
   info: {
@@ -1124,6 +1155,7 @@ declare module '@strapi/strapi' {
       'billing.fiscal-responsibility': BillingFiscalResponsibility;
       'billing.party-snapshot': BillingPartySnapshot;
       'billing.tax-profile': BillingTaxProfile;
+      'cash.denomination-count': CashDenominationCount;
       'catalog.accessory-details': CatalogAccessoryDetails;
       'catalog.active-ingredient': CatalogActiveIngredient;
       'catalog.food-details': CatalogFoodDetails;

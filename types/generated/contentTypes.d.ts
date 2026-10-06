@@ -551,6 +551,7 @@ export interface ApiBillingInvoice extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     notes: Schema.Attribute.Text;
     number: Schema.Attribute.BigInteger;
+    paidAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     paymentState: Schema.Attribute.Enumeration<['unpaid', 'partial', 'paid']> &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'unpaid'>;
@@ -896,6 +897,259 @@ export interface ApiBillingSubscription extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::billing.benefit-usage'
     >;
+  };
+}
+
+export interface ApiCashCashMovement extends Struct.CollectionTypeSchema {
+  collectionName: 'cash_movements';
+  info: {
+    description: 'Efectivo que entra o sale de la caja sin ser una venta: sencillo, retiro (sangr\u00EDa) o gasto menor.';
+    displayName: 'Movimiento de caja';
+    pluralName: 'cash-movements';
+    singularName: 'cash-movement';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    concept: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    kind: Schema.Attribute.Enumeration<['cash_in', 'withdrawal', 'expense']> &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash.cash-movement'
+    > &
+      Schema.Attribute.Private;
+    occurredAt: Schema.Attribute.DateTime;
+    performedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    publishedAt: Schema.Attribute.DateTime;
+    receipt: Schema.Attribute.Media<'images' | 'files'>;
+    reference: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+    session: Schema.Attribute.Relation<'manyToOne', 'api::cash.cash-session'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCashCashRegister extends Struct.CollectionTypeSchema {
+  collectionName: 'cash_registers';
+  info: {
+    description: 'Caja f\u00EDsica del punto de venta. Cada apertura es un turno; operators limita qui\u00E9n puede abrirla.';
+    displayName: 'Caja';
+    pluralName: 'cash-registers';
+    singularName: 'cash-register';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    defaultOpeningFloat: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash.cash-register'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 120;
+      }>;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    operators: Schema.Attribute.Relation<'manyToMany', 'admin::user'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCashCashSession extends Struct.CollectionTypeSchema {
+  collectionName: 'cash_sessions';
+  info: {
+    description: 'Desde que se abre la caja con su base hasta el arqueo de cierre. Esperado, contado y descuadre los calcula el servidor.';
+    displayName: 'Turno de caja';
+    pluralName: 'cash-sessions';
+    singularName: 'cash-session';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    closedAt: Schema.Attribute.DateTime;
+    closedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    closingCount: Schema.Attribute.Component<'cash.denomination-count', true>;
+    countedCash: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    difference: Schema.Attribute.Integer;
+    differenceReason: Schema.Attribute.Text;
+    expectedCash: Schema.Attribute.Integer;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash.cash-session'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    openedAt: Schema.Attribute.DateTime;
+    openingCount: Schema.Attribute.Component<'cash.denomination-count', true>;
+    openingFloat: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    register: Schema.Attribute.Relation<'manyToOne', 'api::cash.cash-register'>;
+    responsible: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    state: Schema.Attribute.Enumeration<['open', 'closed']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'open'>;
+    totals: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCashPayment extends Struct.CollectionTypeSchema {
+  collectionName: 'payments';
+  info: {
+    description: 'Dinero que entra (pago o anticipo) o sale (devoluci\u00F3n) por una caja, con su medio. No se borra ni se edita: se reversa.';
+    displayName: 'Pago';
+    pluralName: 'payments';
+    singularName: 'payment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    authorizationCode: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    cardBrand: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 30;
+      }>;
+    cardLast4: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 4;
+      }>;
+    cardType: Schema.Attribute.Enumeration<['debit', 'credit']>;
+    changeAmount: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::billing.invoice'>;
+    kind: Schema.Attribute.Enumeration<['payment', 'refund']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'payment'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::cash.payment'> &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.Enumeration<
+      ['cash', 'card', 'transfer', 'credit_balance', 'other']
+    > &
+      Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    paidAt: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    purpose: Schema.Attribute.Enumeration<['invoice', 'advance']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'invoice'>;
+    receivedAmount: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    receivedBy: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
+    reference: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 60;
+      }>;
+    reversalReason: Schema.Attribute.Text;
+    reversedAt: Schema.Attribute.DateTime;
+    searchLabel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 255;
+      }>;
+    session: Schema.Attribute.Relation<'manyToOne', 'api::cash.cash-session'>;
+    state: Schema.Attribute.Enumeration<['posted', 'reversed']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'posted'>;
+    transferChannel: Schema.Attribute.Enumeration<
+      ['bank', 'nequi', 'daviplata', 'other']
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -3607,6 +3861,10 @@ declare module '@strapi/strapi' {
       'api::billing.plan': ApiBillingPlan;
       'api::billing.plan-benefit': ApiBillingPlanBenefit;
       'api::billing.subscription': ApiBillingSubscription;
+      'api::cash.cash-movement': ApiCashCashMovement;
+      'api::cash.cash-register': ApiCashCashRegister;
+      'api::cash.cash-session': ApiCashCashSession;
+      'api::cash.payment': ApiCashPayment;
       'api::catalog.product': ApiCatalogProduct;
       'api::catalog.product-category': ApiCatalogProductCategory;
       'api::catalog.supplier': ApiCatalogSupplier;

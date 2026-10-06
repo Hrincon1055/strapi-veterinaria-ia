@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_cash_denomination_counts",
+  "info": { "displayName": "Conteo por denominación", "icon": "hashtag", "description": "Cuántos billetes o monedas de una denominación hay en la caja al abrir o al cerrar." },
+  "options": {},
+  "attributes": {
+    "denomination": { "type": "integer", "required": true, "min": 1 },
+    "kind": { "type": "enumeration", "enum": ["bill", "coin"], "default": "bill", "required": true },
+    "quantity": { "type": "integer", "required": true, "default": 0, "min": 0 }
+  }
+}

@@ -119,6 +119,19 @@ const INDEXES = [
     sql: `CREATE INDEX IF NOT EXISTS idx_evolution_recorded
             ON evolution_entries (recorded_at)`,
   },
+  // Caja (5.7): pagos vivos por fecha (informes, cartera) y turnos abiertos.
+  {
+    name: 'idx_payments_state',
+    table: 'payments',
+    sql: `CREATE INDEX IF NOT EXISTS idx_payments_state
+            ON payments (state, paid_at)`,
+  },
+  {
+    name: 'idx_cash_sessions_state',
+    table: 'cash_sessions',
+    sql: `CREATE INDEX IF NOT EXISTS idx_cash_sessions_state
+            ON cash_sessions (state, opened_at)`,
+  },
 ];
 
 /**

@@ -38,6 +38,12 @@ const SERVICE_CATEGORIES = [
   { name: 'Imagenología', sortOrder: 60 },
 ];
 
+/**
+ * Comprador genérico para las ventas de mostrador sin ficha (sección 5.7,
+ * C5). La DIAN identifica al consumidor final con el NIT 222222222222.
+ */
+export const CONSUMIDOR_FINAL = { documentType: 'nit', documentNumber: '222222222222', firstName: 'Consumidor', lastName: 'final' };
+
 /** Crea el documento solo si no existe otro con la misma clave natural. */
 async function ensure(
   strapi: Core.Strapi,
@@ -73,6 +79,20 @@ export default async (strapi: Core.Strapi): Promise<void> => {
     ) {
       created++;
     }
+  }
+
+  // Consumidor final: perfil + cliente, sin contactos ni mascotas.
+  let perfil: any = await strapi.documents('api::identity.profile').findFirst({
+    filters: { documentType: CONSUMIDOR_FINAL.documentType, documentNumber: CONSUMIDOR_FINAL.documentNumber } as any,
+    populate: ['customer'] as any,
+  } as any);
+  if (!perfil) {
+    perfil = await strapi.documents('api::identity.profile').create({ data: CONSUMIDOR_FINAL as any });
+    created++;
+  }
+  if (!perfil.customer) {
+    await strapi.documents('api::customer.customer').create({ data: { profile: perfil.documentId, consents: { marketing: false, sms: false, email: false, dataProcessing: false } } as any });
+    created++;
   }
 
   if (created > 0) {

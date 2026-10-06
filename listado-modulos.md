@@ -1,6 +1,6 @@
 # Módulos del sistema veterinario
 
-Estado al 2026-10-06. El backend tiene 43 content types en 14 dominios de `src/api/`, 41 componentes y 4 plugins propios del panel.
+Estado al 2026-10-06. El backend tiene 47 content types en 15 dominios de `src/api/`, 42 componentes y 5 plugins propios del panel.
 
 ## Módulos que existen
 
@@ -23,6 +23,7 @@ Estado al 2026-10-06. El backend tiene 43 content types en 14 dominios de `src/a
 | 13 | **Notificaciones** (`notification`) | Notificación, sus destinatarios y cada envío. | ⚪ No se envía nada: no hay canal de correo, SMS ni WhatsApp. |
 | 14 | **Marketing** (`campaign`, `campaign-metric`) | Campañas con reglas de segmentación que el servidor traduce para obtener el público. | 🟡 Calcula el público, pero no envía (depende del módulo 13). |
 | 15 | **Hospitalización** (`hospitalization` + plugin `veterinaria-hospitalizacion`) | Ingreso en una jaula, órdenes de tratamiento con productos del catálogo, hoja de evolución por hora (signos y tomas dadas u omitidas, con las atrasadas a la vista), traslados y alta con resumen imprimible. Se factura sola: cada día de estancia y cada toma dada salen en pendientes de cobro. El cliente ve en el portal el estado y el alta. Solo se activa si la clínica hospitaliza. Rol nuevo: Auxiliar de hospitalización. | ✅ |
+| 16 | **Caja y punto de venta** (`cash` + plugin `veterinaria-caja`) | Punto de venta en una pestaña aparte: abrir y cerrar turno con base y arqueo por billetes y monedas, vender el catálogo a consumidor final o a un cliente, cobrar lo pendiente de consultas y hospitalizaciones, abonos, anticipos (saldo a favor), devoluciones, ingresos, retiros y gastos de efectivo, cartera por antigüedad y supervisión de turnos. Cobrar emite la factura y registra cada pago con su medio (efectivo con cambio, tarjeta, transferencia/Nequi/Daviplata, saldo a favor). Rol nuevo: Caja. | ✅ |
 | — | **Transversales** | Archivado (`archivedAt`), relaciones obligatorias, `searchLabel` en cascada, roles del panel, panel en español, protección del plugin de calendario y documentación OpenAPI. | ✅ |
 
 ## Módulos que faltarían
@@ -33,13 +34,12 @@ Ordenados por lo que se considera más urgente:
 2. **Facturación electrónica DIAN.** Enviar la factura a Dataico, recibir el CUFE y el estado, poner el QR en el PDF y manejar notas crédito, que hoy solo pueden anular. Sin esto, las facturas no tienen validez fiscal.
 3. **Canal de envío de notificaciones.** Un proveedor de correo, SMS o WhatsApp detrás de `notification-delivery`, con reintentos y el estado de cada envío. Destrabaría varias cosas a la vez: los códigos del portal, los recordatorios de cita y de vacunas y el envío de campañas.
 4. **Recordatorios automáticos.** Procesos programados para avisar de la próxima vacuna (`nextDueOn`), de la cita de mañana, de controles pendientes y de suscripciones por vencer. Los datos ya existen; falta el proceso que los revisa y avisa.
-5. **Caja y pagos.** Hoy la factura solo tiene `paymentState`. Faltaría registrar cada pago con su medio, permitir abonos parciales, cuadrar la caja diaria y calcular la cartera por cliente.
-6. **Compras a proveedores.** Órdenes de compra y su recepción, que alimentarían el inventario. El proveedor ya existe y solo lo ve el Administrador de clínica.
-7. **Fórmula médica.** Una receta imprimible a partir del plan de tratamiento (`clinical.medication`), con registro del veterinario.
-8. **Reportes e indicadores.** Ingresos por servicio y por profesional, ocupación de la agenda, inasistencias, productos más vendidos y clientes inactivos.
-9. **Portal del cliente (frontend).** El backend ya tiene registro, reclamación, huecos libres y la historia propia, pero no hay ninguna aplicación que lo use: solo existe `demo-flujo.js`.
-10. **Pruebas automatizadas.** No hay Jest; `smoke-validations.js` es lo único que comprueba las reglas por ahora.
+5. **Compras a proveedores.** Órdenes de compra y su recepción, que alimentarían el inventario. El proveedor ya existe y solo lo ve el Administrador de clínica.
+6. **Fórmula médica.** Una receta imprimible a partir del plan de tratamiento (`clinical.medication`), con registro del veterinario.
+7. **Reportes e indicadores.** Ingresos por servicio y por profesional, ocupación de la agenda, inasistencias, productos más vendidos y clientes inactivos.
+8. **Portal del cliente (frontend).** El backend ya tiene registro, reclamación, huecos libres y la historia propia, pero no hay ninguna aplicación que lo use: solo existe `demo-flujo.js`.
+9. **Pruebas automatizadas.** No hay Jest; `smoke-validations.js` es lo único que comprueba las reglas por ahora.
 
 ## Resumen
 
-La parte operativa central ya funciona: clientes, mascotas, historia clínica, agenda, catálogo, hospitalización y facturación interna. Lo que queda son sobre todo integraciones externas (DIAN y canales de envío) y el inventario. Se recomienda empezar por **inventario** o por **DIAN**: el primero porque el modelo ya está preparado para él, y el segundo porque sin él la facturación no tiene valor legal.
+La parte operativa central ya funciona: clientes, mascotas, historia clínica, agenda, catálogo, hospitalización, facturación interna y caja. Lo que queda son sobre todo integraciones externas (DIAN y canales de envío) y el inventario. Se recomienda empezar por **inventario** o por **DIAN**: el primero porque el modelo ya está preparado para él, y el segundo porque sin él la facturación no tiene valor legal.

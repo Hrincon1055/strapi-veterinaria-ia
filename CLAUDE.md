@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 43 content types (uno es single type) across 14 API domains, 41 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
+Strapi 5 (v5.55.1) headless CMS in TypeScript for a veterinary clinic. 47 content types (uno es single type) across 15 API domains, 42 components, and a replacement schema for the users-permissions `user`. The data model is specified in `strapi-veterinaria-prompt.md` — that document is the source of truth for field names, enum values and business rules; do not change either without changing it.
 
 Key model decisions (all deliberate, do not "fix"): no multi-tenant, no soft delete except an `archivedAt` datetime on six types (catalogs use `isActive` instead), Draft & Publish off everywhere, roles and permissions are 100% native with no custom RBAC tables — **clients in users-permissions, staff in the admin panel** (see "El staff trabaja en el panel") — and there is no `medical-history` — consultations, vaccinations and allergies hang directly off the pet.
 
@@ -22,8 +22,8 @@ npm run upgrade:dry  # preview a Strapi version upgrade (then `npm run upgrade`)
 ```bash
 npx strapi ts:generate-types      # regenerate types/generated/ after a schema change, without a full boot
 npx tsc --noEmit                  # typecheck server code
-node smoke-validations.js         # 164 live assertions against the business rules (boots Strapi, self-cleaning)
-node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, the hospitalization ward (Rocco ingresado, Nube de alta), 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
+node smoke-validations.js         # 199 live assertions against the business rules (boots Strapi, self-cleaning)
+node demo-data.js [--reset]       # everything: 3 clients + pets, staff (panel accounts + schedules), Kira's history, clinic, this week's agenda, the hospitalization ward (Rocco ingresado, Nube de alta), the cash registers (yesterday's closed shift, today's open one with sales), 3 sample invoices (idempotent; --reset also sweeps pet-less leftovers)
 node demo-historia.js <mascota>   # prints a pet's full clinical history from the dynamic zone (en el panel: menú "Historia clínica", imprimible)
 node factura-pdf.js <FE129|documentId> [salida]   # PDF de una factura (o vista previa de un borrador) en .tmp/facturas/
 node verify-model-doc.js          # checks strapi-veterinaria-prompt.md still matches the code
@@ -32,6 +32,7 @@ node audit-orphans.js             # duplicate names + tables/dist left behind by
 node vincular-admin.js [correo doc|correo --quitar]   # enlaza una cuenta del panel con un perfil (sin argumentos, lista)
 node migrate-staff-to-admin.js --export|--import      # ya ejecutada: staff de users-permissions al panel (ver abajo)
 node migrate-consultation-lines.js [--dry]            # ya ejecutada: consultation.items -> dynamic zone consultation.lines (ver abajo)
+node migrate-pagos.js [--dry]     # ya ejecutada: facturas marcadas pagadas a mano -> un pago `other` (caja, 5.7)
 node demo-agenda.js [--reset]     # solo las 7 citas de la semana en curso (demo-data.js ya las crea); útil al cambiar de semana
 node demo-flujo.js                # walks the client-portal flow over HTTP against a running server
 npm run strapi -- generate        # interactive scaffolder: content-type, controller, policy, middleware…
@@ -92,7 +93,7 @@ Queda un hueco por la API: `esEscrituraDeEtiqueta()` deja pasar sin recalcular u
 - **Sin `admin::users.read` el selector muestra el `documentId`.** Strapi declara ese permiso como alias de "leer `admin::user`" en el Content Manager (`admin-actions.js`, `aliases`), y `sanitizeMainField` cae a `documentId` si no se puede leer el main field. Por eso los tres roles lo llevan; el precio es que ven la lista de cuentas en Ajustes → Usuarios, solo lectura.
 - **Cambiar el destino de una relación en SQLite no cambia su clave foránea.** `admin::user` y el `user` de users-permissions comparten `singularName`, así que la tabla de enlace conserva la columna `user_id`; Strapi actualiza su instantánea pero no puede alterar la FK (SQLite no admite `ALTER` de FK sin recrear la tabla). La tabla sigue apuntando a `up_users` sin aviso. La migración vacía esas tablas, las borra, vacía `strapi_database_schema` y deja que Strapi las recree — la trampa 3 de abajo, en otra forma.
 - **Un token de API de acceso total sí ve esas relaciones**; ningún rol de users-permissions puede, porque `admin::user.find` no existe ahí.
-- Los scripts de demo crean el personal con `demo-staff.js` (`cuentaDelPanel`), que deja el perfil enlazado. Contraseña de demo del staff: `Clinica12345`; la de los clientes, `Demo12345`. Hay una cuenta por rol del panel: Recepción (`andres.mejia`), Veterinario (`laura.gomez`, `sofia.arango`), Auxiliar de hospitalización (`camila.rios`) y Administrador de clínica (`marta.lozano`), todas `@veterinaria.test`.
+- Los scripts de demo crean el personal con `demo-staff.js` (`cuentaDelPanel`), que deja el perfil enlazado. Contraseña de demo del staff: `Clinica12345`; la de los clientes, `Demo12345`. Hay una cuenta por rol del panel: Recepción (`andres.mejia`), Veterinario (`laura.gomez`, `sofia.arango`), Auxiliar de hospitalización (`camila.rios`), Caja (`diana.vargas`) y Administrador de clínica (`marta.lozano`), todas `@veterinaria.test`.
 
 **El panel está en español en tres capas distintas**, y cada una vive en un sitio:
 
@@ -272,6 +273,18 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - **`create` devuelve el documento sin la etiqueta recalculada** (`validations/labels.ts` la escribe después): para comprobar un `searchLabel` hay que volver a leer. Pasó en las pruebas de humo de la orden.
 - **No hay icono "pausa" en `@strapi/icons`**: la orden se suspende con `CrossCircle`. El menú usa `Stethoscope`.
 
+**La caja (punto de venta) es el dominio `src/api/cash/` con un quinto plugin, `src/plugins/veterinaria-caja/`.** Diseño y decisiones C1–C12 en la sección 5.7 del documento de modelo. Cajas (`cash-register`), turnos con base y arqueo (`cash-session`), pagos por medio (`payment`) y movimientos de efectivo (`cash-movement`). Reglas en `src/validations/cash.ts`; cuentas puras (efectivo esperado, saldo a favor, cartera) en `src/api/cash/domain/caja.ts`; orquestación en `api::cash.pos`. Lo que no es obvio:
+
+- **El dinero entra solo por la caja (C8).** `invoice.paidAmount` y `paymentState` los recalcula `recalcularPagos` (query engine, como los totales) tras cada pago; la regla de la factura rechaza cambiarlos por el Document Service y no deja anular una factura con dinero cobrado. El selector "Registrar pago" de Facturación desapareció: ahora "Cobrar en caja" abre el POS con `?factura=`. Las facturas que ya figuraban pagadas se migraron con `migrate-pagos.js` (pago `method: other`, sin turno, solo posible sin sesión del panel).
+- **Cobrar = emitir (C6) en una transacción.** `pos.cobrar` crea el borrador, añade los renglones (catálogo o conceptos de consulta/hospitalización), lo emite y registra los pagos dentro de `strapi.db.transaction`; las de `invoicing` se anidan y reutilizan la misma (Strapi lo hace solo), así que si un pago falla no queda factura ni se consume el consecutivo. Verificado en las pruebas de humo.
+- **El turno lo decide el servidor**: el plugin siempre escribe en el turno abierto de la cuenta, nunca en el que mande la interfaz; la regla, además, rechaza pagos y movimientos en el turno de otra persona salvo con `caja.supervisar`.
+- **Un pago no se borra ni se edita**: se reversa con motivo mientras su turno siga abierto; después, devolución (`kind: refund`, permiso `caja.devolver`). Por eso las pruebas de humo y `demo-caja.js` borran pagos con el query engine.
+- **Saldo a favor sin tabla (C9)**: anticipo = pago `purpose: advance`; usarlo = pago `credit_balance`; devolver a saldo a favor = devolución `credit_balance`. Lo calcula `saldoAFavor` del dominio.
+- **Consumidor final** (NIT 222222222222) lo siembra `bootstrap/seed.ts` (perfil + cliente). A consumidor final no se le deja saldo pendiente; a un cliente con ficha sí (pasa a cartera).
+- **El POS se abre en otra pestaña (C12).** El menú de Strapi navega con React Router; el plugin escucha el clic en `window` en fase de captura (antes que React) y hace `window.open`. La ruta `pos` se pinta en un portal a pantalla completa con `z-index: 200` (sobre la navegación del panel, 100, y bajo los modales, 300). Misma sesión del panel, sin otro login.
+- **El recibo y el informe de cierre se imprimen** con el mismo mecanismo de portal que la historia, en papel de 80 mm, con clases `vca-*`.
+- Roles: Recepción y **Caja** (rol nuevo) operan su turno; Administrador de clínica además devuelve y supervisa, y es el único que crea cajas. Verificado por HTTP con las cuatro cuentas (26 comprobaciones) y en el navegador: apertura, venta en efectivo con cambio, recibo y cierre con descuadre.
+
 **Types are generated, not authored.** `types/generated/contentTypes.d.ts` and `components.d.ts` are regenerated by Strapi on `develop`/`build` from the schema JSON files. Never edit them by hand; change the schema (or use the admin Content-Type Builder in dev) and let them regenerate.
 
 **Config is env-driven.** Every `config/*.ts` exports either a plain object or an `({ env }) => object` factory. Non-default choices already made here, worth preserving:
@@ -282,7 +295,7 @@ Cuatro cosas que hay que saber antes de tocarlo:
 - `config/middlewares.ts` — the default ordered stack; order is significant, insert custom middleware at a deliberate position rather than appending.
 - `config/admin.ts`, `config/server.ts` — secrets and `APP_KEYS` come from env with non-null assertions, so a missing var fails loudly at boot.
 
-**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the users-permissions `client` role if missing (and Public's permissions) and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/admin-roles.ts` does the same for the four panel roles (`Recepción`, `Veterinario`, `Auxiliar de hospitalización`, `Administrador de clínica`) with `addPermissions` — never `assignPermissions`, which replaces the whole list. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
+**Roles and seed run on every boot, idempotently.** `src/bootstrap/roles.ts` creates the users-permissions `client` role if missing (and Public's permissions) and grants only the permissions that are not already present, so manual tweaks in the admin panel survive a restart. It also sets `client` as the default registration role. `src/bootstrap/admin-roles.ts` does the same for the five panel roles (`Recepción`, `Veterinario`, `Auxiliar de hospitalización`, `Caja`, `Administrador de clínica`) with `addPermissions` — never `assignPermissions`, which replaces the whole list. `src/bootstrap/seed.ts` seeds countries, species and service categories, matching on natural keys before inserting.
 
 **Admin customization** is opt-in: `src/admin/app.example.tsx` and `vite.config.example.ts` must be renamed (drop `.example`) to take effect. `src/admin/` has its own tsconfig and is excluded from the server compilation.
 

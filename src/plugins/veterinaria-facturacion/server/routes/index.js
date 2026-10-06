@@ -43,9 +43,8 @@ module.exports = {
       { method: 'PUT', path: '/invoices/:id/items/:item', handler: 'facturacion.actualizarRenglon', config: preparar },
       { method: 'DELETE', path: '/invoices/:id/items/:item', handler: 'facturacion.quitarRenglon', config: preparar },
 
-      // Emisión, cobro y anulación
+      // Emisión y anulación. Los pagos entran por la caja (plugin veterinaria-caja, 5.7).
       { method: 'POST', path: '/invoices/:id/issue', handler: 'facturacion.emitir', config: emitir },
-      { method: 'PUT', path: '/invoices/:id/payment', handler: 'facturacion.pago', config: emitir },
       { method: 'POST', path: '/invoices/:id/void', handler: 'facturacion.anular', config: anular },
     ],
   },

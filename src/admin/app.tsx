@@ -34,6 +34,8 @@ const CON_ETIQUETA = [
   'api::marketing.campaign-metric',
   'api::hospitalization.hospitalization',
   'api::hospitalization.treatment-order',
+  'api::cash.cash-session',
+  'api::cash.payment',
 ];
 
 const PREFIJO = 'STRAPI_LIST_VIEW_DISPLAYED_HEADERS:';

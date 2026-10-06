@@ -90,6 +90,10 @@ export const TIPO_RENGLON = {
   hospitalization_product: 'Producto de hospitalización',
 };
 
+export const MEDIO_PAGO = {
+  cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit_balance: 'Saldo a favor', other: 'Otro (anterior a la caja)',
+};
+
 export const UNIDAD = {
   unit: 'und', box: 'caja', bottle: 'frasco', vial: 'vial', bag: 'bolsa', tablet: 'tableta',
   dose: 'dosis', ml: 'ml', g: 'g', kg: 'kg', servicio: 'servicio', periodo: 'periodo',

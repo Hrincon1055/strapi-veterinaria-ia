@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cash_sessions",
+  "info": {
+    "singularName": "cash-session",
+    "pluralName": "cash-sessions",
+    "displayName": "Turno de caja",
+    "description": "Desde que se abre la caja con su base hasta el arqueo de cierre. Esperado, contado y descuadre los calcula el servidor."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "register": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-register" },
+    "responsible": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "openedAt": { "type": "datetime" },
+    "openingFloat": { "type": "integer", "default": 0, "min": 0 },
+    "openingCount": { "type": "component", "repeatable": true, "component": "cash.denomination-count" },
+    "state": { "type": "enumeration", "enum": ["open", "closed"], "default": "open", "required": true },
+    "closedAt": { "type": "datetime" },
+    "closedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "closingCount": { "type": "component", "repeatable": true, "component": "cash.denomination-count" },
+    "countedCash": { "type": "integer", "min": 0 },
+    "expectedCash": { "type": "integer" },
+    "difference": { "type": "integer" },
+    "differenceReason": { "type": "text" },
+    "totals": { "type": "json" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

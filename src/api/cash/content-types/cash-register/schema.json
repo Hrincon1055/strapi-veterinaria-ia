@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cash_registers",
+  "info": {
+    "singularName": "cash-register",
+    "pluralName": "cash-registers",
+    "displayName": "Caja",
+    "description": "Caja física del punto de venta. Cada apertura es un turno; operators limita quién puede abrirla."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
+    "location": { "type": "string", "maxLength": 120 },
+    "defaultOpeningFloat": { "type": "integer", "default": 0, "min": 0 },
+    "operators": { "type": "relation", "relation": "manyToMany", "target": "admin::user" },
+    "isActive": { "type": "boolean", "default": true }
+  }
+}

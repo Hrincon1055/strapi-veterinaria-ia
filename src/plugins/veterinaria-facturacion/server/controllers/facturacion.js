@@ -1,7 +1,6 @@
 'use strict';
 
 const PREFIJO = 'plugin::veterinaria-facturacion.facturacion.';
-const ESTADOS_PAGO = ['unpaid', 'partial', 'paid'];
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 const puede = (ctx, accion) => Boolean(ctx.state?.userAbility?.can(`${PREFIJO}${accion}`));
@@ -36,6 +35,8 @@ module.exports = ({ strapi }) => {
         puedeEmitir: puede(ctx, 'emitir'),
         puedeAnular: puede(ctx, 'anular'),
         puedeCambiarPrecio: puede(ctx, 'cambiar-precio'),
+        // "Cobrar en caja" abre el punto de venta con la factura.
+        puedeCobrar: Boolean(ctx.state?.userAbility?.can('plugin::veterinaria-caja.caja.operar')),
       };
     },
 
@@ -131,12 +132,6 @@ module.exports = ({ strapi }) => {
       const { venceEl } = ctx.request.body ?? {};
       if (!fechaValida(venceEl)) return ctx.badRequest('El vencimiento va como AAAA-MM-DD');
       await responder(ctx, () => svc().emitir(ctx.params.id, { venceEl }));
-    },
-
-    async pago(ctx) {
-      const { estado } = ctx.request.body ?? {};
-      if (!ESTADOS_PAGO.includes(estado)) return ctx.badRequest(`Estado de pago no válido. Usa: ${ESTADOS_PAGO.join(', ')}`);
-      await responder(ctx, () => svc().pago(ctx.params.id, estado));
     },
 
     async anular(ctx) {

@@ -25,6 +25,7 @@ const { crearHorarios, borrarHorarios } = require('./demo-horarios');
 const { crearAgenda, borrarAgenda } = require('./demo-agenda');
 const { crearFacturas, borrarFacturas } = require('./demo-facturas');
 const { crearHospitalizacion, borrarHospitalizacion } = require('./demo-hospitalizacion');
+const { abrirCajas, completarCaja, borrarCaja } = require('./demo-caja');
 
 /**
  * Registros que no pueden existir sin mascota (la relación es obligatoria).
@@ -362,7 +363,9 @@ async function borrar(app) {
   // la semana y la historia clínica. Si las mascotas se borraran antes, esas
   // citas y consultas quedarían huérfanas y ya no se podrían encontrar.
   // Las facturas, lo primero: una consulta cobrada no se puede borrar.
-  let n = await borrarFacturas(app);
+  // La caja antes que las facturas: sus pagos y sus ventas citan facturas.
+  let n = await borrarCaja(app);
+  n += await borrarFacturas(app);
   // Antes que la historia: la hospitalización usa productos de su catálogo.
   n += await borrarHospitalizacion(app);
   n += await borrarAgenda(app);
@@ -442,7 +445,11 @@ async function borrar(app) {
   const clinica = await crearClinica(app);
   await crearAgenda(app);
   const hospitalizacion = await crearHospitalizacion(app, { password: 'Clinica12345' });
-  const facturas = await crearFacturas(app, { password: 'Clinica12345' });
+  // La caja se abre antes de las facturas (la pagada se cobra en el turno de
+  // ayer) y se completa después (cierre de ayer y ventas de hoy).
+  const cajas = await abrirCajas(app, { password: 'Clinica12345' });
+  const facturas = await crearFacturas(app, { password: 'Clinica12345', turno: cajas.ayer, pagadaEl: cajas.pagadaEl });
+  const caja = await completarCaja(app, cajas);
 
   console.log('\n================  CLIENTES DE MUESTRA  ================\n');
   for (const { perfil, cliente, usuario, mascotas } of resumen) {
@@ -465,6 +472,10 @@ async function borrar(app) {
     ? `Hospitalización: Rocco ingresado (${hospitalizacion.tomas} tomas, ${hospitalizacion.signos} registros de signos) y Nube dada de alta — panel → Hospitalización`
     : 'Hospitalización: ya existía');
   console.log(`Auxiliar de hospitalización: ${hospitalizacion.auxiliar}`);
+  console.log(caja.creada
+    ? `Caja: turno de ayer cerrado con descuadre explicado; hoy, Caja 2 abierta con ${caja.ventas} ventas (efectivo esperado $ ${caja.esperadoHoy.toLocaleString('es-CO')}) — panel → Punto de venta`
+    : 'Caja: ya existía');
+  console.log(`Caja (punto de venta): ${caja.cajera}`);
   console.log(facturas.creadas
     ? `Facturas de muestra: ${facturas.numeros.join(' (pagada), ')} (anulada) y un borrador — panel → Facturación`
     : 'Facturas de muestra: ya existían');

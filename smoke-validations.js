@@ -71,6 +71,21 @@ async function limpiar(app) {
     select: ['id'],
   });
   const ids = facturas.map((f) => f.id);
+  // Caja (5.7): los pagos no se borran por el Document Service (es una regla
+  // que se prueba); van con el query engine, antes que sus facturas y turnos.
+  const turnosSmoke = await app.db.query('api::cash.cash-session').findMany({ where: { register: { name: 'Caja SMOKE' } }, select: ['id', 'documentId'] });
+  n += await app.db.query('api::cash.payment').deleteMany({
+    where: { $or: [{ session: { id: { $in: turnosSmoke.map((t) => t.id) } } }, { customer: { profile: { documentNumber: { $startsWith: 'SMOKE-' } } } }] },
+  }).then((r) => r.count);
+  n += await app.db.query('api::cash.cash-movement').deleteMany({ where: { session: { id: { $in: turnosSmoke.map((t) => t.id) } } } }).then((r) => r.count);
+  for (const t of turnosSmoke) {
+    await app.documents('api::cash.cash-session').delete({ documentId: t.documentId });
+    n++;
+  }
+  for (const c of await app.documents('api::cash.cash-register').findMany({ filters: { name: 'Caja SMOKE' } })) {
+    await app.documents('api::cash.cash-register').delete({ documentId: c.documentId });
+    n++;
+  }
   if (ids.length > 0) {
     n += await app.db.query('api::billing.invoice-item').deleteMany({ where: { invoice: { id: { $in: ids } } } }).then((r) => r.count);
     n += await app.db.query('api::billing.invoice').deleteMany({ where: { id: { $in: ids } } }).then((r) => r.count);
@@ -493,7 +508,7 @@ async function limpiar(app) {
   await rechaza('emitir un borrador vacío', () => fact.emitir(otroBorrador.documentId), 'sin renglones');
   await acepta('…y el consecutivo no se consume', () => consecutivo(), (n) => n === consecutivoInicial);
   await rechaza('un borrador no se anula', () => d(F).update({ documentId: borrador.documentId, data: { state: 'voided', voidReason: 'x' } }), 'se borra');
-  await rechaza('pagar un borrador', () => d(F).update({ documentId: borrador.documentId, data: { paymentState: 'paid' } }), 'pagada');
+  await rechaza('pagar un borrador a mano', () => d(F).update({ documentId: borrador.documentId, data: { paymentState: 'paid' } }), 'lo calcula la caja');
 
   const esperado = `${resolucion.prefix ?? ''}${consecutivoInicial + 1}`;
   const emitida = await acepta(
@@ -519,16 +534,18 @@ async function limpiar(app) {
   await rechaza('quitar un renglón de una emitida', () => d(R).delete({ documentId: rServicio.documentId }), 'ya no es un borrador');
   await rechaza('cambiar las notas de una emitida', () => d(F).update({ documentId: borrador.documentId, data: { notes: 'cambio' } }), 'solo admite cambios');
   await acepta(
-    'guardar desde el panel una emitida sin tocar nada y marcarla pagada',
+    'guardar desde el panel una emitida sin tocar nada',
     () => d(F).update({
       documentId: borrador.documentId,
       data: {
         currency: emitida.currency, notes: emitida.notes, amount: emitida.amount, fullNumber: emitida.fullNumber,
-        issuedAt: emitida.issuedAt, number: emitida.number, paymentState: 'paid',
+        issuedAt: emitida.issuedAt, number: emitida.number, paymentState: 'unpaid', paidAmount: 0,
       },
     }),
-    (r) => r.paymentState === 'paid' && r.amount === 258500
+    (r) => r.paymentState === 'unpaid' && r.amount === 258500
   );
+  // 5.7 (C8): el estado de pago lo calcula la caja a partir de los pagos.
+  await rechaza('marcar pagada a mano una emitida', () => d(F).update({ documentId: borrador.documentId, data: { paymentState: 'paid' } }), 'lo calcula la caja');
   await rechaza('borrar una emitida', () => d(F).delete({ documentId: borrador.documentId }), 'se anula');
   await rechaza('archivar una emitida', () => d(F).update({ documentId: borrador.documentId, data: { archivedAt: new Date().toISOString() } }), 'se anula');
   await rechaza('anular una factura ya enviada a la DIAN (requiere nota crédito)', async () => {
@@ -788,6 +805,91 @@ async function limpiar(app) {
   await rechaza('borrar una jaula con hospitalizaciones', () => d(J).delete({ documentId: jaula1.documentId }), 'desactívala');
 
   await ofrecer(ofrecia);
+
+  console.log('\n--- caja y pagos ---');
+  // 5.7: turno con base, venta que emite y cobra, abonos, anticipos, saldo a
+  // favor, devoluciones, movimientos y cierre con arqueo.
+  const CJ = 'api::cash.cash-register';
+  const T = 'api::cash.cash-session';
+  const P = 'api::cash.payment';
+  const M = 'api::cash.cash-movement';
+  const pos = app.service('api::cash.pos');
+
+  const cajaS = await d(CJ).create({ data: { name: 'Caja SMOKE', defaultOpeningFloat: 100000 } });
+  const turno = await acepta('abrir turno: la base es la sugerida por la caja', () => d(T).create({ data: { register: cajaS.documentId, responsible: vet.documentId } }),
+    (r) => r.state === 'open' && r.openingFloat === 100000 && !!r.openedAt);
+  const TU = turno.documentId;
+  await rechaza('dos turnos abiertos en la misma caja', () => d(T).create({ data: { register: cajaS.documentId, responsible: vet.documentId } }), 'ya tiene un turno abierto');
+  await rechaza('desactivar una caja con turno abierto', () => d(CJ).update({ documentId: cajaS.documentId, data: { isActive: false } }), 'turno abierto');
+
+  const producto1 = { tipo: 'catalogo', relacion: 'product', documentId: medicamento.documentId, cantidad: 1 };
+  const facturasDe = () => d(F).count({ filters: { customer: { documentId: cliente.documentId } } });
+  const antesFacturas = await facturasDe();
+  const antesNumero = await consecutivo();
+  await rechaza('cobro con tarjeta sin aprobación: falla a mitad', () => pos.cobrar({
+    turno: TU, cliente: cliente.documentId, renglones: [producto1],
+    pagos: [{ medio: 'card', valor: 42000, tipoTarjeta: 'debit', ultimos4: '1234' }],
+  }), 'aprobación');
+  await acepta('…y no deja factura ni consume consecutivo', async () => [await facturasDe(), await consecutivo()],
+    ([n, c]) => n === antesFacturas && c === antesNumero);
+
+  const venta = await acepta('venta en efectivo con cambio: emite y queda pagada', () => pos.cobrar({
+    turno: TU, cliente: cliente.documentId, renglones: [producto1], pagos: [{ medio: 'cash', valor: 42000, recibido: 50000 }],
+  }), (r) => !!r.factura.numero && r.factura.estadoPago === 'paid' && r.cambio === 8000 && r.pagos[0].cambio === 8000);
+  const FV = venta?.factura?.documentId;
+  await rechaza('pagar de más una factura ya pagada', () => d(P).create({ data: { invoice: FV, method: 'cash', amount: 1000, session: TU } }), 'saldo');
+  await rechaza('pago sin turno de caja', () => d(P).create({ data: { invoice: FV, method: 'cash', amount: 1000 } }), 'turno');
+  await rechaza('marcar a mano el estado de pago', () => d(F).update({ documentId: FV, data: { paymentState: 'unpaid' } }), 'lo calcula la caja');
+
+  const servicioL = { tipo: 'catalogo', relacion: 'service', documentId: servicio.documentId, cantidad: 1 };
+  const parcial = await acepta('venta con abono parcial por Nequi: emitida con saldo, a cartera', () => pos.cobrar({
+    turno: TU, cliente: cliente.documentId, renglones: [servicioL], pagos: [{ medio: 'transfer', valor: 20000, canal: 'nequi', referencia: 'M123SMOKE' }],
+  }), (r) => r.factura.estadoPago === 'partial' && r.factura.saldo === 39500);
+  const FP = parcial?.factura?.documentId;
+  await rechaza('transferencia sin referencia', () => pos.abonar({ turno: TU, factura: FP, pagos: [{ medio: 'transfer', valor: 1000, canal: 'nequi' }] }), 'referencia');
+  await rechaza('a consumidor final no se le deja saldo', () => pos.cobrar({ turno: TU, renglones: [servicioL], pagos: [{ medio: 'cash', valor: 1000 }] }), 'consumidor final');
+  await acepta('la cartera del cliente muestra el saldo', () => pos.cliente(cliente.documentId),
+    (c) => c.cartera.some((f) => f.documentId === FP && f.saldo === 39500) && c.saldoAFavor === 0);
+
+  await acepta('anticipo de 30.000 con tarjeta de crédito', () => pos.anticipo({
+    turno: TU, cliente: cliente.documentId, pagos: [{ medio: 'card', valor: 30000, tipoTarjeta: 'credit', ultimos4: '4321', aprobacion: 'A1SMOKE' }],
+  }), (r) => r.pagos.length === 1);
+  await rechaza('pagar con más saldo a favor del que hay', () => pos.abonar({ turno: TU, factura: FP, pagos: [{ medio: 'credit_balance', valor: 35000 }] }), 'a favor');
+  await acepta('abono con saldo a favor (30.000) + efectivo (9.500): queda pagada', () => pos.abonar({
+    turno: TU, factura: FP, pagos: [{ medio: 'credit_balance', valor: 30000 }, { medio: 'cash', valor: 9500 }],
+  }), (r) => r.factura.estadoPago === 'paid' && r.factura.saldo === 0);
+  await acepta('…y el saldo a favor vuelve a 0', () => pos.cliente(cliente.documentId), (c) => c.saldoAFavor === 0);
+
+  await rechaza('anular una factura pagada sin devolver', () => d(F).update({ documentId: FV, data: { state: 'voided', voidReason: 'Prueba SMOKE' } }), 'devolución');
+  await rechaza('devolver más de lo cobrado', () => pos.devolver({ turno: TU, factura: FV, valor: 50000, medio: 'cash', motivo: 'SMOKE' }), 'no se puede devolver');
+  await acepta('devolver en efectivo lo cobrado', () => pos.devolver({ turno: TU, factura: FV, valor: 42000, medio: 'cash', motivo: 'Producto vencido SMOKE' }),
+    (r) => r.factura.pagado === 0 && r.factura.estadoPago === 'unpaid');
+  await acepta('…y ahora sí se anula', () => d(F).update({ documentId: FV, data: { state: 'voided', voidReason: 'Devuelto SMOKE' } }), (r) => r.state === 'voided');
+
+  await rechaza('gasto sin concepto', () => d(M).create({ data: { session: TU, kind: 'expense', amount: 1000 } }), 'concepto');
+  await acepta('retiro (sangría) de 50.000', () => d(M).create({ data: { session: TU, kind: 'withdrawal', amount: 50000, concept: 'A la caja fuerte' } }), (r) => !!r.occurredAt);
+  await rechaza('retirar más efectivo del que hay', () => d(M).create({ data: { session: TU, kind: 'withdrawal', amount: 10000000, concept: 'x' } }), 'no se pueden sacar');
+
+  const pequeno = await pos.anticipo({ turno: TU, cliente: cliente.documentId, pagos: [{ medio: 'cash', valor: 5000 }] });
+  const pagoPequeno = pequeno.pagos[0].documentId;
+  await rechaza('editar el valor de un pago', () => d(P).update({ documentId: pagoPequeno, data: { amount: 1 } }), 'no se edita');
+  await rechaza('borrar un pago', () => d(P).delete({ documentId: pagoPequeno }), 'no se borra');
+  await acepta('reversar un pago del turno abierto', () => pos.reversar(pagoPequeno, 'Error de digitación SMOKE'), (r) => !!r);
+
+  // base 100.000 + venta 42.000 − devolución 42.000 + abono 9.500 − retiro 50.000 (el anticipo reversado no cuenta)
+  const esperadoCaja = 100000 + 42000 - 42000 + 9500 - 50000;
+  await acepta('efectivo esperado = base + cobros − devoluciones ± movimientos', () => pos.resumen(TU),
+    (r) => r.esperado === esperadoCaja && r.totales.porMedio.card === 30000 && r.totales.porMedio.transfer === 20000 && r.totales.porMedio.credit_balance === 30000);
+
+  const conteo = (pares) => pares.map(([denomination, quantity]) => ({ denomination, quantity, kind: denomination >= 2000 ? 'bill' : 'coin' }));
+  const faltante = conteo([[50000, 1], [5000, 1], [500, 1]]); // 55.500: faltan 4.000
+  await rechaza('cerrar con descuadre sin motivo', () => pos.cerrar(TU, { conteo: faltante }), 'descuadre');
+  await acepta('cerrar con el descuadre explicado: contado, esperado y diferencia', () => pos.cerrar(TU, { conteo: faltante, motivo: 'Faltante SMOKE' }),
+    (r) => r.estado === 'closed' && r.contado === 55500 && r.esperado === esperadoCaja && r.descuadre === -4000);
+  await rechaza('registrar en un turno cerrado', () => d(M).create({ data: { session: TU, kind: 'cash_in', amount: 1000 } }), 'ya se cerró');
+  await rechaza('reversar con el turno cerrado', () => pos.reversar(venta.pagos[0].documentId, 'Tarde SMOKE'), 'ya se cerró');
+  await rechaza('reabrir el turno', () => d(T).update({ documentId: TU, data: { state: 'open' } }), 'no cambia');
+  await acepta('la cartera general agrupa por cliente y tramo', () => pos.cartera({}), (c) => typeof c.tramos['0-30'] === 'number' && Array.isArray(c.clientes));
 
   console.log('\n--- filtro de archivados ---');
   await d('api::pet.pet').update({ documentId: mascota.documentId, data: { archivedAt: new Date().toISOString() } });

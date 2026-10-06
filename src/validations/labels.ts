@@ -83,6 +83,14 @@ async function cascadaDesdePerfil(strapi: Core.Strapi, profileDocumentId: string
     if (await refrescarEtiqueta(strapi, 'api::billing.invoice', factura.documentId)) n++;
   }
 
+  const pagos = await strapi.documents('api::cash.payment' as any).findMany({
+    filters: { customer: { documentId: customerId } } as any,
+    fields: ['documentId'] as any,
+  } as any);
+  for (const pago of pagos as any[]) {
+    if (await refrescarEtiqueta(strapi, 'api::cash.payment', pago.documentId)) n++;
+  }
+
   const mascotas = await strapi.documents('api::pet.pet').findMany({
     filters: { owner: { documentId: customerId }, ...includeArchived('api::pet.pet') } as any,
   });

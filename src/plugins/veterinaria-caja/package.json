@@ -1,0 +1,16 @@
+{
+  "name": "veterinaria-caja",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Punto de venta: cajas, turnos con base y arqueo, cobros por medio de pago, abonos, anticipos, devoluciones y cartera.",
+  "strapi": {
+    "name": "veterinaria-caja",
+    "displayName": "Punto de venta",
+    "description": "Caja de la clínica: abrir y cerrar turno, vender, cobrar y cuadrar.",
+    "kind": "plugin"
+  },
+  "exports": {
+    "./strapi-admin": { "source": "./admin/src/index.jsx", "default": "./admin/src/index.jsx" },
+    "./strapi-server": { "source": "./strapi-server.js", "default": "./strapi-server.js" }
+  }
+}

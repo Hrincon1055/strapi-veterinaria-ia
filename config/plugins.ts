@@ -131,6 +131,17 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   },
 
   /**
+   * Punto de venta: cajas, turnos con base y arqueo, cobros por medio de
+   * pago, abonos, anticipos, devoluciones y cartera. Se abre en otra pestaña
+   * desde el menú. Plugin local, en src/plugins/; la lógica está en
+   * `api::cash.pos` y las reglas en `src/validations/cash.ts`.
+   */
+  'veterinaria-caja': {
+    enabled: true,
+    resolve: './src/plugins/veterinaria-caja',
+  },
+
+  /**
    * Botón "CSV/Excel" en la lista del Content Manager. Sin restricciones el
    * plugin exporta cualquier colección a cualquier cuenta del panel, con
    * campos privados y hashes de contraseña en las relaciones: SOLO catálogos,

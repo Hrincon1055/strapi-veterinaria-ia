@@ -3,12 +3,12 @@ import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { Page, Layouts, BackButton } from '@strapi/strapi/admin';
 import {
   Flex, Typography, Table, Thead, Tbody, Tr, Th, Td, Button, IconButton, TextInput, Textarea, Field,
-  SingleSelect, SingleSelectOption, Loader, Alert, Link, Box, Grid,
+  Loader, Alert, Link, Box, Grid, LinkButton,
 } from '@strapi/design-system';
 import { Trash, Plus, Eye, Download, Pencil } from '@strapi/icons';
 import { usePermisos, useFactura, useBusquedas } from '../../application/useFacturacion';
 import {
-  dinero, fecha, fechaHora, cantidad, iva, ESTADO_FACTURA, ESTADO_PAGO, TIPO_RENGLON, UNIDAD,
+  dinero, fecha, fechaHora, cantidad, iva, ESTADO_FACTURA, ESTADO_PAGO, TIPO_RENGLON, UNIDAD, MEDIO_PAGO,
 } from '../../domain/formato';
 import { Insignia, Tarjeta, Dato, Totales, RUTA } from '../components/comunes';
 import { ModalEmitir, ModalAnular, ModalBorrar, ModalAgregar, ModalPrecio } from '../components/modales';
@@ -98,13 +98,13 @@ export function FacturaPage() {
                     {factura.resolucion && (
                       <Dato etiqueta="Resolución DIAN">{factura.resolucion.numero}</Dato>
                     )}
-                    {emitida && permisos.puedeEmitir && (
-                      <Field.Root name="pago">
-                        <Field.Label>Registrar pago</Field.Label>
-                        <SingleSelect value={factura.pago} onChange={(v) => f.registrarPago(v)} disabled={f.ocupado}>
-                          {Object.entries(ESTADO_PAGO).map(([k, v]) => <SingleSelectOption key={k} value={k}>{v.rotulo}</SingleSelectOption>)}
-                        </SingleSelect>
-                      </Field.Root>
+                    {!borrador && <Dato etiqueta="Pagado">{dinero(factura.pagado, factura.moneda)}</Dato>}
+                    {!borrador && factura.saldo > 0 && <Dato etiqueta="Saldo">{dinero(factura.saldo, factura.moneda)}</Dato>}
+                    {/* El dinero entra solo por la caja (5.7, C8): el punto de venta, en otra pestaña. */}
+                    {emitida && factura.saldo > 0 && permisos.puedeCobrar && (
+                      <LinkButton href={`/admin/plugins/veterinaria-caja/pos?factura=${factura.documentId}`} target="_blank" rel="noopener" variant="secondary" size="S">
+                        Cobrar en caja
+                      </LinkButton>
                     )}
                   </Flex>
                 </Tarjeta>
@@ -219,6 +219,35 @@ export function FacturaPage() {
                 </Box>
               )}
             </Tarjeta>
+
+            {!borrador && (
+              <Tarjeta titulo="Pagos">
+                {(factura.pagos ?? []).length === 0 ? (
+                  <Typography textColor="neutral600">Sin pagos. Se cobra en la caja (punto de venta).</Typography>
+                ) : (
+                  <Table colCount={6} rowCount={factura.pagos.length + 1}>
+                    <Thead>
+                      <Tr>{['Fecha', 'Tipo', 'Medio', 'Valor', 'Caja', 'Estado'].map((c) => <Th key={c}><Typography variant="sigma">{c}</Typography></Th>)}</Tr>
+                    </Thead>
+                    <Tbody>
+                      {factura.pagos.map((p) => (
+                        <Tr key={p.documentId}>
+                          <Td><Typography>{fechaHora(p.fecha)}</Typography></Td>
+                          <Td><Typography>{p.tipo === 'refund' ? 'Devolución' : 'Pago'}</Typography></Td>
+                          <Td>
+                            <Typography>{MEDIO_PAGO[p.medio] ?? p.medio}</Typography>
+                            {p.referencia && <Typography variant="pi" textColor="neutral600"> · {p.referencia}</Typography>}
+                          </Td>
+                          <Td><Typography>{p.tipo === 'refund' ? '−' : ''}{dinero(p.valor, factura.moneda)}</Typography></Td>
+                          <Td><Typography>{[p.caja, p.cajero].filter(Boolean).join(' · ') || '—'}</Typography></Td>
+                          <Td><Typography textColor={p.estado === 'reversed' ? 'danger600' : undefined}>{p.estado === 'reversed' ? `Reversado: ${p.motivoReverso ?? ''}` : 'Registrado'}</Typography></Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                )}
+              </Tarjeta>
+            )}
 
             <Tarjeta titulo="Observaciones">
               {editable ? (

@@ -39,6 +39,7 @@
     "discountTotal": { "type": "integer", "default": 0, "min": 0 },
     "taxTotal": { "type": "integer", "default": 0, "min": 0 },
     "amount": { "type": "integer", "required": true, "default": 0, "min": 0 },
+    "paidAmount": { "type": "integer", "default": 0 },
     "currency": { "type": "string", "required": true, "default": "COP", "regex": "^[A-Z]{3}$" },
     "notes": { "type": "text" },
 

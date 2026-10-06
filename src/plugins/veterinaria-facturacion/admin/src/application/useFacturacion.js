@@ -130,7 +130,6 @@ export function useFactura(documentId) {
     agregarConceptos: (conceptos) => accion(() => api.agregar(id, { conceptos }), 'Conceptos añadidos', 'No se pudieron añadir'),
     agregarDirecto: (directo) => accion(() => api.agregar(id, { directo }), 'Concepto añadido', 'No se pudo añadir'),
     emitir: (venceEl) => accion(() => api.emitir(id, { venceEl }), 'Factura emitida', 'No se pudo emitir'),
-    registrarPago: (estado) => accion(() => api.pago(id, estado), 'Pago registrado', 'No se pudo registrar el pago'),
     anular: (motivo) => accion(() => api.anular(id, motivo), 'Factura anulada; sus conceptos vuelven a estar pendientes', 'No se pudo anular'),
     borrar: async () => {
       try {

@@ -38,6 +38,10 @@ const soloFecha = (v: any): string | null => (v ? String(v).slice(0, 10) : null)
 const fechaHora = (v: any): string | null =>
   v ? `${String(v).slice(0, 10)} ${String(v).slice(11, 16)}`.trim() : null;
 
+const MEDIOS: Record<string, string> = {
+  cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit_balance: 'Saldo a favor', other: 'Otro',
+};
+
 export type LabelBuilder = {
   /** Relaciones que hay que poblar para construir la etiqueta. */
   populate: any;
@@ -138,6 +142,35 @@ export const LABEL_BUILDERS: Record<string, LabelBuilder> = {
           e.state !== 'active' ? e.state : null,
         ]),
         e.hospitalization?.pet?.name,
+      ], ' — '),
+  },
+
+  // "Caja recepción · 2026-10-06 08:00 · Diana Vargas": el turno se elige
+  // en los pagos y movimientos por caja, día y persona.
+  'api::cash.cash-session': {
+    populate: { register: true, responsible: true },
+    build: (e) =>
+      unir([
+        e.register?.name,
+        fechaHora(e.openedAt),
+        unir([e.responsible?.firstname, e.responsible?.lastname], ' ') || null,
+        e.state === 'closed' ? 'cerrado' : null,
+      ]),
+  },
+
+  // "FE134 · Efectivo · $ 50.000 — Carlos Betancur".
+  'api::cash.payment': {
+    populate: { invoice: true, customer: { populate: ['profile'] } },
+    build: (e) =>
+      unir([
+        unir([
+          e.invoice?.fullNumber ?? (e.purpose === 'advance' ? 'Anticipo' : null),
+          e.kind === 'refund' ? 'Devolución' : null,
+          MEDIOS[e.method] ?? e.method,
+          `$ ${Number(e.amount ?? 0).toLocaleString('es-CO')}`,
+          e.state === 'reversed' ? 'reversado' : null,
+        ]),
+        nombrePersona(e.customer?.profile),
       ], ' — '),
   },
 

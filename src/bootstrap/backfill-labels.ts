@@ -25,6 +25,8 @@ const ORDEN = [
   'api::catalog.product',
   'api::hospitalization.hospitalization',
   'api::hospitalization.treatment-order',
+  'api::cash.cash-session',
+  'api::cash.payment',
 
   'api::notification.notification-recipient',
   'api::marketing.campaign-metric',

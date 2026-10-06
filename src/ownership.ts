@@ -68,6 +68,8 @@ export const OWNERSHIP_RULES: Record<string, OwnershipRule> = {
   'api::hospitalization.hospitalization': porMascota(),
   'api::billing.subscription': porCliente(),
   'api::billing.invoice': porCliente(),
+  // Sus abonos, anticipos y devoluciones (sección 5.7).
+  'api::cash.payment': porCliente(),
   'api::billing.invoice-item': {
     populate: { invoice: { populate: ['customer'] } },
     filter: (o) => ({ invoice: { customer: { documentId: o.customerId } } }),

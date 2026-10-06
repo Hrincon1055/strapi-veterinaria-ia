@@ -244,6 +244,15 @@ export default (strapi: Core.Strapi): void => {
 
     // Los totales son del servidor (ver `recalcularFactura`).
     for (const t of TOTALES) delete data[t];
+    // Lo pagado también (C8, sección 5.7): lo calcula `recalcularPagos` a
+    // partir de los pagos de la caja. El panel reenvía estos campos sin
+    // cambios al guardar; un cambio de verdad se rechaza en vez de perderse.
+    for (const k of ['paymentState', 'paidAmount']) {
+      if (ctx.action === 'update' && k in data && cambia(k, data[k], actual)) {
+        throw new ValidationError('El estado de pago lo calcula la caja: registra el pago (o la devolución) en el punto de venta');
+      }
+      delete data[k];
+    }
     // Los renglones se añaden creando `invoice-item`, que es quien valida cada
     // concepto. Conectarlos desde aquí se saltaría esa validación.
     if ('items' in data) {
@@ -323,6 +332,12 @@ export default (strapi: Core.Strapi): void => {
       if (effective<string>(data, actual, 'dataicoInvoiceId') && estadoActual === 'issued') {
         throw new ValidationError(
           `${nombreFactura(actual)} ya se envió a la DIAN: no se anula, se corrige con una nota crédito`
+        );
+      }
+      // Lo cobrado no desaparece al anular (C10): se devuelve o pasa a saldo a favor antes.
+      if (Number(actual?.paidAmount ?? 0) > 0) {
+        throw new ValidationError(
+          `${nombreFactura(actual)} tiene $ ${Number(actual.paidAmount).toLocaleString('es-CO')} cobrados: registra la devolución (o pásalos a saldo a favor) en la caja antes de anularla`
         );
       }
       const motivo = effective<string>(data, actual, 'voidReason');

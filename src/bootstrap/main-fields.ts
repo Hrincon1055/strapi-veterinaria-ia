@@ -38,6 +38,10 @@ const MAIN_FIELDS: Record<string, string> = {
   'api::hospitalization.treatment-order': 'searchLabel',
   // El nombre de la jaula es único ("Jaula 3", "UCI 1"): ya identifica.
   'api::hospitalization.cage': 'name',
+  // Caja (sección 5.7).
+  'api::cash.cash-register': 'name',
+  'api::cash.cash-session': 'searchLabel',
+  'api::cash.payment': 'searchLabel',
 
   /**
    * Las cuentas se identifican por su correo, no por el `username`.
@@ -107,7 +111,7 @@ const SOLO_LECTURA_COMPONENTES: Record<string, string[]> = {
  */
 const SOLO_LECTURA: Record<string, string[]> = {
   'api::billing.invoice': [
-    'subtotal', 'discountTotal', 'taxTotal', 'amount',
+    'subtotal', 'discountTotal', 'taxTotal', 'amount', 'paidAmount', 'paymentState',
     'prefix', 'number', 'fullNumber', 'resolutionNumber', 'resolutionDate',
     'resolutionRangeFrom', 'resolutionRangeTo', 'resolutionValidUntil',
     'issuedAt', 'voidedAt', 'buyer', 'issuerSnapshot',
@@ -119,6 +123,10 @@ const SOLO_LECTURA: Record<string, string[]> = {
   'api::hospitalization.treatment-order': ['prescribedBy'],
   'api::hospitalization.evolution-entry': ['recordedBy'],
   'api::hospitalization.medication-administration': ['administeredBy', 'lineKey'],
+  // Caja (5.7): lo calcula o lo pone el servidor (`validations/cash.ts`).
+  'api::cash.cash-session': ['responsible', 'closedBy', 'closedAt', 'countedCash', 'expectedCash', 'difference', 'totals'],
+  'api::cash.payment': ['receivedBy', 'changeAmount', 'reversedAt'],
+  'api::cash.cash-movement': ['performedBy'],
 };
 
 /**

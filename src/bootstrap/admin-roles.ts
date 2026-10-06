@@ -2,7 +2,7 @@ import type { Core } from '@strapi/strapi';
 
 /**
  * Roles del PANEL para el staff: Recepción, Veterinario, Auxiliar de
- * hospitalización y Administrador de clínica. El staff trabaja en el panel con cuentas `admin::user`; el rol
+ * hospitalización, Caja y Administrador de clínica. El staff trabaja en el panel con cuentas `admin::user`; el rol
  * Cliente sigue en users-permissions (ver `roles.ts`).
  *
  * Reparten lo mismo que repartían los roles de users-permissions que
@@ -173,15 +173,47 @@ const auxiliar: Concesion[] = [
   },
 ];
 
+/**
+ * Caja (plugin `veterinaria-caja`, sección 5.7). Recepción y el rol Caja
+ * abren su turno, venden y cobran; devolver dinero y supervisar todas las
+ * cajas es de la administración.
+ */
+const CAJA = {
+  operar: 'plugin::veterinaria-caja.caja.operar',
+  devolver: 'plugin::veterinaria-caja.caja.devolver',
+  supervisar: 'plugin::veterinaria-caja.caja.supervisar',
+};
+
+const CAJA_LECTURA = ['api::cash.payment', 'api::cash.cash-session', 'api::cash.cash-movement', 'api::cash.cash-register'];
+
+/**
+ * Rol Caja (C1): lee lo que necesita para vender y cobrar, y crea la ficha
+ * del comprador que pide la factura a su nombre (C5). El resto lo escribe el
+ * punto de venta, cuyo servidor vuelve a comprobar el permiso.
+ */
+const caja: Concesion[] = [
+  {
+    subjects: [
+      ...CATALOGOS,
+      'api::identity.profile', 'api::shared.contact', 'api::customer.customer', 'api::pet.pet',
+      'api::billing.invoice', 'api::billing.invoice-item', 'api::clinic.clinic',
+      ...CAJA_LECTURA,
+    ],
+    verbos: READ,
+  },
+  { subjects: ['api::identity.profile', 'api::shared.contact', 'api::customer.customer'], verbos: ['create'] },
+];
+
 type RolPanel = { name: string; description: string; concesiones: Concesion[]; otras: string[] };
 
 export const ROLES_PANEL: RolPanel[] = [
   {
     name: 'Recepción',
     description: 'Front desk: agenda, clientes, mascotas, facturación y viajes.',
-    concesiones: recepcion,
+    concesiones: [...recepcion, { subjects: CAJA_LECTURA, verbos: READ }],
     // Recepción mira la agenda de todos y es quien reserva en los huecos.
-    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar, FACTURACION.ver, FACTURACION.preparar, FACTURACION.emitir, HOSPITALIZACION.ver],
+    // También abre caja y cobra (C1).
+    otras: [...COMUNES_PANEL, AGENDA.todas, AGENDA.agendar, FACTURACION.ver, FACTURACION.preparar, FACTURACION.emitir, HOSPITALIZACION.ver, CAJA.operar],
   },
   {
     name: 'Veterinario',
@@ -199,10 +231,21 @@ export const ROLES_PANEL: RolPanel[] = [
     otras: ['admin::users.read', HOSPITALIZACION.ver, HOSPITALIZACION.registrar],
   },
   {
+    name: 'Caja',
+    description: 'Punto de venta: abre y cierra su turno, vende, cobra, registra abonos, anticipos y movimientos de efectivo.',
+    concesiones: caja,
+    // Biblioteca de medios: el soporte de un gasto se adjunta con foto.
+    otras: [...COMUNES_PANEL, FACTURACION.ver, CAJA.operar],
+  },
+  {
     name: 'Administrador de clínica',
     description: 'Todo lo anterior más catálogos, campañas, notificaciones y datos de la clínica.',
-    concesiones: administracion,
-    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA, ...Object.values(HOSPITALIZACION)],
+    concesiones: [
+      ...administracion,
+      { subjects: CAJA_LECTURA, verbos: READ },
+      { subjects: ['api::cash.cash-register'], verbos: CRUD },
+    ],
+    otras: [...COMUNES_PANEL, ...Object.values(AGENDA), ...Object.values(FACTURACION), HISTORIA, ...Object.values(HOSPITALIZACION), ...Object.values(CAJA)],
   },
 ];
 

@@ -31,7 +31,7 @@ const ADMINISTRACION = {
   },
 };
 
-async function crearFacturas(app, { password }) {
+async function crearFacturas(app, { password, turno, pagadaEl }) {
   await cuentaDelPanel(app, { ...ADMINISTRACION, password });
 
   const existentes = await app.documents('api::billing.invoice').findMany({
@@ -66,7 +66,15 @@ async function crearFacturas(app, { password }) {
 
   const pagada = await borrador(0, 'Emitida y pagada.');
   const emitida = await fact.emitir(pagada.documentId);
-  await app.documents('api::billing.invoice').update({ documentId: pagada.documentId, data: { paymentState: 'paid' } });
+  // Se paga en la caja (5.7): el estado de pago lo calcula el servidor.
+  if (!turno) throw new Error('La factura pagada se cobra en un turno de caja (demo-caja.js)');
+  await app.documents('api::cash.payment').create({
+    data: {
+      kind: 'payment', purpose: 'invoice', invoice: pagada.documentId, method: 'cash',
+      amount: Number(emitida.amount), receivedAmount: Math.ceil(Number(emitida.amount) / 50000) * 50000,
+      session: turno, paidAt: pagadaEl ?? new Date().toISOString(),
+    },
+  });
 
   const anulada = await borrador(1, 'Emitida y anulada.');
   const emitidaAnulada = await fact.emitir(anulada.documentId);
@@ -94,6 +102,8 @@ async function borrarFacturas(app) {
   let n = 0;
   if (facturas.length > 0) {
     const ids = facturas.map((f) => f.id);
+    // Sus pagos primero (no se borran por el Document Service).
+    n += (await app.db.query('api::cash.payment').deleteMany({ where: { invoice: { id: { $in: ids } } } })).count;
     n += (await app.db.query('api::billing.invoice-item').deleteMany({ where: { invoice: { id: { $in: ids } } } })).count;
     n += (await app.db.query('api::billing.invoice').deleteMany({ where: { id: { $in: ids } } })).count;
   }

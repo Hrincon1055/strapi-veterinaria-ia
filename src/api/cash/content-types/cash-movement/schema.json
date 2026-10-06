@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cash_movements",
+  "info": {
+    "singularName": "cash-movement",
+    "pluralName": "cash-movements",
+    "displayName": "Movimiento de caja",
+    "description": "Efectivo que entra o sale de la caja sin ser una venta: sencillo, retiro (sangría) o gasto menor."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "session": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-session" },
+    "kind": { "type": "enumeration", "enum": ["cash_in", "withdrawal", "expense"], "required": true },
+    "amount": { "type": "integer", "required": true, "min": 1 },
+    "concept": { "type": "string", "maxLength": 200 },
+    "reference": { "type": "string", "maxLength": 60 },
+    "receipt": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "occurredAt": { "type": "datetime" }
+  }
+}

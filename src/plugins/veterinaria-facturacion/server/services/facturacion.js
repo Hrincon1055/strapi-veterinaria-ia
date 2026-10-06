@@ -100,6 +100,10 @@ module.exports = ({ strapi }) => {
         : null,
       suscripcion: f.subscription ? { documentId: f.subscription.documentId, etiqueta: f.subscription.searchLabel } : null,
       renglones: (f.items ?? []).map(aRenglon),
+      // Lo pagado lo calcula la caja a partir de los pagos (5.7, C8).
+      pagado: f.paidAmount ?? 0,
+      saldo: Math.max(0, (f.amount ?? 0) - (f.paidAmount ?? 0)),
+      pagos: await strapi.service('api::cash.pos').pagosDeFactura(f.documentId),
     };
   }
 
@@ -239,11 +243,6 @@ module.exports = ({ strapi }) => {
 
     async emitir(id, { venceEl }) {
       await invoicing().emitir(id, { dueOn: venceEl || undefined });
-      return detalle(id);
-    },
-
-    async pago(id, estado) {
-      await strapi.documents(FACTURA).update({ documentId: id, data: { paymentState: estado } });
       return detalle(id);
     },
 

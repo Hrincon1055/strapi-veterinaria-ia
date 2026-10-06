@@ -108,7 +108,8 @@
       "subtotal": "Subtotal",
       "discountTotal": "Descuentos",
       "taxTotal": "IVA",
-      "amount": "Total"
+      "amount": "Total",
+      "paidAmount": "Pagado (lo calcula la caja)"
     },
     "api::billing.plan": {
       "priceMonthly": "Precio mensual",
@@ -656,6 +657,59 @@
       "cage": "Jaula",
       "fromAt": "Desde",
       "toAt": "Hasta"
+    },
+    "api::cash.cash-register": {
+      "location": "Ubicación",
+      "defaultOpeningFloat": "Base sugerida",
+      "operators": "Responsables autorizados"
+    },
+    "api::cash.cash-session": {
+      "register": "Caja",
+      "responsible": "Responsable",
+      "openedAt": "Apertura",
+      "openingFloat": "Base inicial",
+      "openingCount": "Conteo de apertura",
+      "closedAt": "Cierre",
+      "closedBy": "Cerrado por",
+      "closingCount": "Arqueo de cierre",
+      "countedCash": "Efectivo contado",
+      "expectedCash": "Efectivo esperado",
+      "difference": "Descuadre",
+      "differenceReason": "Motivo del descuadre",
+      "totals": "Totales del turno"
+    },
+    "api::cash.payment": {
+      "kind": "Tipo",
+      "purpose": "Destino",
+      "invoice": "Factura",
+      "session": "Turno de caja",
+      "method": "Medio de pago",
+      "receivedAmount": "Recibido",
+      "changeAmount": "Cambio",
+      "cardType": "Tipo de tarjeta",
+      "cardBrand": "Franquicia",
+      "cardLast4": "Últimos 4 dígitos",
+      "authorizationCode": "Aprobación",
+      "transferChannel": "Canal de la transferencia",
+      "reference": "Referencia",
+      "paidAt": "Fecha del pago",
+      "receivedBy": "Recibido por",
+      "reversalReason": "Motivo del reverso",
+      "reversedAt": "Reversado el"
+    },
+    "api::cash.cash-movement": {
+      "session": "Turno de caja",
+      "kind": "Tipo",
+      "concept": "Concepto",
+      "reference": "Referencia",
+      "receipt": "Soporte",
+      "performedBy": "Registrado por",
+      "occurredAt": "Fecha"
+    },
+    "cash.denomination-count": {
+      "denomination": "Denominación",
+      "kind": "Billete o moneda",
+      "quantity": "Cantidad"
     }
   }
 }

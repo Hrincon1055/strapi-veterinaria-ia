@@ -57,6 +57,7 @@ src/
     clinic/content-types/clinic/schema.json          ← single type
     catalog/content-types/{product,product-category,supplier}/schema.json
     hospitalization/content-types/{cage,hospitalization,treatment-order,evolution-entry,medication-administration}/schema.json
+    cash/content-types/{cash-register,cash-session,payment,cash-movement}/schema.json
   components/
     clinic/opening-hours.json
     shared/address.json
@@ -70,12 +71,13 @@ src/
     marketing/{rule-species,rule-last-visit,rule-subscription,rule-vaccination-due,rule-city,rule-referral}.json
     documents/document-file.json
     hospitalization/cage-stay.json
+    cash/denomination-count.json
   extensions/users-permissions/content-types/user/schema.json
   index.(ts|js)            ← middlewares de validación (sección 8)
 database/migrations/        ← índices (sección 9)
 ```
 
-Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **43 content types (uno de ellos single type), 41 componentes, 1 extensión**.
+Cada content type necesita además sus archivos estándar de `controllers`, `routes` y `services` generados con las factorías de Strapi (`factories.createCoreController`, `createCoreRouter`, `createCoreService`). Total: **47 content types (uno de ellos single type), 42 componentes, 1 extensión**.
 
 ## 4. Orden de implementación
 
@@ -84,7 +86,7 @@ Cada content type necesita además sus archivos estándar de `controllers`, `rou
 3. Personas: `profile`, extensión de `user`, `contact`, `verification-code`, `customer`, `customer-note`.
 4. Mascotas y clínica: `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`.
 5. Facturación: `subscription`, `benefit-usage`, `invoice`, `invoice-item`.
-6. Viajes, documentos, marketing, notificaciones, hospitalización (`cage`, `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`).
+6. Viajes, documentos, marketing, notificaciones, hospitalización (`cage`, `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`), caja (`cash-register`, `cash-session`, `payment`, `cash-movement`).
 7. Middlewares de validación, migración de índices, roles y permisos, seed de catálogos.
 8. Arrancar Strapi y verificar los criterios de aceptación (sección 11).
 
@@ -1809,6 +1811,49 @@ Tramo de la hospitalización en una jaula. Lo escribe el servidor.
 }
 ```
 
+## 5.7 Caja y pagos: diseño y decisiones
+
+Punto de venta (plugin `veterinaria-caja`, se abre en una pestaña aparte) sobre el dominio `src/api/cash/`: **caja → turno (base, ventas, movimientos, arqueo) → pagos por medio**. Antes, la factura solo tenía `paymentState`, cambiado a mano.
+
+Decisiones (aprobadas 2026-10-06):
+
+| # | Decisión |
+| --- | --- |
+| C1 | Rol del panel **Caja** (nombre de la función, como Recepción). Recepción también abre caja y vende. |
+| C2 | Medios: efectivo (con cambio), tarjeta débito/crédito (franquicia, últimos 4, aprobación), transferencia / Nequi / Daviplata (referencia) y saldo a favor. `other` solo para pagos migrados. |
+| C3 | El POS vende el catálogo, cobra lo pendiente del cliente (consultas, hospitalizaciones) y abona a facturas emitidas. |
+| C4 | Varias cajas; cierre con arqueo por denominación; un descuadre exige motivo. |
+| C5 | Venta sin cliente registrado: cliente **Consumidor final** (NIT 222222222222), sembrado al arrancar. |
+| C6 | Cobrar = emitir (consecutivo DIAN, D4) y registrar los pagos en una transacción; si queda saldo, la factura sale con pago parcial y pasa a cartera. |
+| C7 | Movimientos del turno: ingreso de efectivo, retiro (sangría) y gasto menor. Las devoluciones son pagos de salida (C10). |
+| C8 | El dinero entra solo por la caja: `paidAmount` y `paymentState` los calcula el servidor a partir de los pagos; nadie los escribe a mano. |
+| C9 | Saldo a favor sin tabla propia: anticipo = pago sin factura (`purpose: advance`); usarlo = pago `credit_balance`. Saldo = anticipos − usos − devoluciones de anticipo. |
+| C10 | Devolución = pago con `kind: refund`, exige el permiso `caja.devolver`. Una factura con `paidAmount > 0` no se anula sin devolver antes lo cobrado. |
+| C11 | Un pago no se borra ni se edita: se reversa con motivo mientras su turno siga abierto. |
+| C12 | El enlace del menú abre la ruta del POS en otra pestaña; la ruta se pinta a pantalla completa sobre el panel (misma sesión). |
+
+**Efectivo esperado** de un turno = base + pagos en efectivo (neto de cambio) − devoluciones en efectivo + ingresos − retiros − gastos. `countedCash` sale del conteo por denominación; `difference` = contado − esperado. `totals` guarda, al cerrar, los totales por medio y por tipo.
+
+**Cartera** = facturas emitidas con `amount − paidAmount > 0`, por cliente y por antigüedad (0–30, 31–60, 61–90, > 90 días desde `dueOn` o `issuedAt`).
+
+Servicio `api::cash.pos`: `abrir`, `cerrar`, `catalogo`, `cliente`, `cobrar` (borrador + emisión + pagos en una transacción: si algo falla no queda factura, pago ni consecutivo consumido), `abonar`, `anticipo`, `devolver`, `reversar`, `movimiento`, `cartera`, `resumen`.
+
+### `src/components/cash/denomination-count.json`
+
+Cuántos billetes o monedas de una denominación hay en la caja.
+```json
+{
+  "collectionName": "components_cash_denomination_counts",
+  "info": { "displayName": "Conteo por denominación", "icon": "hashtag", "description": "Cuántos billetes o monedas de una denominación hay en la caja al abrir o al cerrar." },
+  "options": {},
+  "attributes": {
+    "denomination": { "type": "integer", "required": true, "min": 1 },
+    "kind": { "type": "enumeration", "enum": ["bill", "coin"], "default": "bill", "required": true },
+    "quantity": { "type": "integer", "required": true, "default": 0, "min": 0 }
+  }
+}
+```
+
 ## 6. Extensión del usuario nativo
 
 `src/extensions/users-permissions/content-types/user/schema.json` **reemplaza** el esquema nativo. Copia el `schema.json` del user que trae la versión instalada de `@strapi/plugin-users-permissions` (sin quitar ningún atributo nativo: `username`, `email`, `provider`, `password`, `resetPasswordToken`, `confirmationToken`, `confirmed`, `blocked`, `role`) y añade solo:
@@ -2336,6 +2381,7 @@ El cliente de la cita se obtiene por `pet.owner` (no hay relación directa).
     "discountTotal": { "type": "integer", "default": 0, "min": 0 },
     "taxTotal": { "type": "integer", "default": 0, "min": 0 },
     "amount": { "type": "integer", "required": true, "default": 0, "min": 0 },
+    "paidAmount": { "type": "integer", "default": 0 },
     "currency": { "type": "string", "required": true, "default": "COP", "regex": "^[A-Z]{3}$" },
     "notes": { "type": "text" },
 
@@ -3074,6 +3120,137 @@ Mismos rangos y valores que `clinical.physical-exam`, más dolor (0–10), estad
 }
 ```
 
+### 7.14 Cash
+
+Ver sección 5.7. Lo usa el staff desde el punto de venta; el cliente solo lee sus pagos.
+
+#### `api::cash.cash-register`
+
+Catálogo de la administración. Main field `name`. `operators` vacía = la abre cualquiera con `caja.operar`.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "cash_registers",
+  "info": {
+    "singularName": "cash-register",
+    "pluralName": "cash-registers",
+    "displayName": "Caja",
+    "description": "Caja física del punto de venta. Cada apertura es un turno; operators limita quién puede abrirla."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "name": { "type": "string", "required": true, "unique": true, "maxLength": 80 },
+    "location": { "type": "string", "maxLength": 120 },
+    "defaultOpeningFloat": { "type": "integer", "default": 0, "min": 0 },
+    "operators": { "type": "relation", "relation": "manyToMany", "target": "admin::user" },
+    "isActive": { "type": "boolean", "default": true }
+  }
+}
+```
+
+#### `api::cash.cash-session`
+
+Main field `searchLabel` (caja · apertura · responsable). `responsible`, `closedBy`, `countedCash`, `expectedCash`, `difference` y `totals` los pone el servidor.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "cash_sessions",
+  "info": {
+    "singularName": "cash-session",
+    "pluralName": "cash-sessions",
+    "displayName": "Turno de caja",
+    "description": "Desde que se abre la caja con su base hasta el arqueo de cierre. Esperado, contado y descuadre los calcula el servidor."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "register": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-register" },
+    "responsible": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "openedAt": { "type": "datetime" },
+    "openingFloat": { "type": "integer", "default": 0, "min": 0 },
+    "openingCount": { "type": "component", "repeatable": true, "component": "cash.denomination-count" },
+    "state": { "type": "enumeration", "enum": ["open", "closed"], "default": "open", "required": true },
+    "closedAt": { "type": "datetime" },
+    "closedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "closingCount": { "type": "component", "repeatable": true, "component": "cash.denomination-count" },
+    "countedCash": { "type": "integer", "min": 0 },
+    "expectedCash": { "type": "integer" },
+    "difference": { "type": "integer" },
+    "differenceReason": { "type": "text" },
+    "totals": { "type": "json" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+
+#### `api::cash.payment`
+
+Main field `searchLabel` (factura o "Anticipo" · medio · valor). `receivedBy`, `changeAmount` y `paidAt` los pone el servidor.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "Pago",
+    "description": "Dinero que entra (pago o anticipo) o sale (devolución) por una caja, con su medio. No se borra ni se edita: se reversa."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "kind": { "type": "enumeration", "enum": ["payment", "refund"], "default": "payment", "required": true },
+    "purpose": { "type": "enumeration", "enum": ["invoice", "advance"], "default": "invoice", "required": true },
+    "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice" },
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
+    "session": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-session" },
+    "method": { "type": "enumeration", "enum": ["cash", "card", "transfer", "credit_balance", "other"], "required": true },
+    "amount": { "type": "integer", "required": true, "min": 1 },
+    "receivedAmount": { "type": "integer", "min": 0 },
+    "changeAmount": { "type": "integer", "default": 0, "min": 0 },
+    "cardType": { "type": "enumeration", "enum": ["debit", "credit"] },
+    "cardBrand": { "type": "string", "maxLength": 30 },
+    "cardLast4": { "type": "string", "maxLength": 4, "regex": "^[0-9]{4}$" },
+    "authorizationCode": { "type": "string", "maxLength": 30 },
+    "transferChannel": { "type": "enumeration", "enum": ["bank", "nequi", "daviplata", "other"] },
+    "reference": { "type": "string", "maxLength": 60 },
+    "paidAt": { "type": "datetime" },
+    "receivedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "state": { "type": "enumeration", "enum": ["posted", "reversed"], "default": "posted", "required": true },
+    "reversalReason": { "type": "text" },
+    "reversedAt": { "type": "datetime" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}
+```
+
+#### `api::cash.cash-movement`
+
+`performedBy` y `occurredAt` los pone el servidor.
+```json
+{
+  "kind": "collectionType",
+  "collectionName": "cash_movements",
+  "info": {
+    "singularName": "cash-movement",
+    "pluralName": "cash-movements",
+    "displayName": "Movimiento de caja",
+    "description": "Efectivo que entra o sale de la caja sin ser una venta: sencillo, retiro (sangría) o gasto menor."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "session": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-session" },
+    "kind": { "type": "enumeration", "enum": ["cash_in", "withdrawal", "expense"], "required": true },
+    "amount": { "type": "integer", "required": true, "min": 1 },
+    "concept": { "type": "string", "maxLength": 200 },
+    "reference": { "type": "string", "maxLength": 60 },
+    "receipt": { "type": "media", "multiple": false, "allowedTypes": ["images", "files"] },
+    "performedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "occurredAt": { "type": "datetime" }
+  }
+}
+```
+
 ## 8. Validaciones de negocio (middleware del Document Service)
 
 En Strapi 5 las relaciones viven en tablas de enlace (`*_lnk`), por lo que **ninguna regla que combine una relación con otro campo puede ser un índice de base de datos**. Implementa estas reglas en `src/index.(ts|js)` → `register()` con `strapi.documents.use(...)`, lanzando `errors.ValidationError` de `@strapi/utils`. Aplican a las acciones `create` y `update` salvo que se indique otra cosa.
@@ -3141,6 +3318,9 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::hospitalization.evolution-entry` | `hospitalization` |
 | `api::hospitalization.medication-administration` | `hospitalization`, `product` (se copia de la orden si la hay) |
 | componente `hospitalization.cage-stay` | `cage` (lo escribe el servidor) |
+| `api::cash.cash-session` | `register` |
+| `api::cash.payment` | `customer`, `session` (salvo los migrados, `method: other`) |
+| `api::cash.cash-movement` | `session` |
 
 ### Unicidad compuesta
 
@@ -3163,6 +3343,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | componente `documents.document-file` | máximo un `final_signed_pdf` por documento |
 | `api::hospitalization.hospitalization` | una sola `active` por mascota y una sola `active` por jaula |
 | `api::hospitalization.medication-administration` | como mucho una `given` por `(order, scheduledFor)` (H6) |
+| `api::cash.cash-session` | como mucho un turno `open` por caja y por responsable |
 
 ### Reglas condicionales
 
@@ -3182,7 +3363,7 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::catalog.supplier` | si `documentType = nit`, `verificationDigit` debe cuadrar con el módulo 11 de la DIAN |
 | `api::billing.subscription` | `endOn` > `startOn`; `pet.owner` = `customer` |
 | `api::billing.benefit-usage` | la suscripción debe estar `active`; `benefit.plan` = `subscription.plan`; no superar `quantityPerYear` en el año de vigencia |
-| `api::billing.invoice` | nace en `draft`; transiciones `draft → issued/dian_error`, `issued ↔ dian_error`, `issued/dian_error → voided` (con `voidReason`); fuera de borrador solo cambian `state`, `paymentState`, `dianState`, `pdfUrl`, `xmlUrl`, `dataicoInvoiceId`, `voidedAt`, `voidReason`, `searchLabel`, `archivedAt` (se compara con lo guardado: reenviar el formulario sin cambios no cuenta); numeración, resolución, `buyer`, `issuerSnapshot` e `issuedAt` solo en el paso de emisión, y ese paso solo dentro del servicio de emisión; no se emite sin renglones; solo se borra un borrador (y con él sus renglones); anular pone `lockKey = null` en sus renglones; una emitida con `dataicoInvoiceId` (ya enviada a la DIAN) no se anula, requiere nota crédito; `paymentState` ≠ `unpaid` solo si está emitida (o anulada); archivar solo anuladas o borradores sin renglones; la suscripción, si la hay, es del mismo cliente; notas crédito aún no admitidas |
+| `api::billing.invoice` | nace en `draft`; transiciones `draft → issued/dian_error`, `issued ↔ dian_error`, `issued/dian_error → voided` (con `voidReason`); fuera de borrador solo cambian `state`, `paymentState`, `dianState`, `pdfUrl`, `xmlUrl`, `dataicoInvoiceId`, `voidedAt`, `voidReason`, `searchLabel`, `archivedAt` (se compara con lo guardado: reenviar el formulario sin cambios no cuenta); numeración, resolución, `buyer`, `issuerSnapshot` e `issuedAt` solo en el paso de emisión, y ese paso solo dentro del servicio de emisión; no se emite sin renglones; solo se borra un borrador (y con él sus renglones); anular pone `lockKey = null` en sus renglones; una emitida con `dataicoInvoiceId` (ya enviada a la DIAN) no se anula, requiere nota crédito; `paymentState` y `paidAmount` los calcula el servidor a partir de los pagos (`api::cash.payment`) y no se escriben a mano; con `paidAmount > 0` no se anula (antes, la devolución); archivar solo anuladas o borradores sin renglones; la suscripción, si la hay, es del mismo cliente; notas crédito aún no admitidas |
 | `api::billing.invoice-item` | solo en una factura en borrador (en una anulada solo se admite liberar `lockKey`); no cambia de factura; la relación coincide con `kind`; en `hospitalization_*`: el concepto `sourceLineKey` (día o toma) existe en `sourceHospitalization`, es de ese tipo, es facturable, la mascota es del cliente y ninguna otra factura viva lo cobra; su servicio/producto y cantidad salen del concepto; en `consultation_*`: la línea `sourceLineKey` existe en `sourceConsultation`, es de la tarjeta que corresponde, es facturable (`applied`/`dispensed`), su mascota es del cliente de la factura, la consulta no está archivada y ninguna otra factura viva la cobra; su servicio/producto y cantidad salen de la línea; el catálogo debe tener precio y perfil tributario; un precio distinto del catálogo (o de lo guardado) solo entra por `api::billing.invoicing.cambiarPrecio` y con `priceOverrideReason` (D5), también desde el Content Manager; gravado lleva tarifa 5 o 19; el descuento no supera el bruto |
 | `api::travel.travel-case` | cada requisito con `isCompleted = true` exige `verifiedBy`; asignar `verifiedAt` al completarlo |
 | `api::documents.signed-document` | exactamente uno de `consultation`, `customer`, `pet`; `voidedAt` y `voidReason` obligatorios si `state = voided`; si `state = signed`, solo se permite pasar a `voided` |
@@ -3194,6 +3375,10 @@ Organiza las reglas en un archivo por dominio (`src/validations/<dominio>.js`) y
 | `api::hospitalization.hospitalization` | crear exige `clinic.offersHospitalization`; nace `active` (por defecto `admittedAt` = ahora); mascota no archivada; jaula activa y libre; `admittedBy`/`dischargedBy` = cuenta del panel autenticada; `cageStays` lo escribe el servidor (abre un tramo al ingresar y otro en cada cambio de `cage`); `discharged` exige `dischargeType`, `dischargedAt ≥ admittedAt` (por defecto ahora) y, si es `medical`, `dischargeSummary`; `discharged → active` no se admite; tras el alta solo cambian `dischargeSummary`, `homeInstructions`, `dischargeMedications`, `followUpOn` y `searchLabel` (comparado con lo guardado); al dar el alta las órdenes `active` pasan a `completed` con `endAt` = alta; con conceptos en una factura viva no se borra ni cambia de mascota, y `admittedAt`/`dischargedAt`/la jaula no pueden quitar un día cobrado ni cambiar su servicio |
 | `api::hospitalization.treatment-order` | solo en una hospitalización `active` (crear); producto activo de tipo `medication`, `vaccine` o `supply`; `frequencyHours` obligatorio salvo `isPrn`; `startAt` (por defecto ahora) dentro de la estancia; `endAt > startAt`; `prescribedBy` = cuenta del panel; `suspended`/`completed` fijan `endAt` si falta; una orden con tomas no se borra (se suspende) |
 | `api::hospitalization.evolution-entry` | `recordedAt` (por defecto ahora) dentro de la estancia y no futuro (5 min de tolerancia); `recordedBy` = cuenta del panel |
+| `api::cash.cash-register` | no se desactiva ni se borra con un turno abierto; con turnos, no se borra |
+| `api::cash.cash-session` | abrir: caja activa, responsable = cuenta del panel (o el indicado si no hay sesión), autorizado en `operators` si la lista no está vacía, `openingFloat` ≥ 0 (por defecto `defaultOpeningFloat`), nace `open`; cerrar: exige `closingCount`, calcula `countedCash`, `expectedCash`, `difference` y `totals`, y si `difference ≠ 0` exige `differenceReason`; `closed → open` no se admite; un turno cerrado no cambia; no se borra un turno con pagos o movimientos |
+| `api::cash.payment` | turno `open` (salvo `method: other`, solo para migración); `amount` > 0; `purpose: invoice` exige factura emitida (o con error DIAN), del mismo cliente; `purpose: advance` no lleva factura; un pago no supera el saldo de la factura; efectivo: `receivedAmount ≥ amount`, `changeAmount` = diferencia; tarjeta: `cardType`, `cardLast4` (4 dígitos) y `authorizationCode`; transferencia: `transferChannel` y `reference`; `credit_balance`: saldo a favor suficiente y no sirve para un anticipo; devolución (`refund`): permiso `caja.devolver` en una sesión del panel, no supera lo cobrado neto de la factura (o el saldo a favor si es de anticipo), y en efectivo no supera el efectivo esperado del turno; tras escribir, recalcula `paidAmount`/`paymentState` de la factura; no se edita salvo para reversar (`posted → reversed` con `reversalReason`, turno aún abierto); no se borra |
+| `api::cash.cash-movement` | turno `open`; `expense` exige `concept`; un retiro o gasto no deja negativo el efectivo esperado; no se edita ni se borra con el turno cerrado |
 | `api::hospitalization.medication-administration` | `administeredAt` (por defecto ahora) dentro de la estancia y no futuro (5 min de tolerancia); la orden es de la misma hospitalización y su producto manda; sin orden, producto obligatorio; `quantity` por defecto la `doseQuantity` de la orden; `omitted` exige `omissionReason`; H6; `administeredBy` = cuenta del panel; `lineKey` lo pone el servidor; cobrada por un renglón vivo: no se borra ni cambia de producto, cantidad o estado |
 
 ### Filtro de archivados
@@ -3241,6 +3426,10 @@ module.exports = {
       ON medication_administrations (scheduled_for)`);
     await knex.raw(`CREATE INDEX IF NOT EXISTS idx_evolution_recorded
       ON evolution_entries (recorded_at)`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_payments_state
+      ON payments (state, paid_at)`);
+    await knex.raw(`CREATE INDEX IF NOT EXISTS idx_cash_sessions_state
+      ON cash_sessions (state, opened_at)`);
   },
 };
 ```
@@ -3258,16 +3447,17 @@ Dos sistemas nativos, cada uno para un tipo de persona. No crear tablas ni lógi
 | Rol (users-permissions) | Permisos |
 | --- | --- |
 | Public | `find`/`findOne` de `country`, `species`, `breed`, `service-category`, `service`, `plan`, `plan-benefit`, `product-category`, `product` (sin `referenceCost`, que es privado); `register`/`callback` nativos |
-| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `hospitalization` (lista blanca de campos, 5.6), `subscription`, `invoice`, `invoice-item`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
+| Cliente (`Authenticated` renombrado o rol `client` por defecto al registrarse) | `find`/`findOne` de sus propios `pet`, `appointment`, `consultation`, `pet-vaccination`, `allergy`, `hospitalization` (lista blanca de campos, 5.6), `subscription`, `invoice`, `invoice-item`, `payment`, `signed-document`, `notification-recipient`; `create` de `appointment` (source `online`); `update` de su `profile`, `contact` y `notification-recipient.readAt` |
 
-**Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda.
+**Panel (RBAC del admin) — staff.** Permisos del Content Manager (`read`/`create`/`update`/`delete`) sobre cada content type, más los propios de la agenda, la facturación, la hospitalización y la caja.
 
 | Rol del panel | Permisos |
 | --- | --- |
-| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye registrar pagos; no cambia precios); lectura de `hospitalization` y `cage`; hospitalización: ver |
+| Recepción | CRUD de `profile`, `contact`, `customer`, `customer-note`, `pet`, `appointment`, `subscription`, `invoice`, `invoice-item`, `travel-case`, `staff-schedule`, `schedule-exception`; lectura de catálogos (incluidos `product` y `product-category`), `consultation`, `clinic` y cuentas de la app; agenda: ver todas y agendar; facturación: ver, preparar borradores y emitir (incluye registrar pagos; no cambia precios); lectura de `hospitalization` y `cage`; hospitalización: ver; caja: operar (abrir y cerrar su turno, vender, cobrar, abonos, anticipos, movimientos); lectura de `payment`, `cash-session`, `cash-movement`, `cash-register` |
 | Veterinario | todo lo de Recepción (salvo agendar) + CRUD de `consultation`, `pet-vaccination`, `allergy`, `signed-document`, `signed-document-signer`; lectura y `create` de `signed-document-event`; agenda: ver la propia; facturación: solo ver (no prepara, emite ni anula); CRUD de `hospitalization`, `treatment-order`, `evolution-entry`, `medication-administration`; hospitalización: ver, registrar y prescribir (ingreso, órdenes, traslado, alta) |
+| Caja | lectura de `customer`, `profile`, `contact`, `pet`, catálogos, `invoice`, `invoice-item`, `payment`, `cash-session`, `cash-movement`, `cash-register`, `clinic`; `create` de `profile`, `contact` y `customer` (factura a nombre del comprador); facturación: ver; caja: operar |
 | Auxiliar de hospitalización | lectura de `hospitalization`, `treatment-order`, `cage`, `pet` y `allergy`; hospitalización: ver, registrar signos y tomas (no prescribe, no da altas) |
-| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `cage`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios; hospitalización: todo |
+| Administrador de clínica | todo lo anterior + CRUD de catálogos (`service-category`, `service`, `clinic-room`, `cage`, `vaccine`, `species`, `breed`, `plan`, `plan-benefit`, `country`, `product-category`, `product`) y de `supplier` (solo este rol), `campaign`, `campaign-metric`, `notification` y `update` de `clinic`; agenda: ver todas y agendar; facturación: todo, incluidos anular y cambiar precios; hospitalización: todo; caja: todo (operar, devolver, supervisar) y CRUD de `cash-register` |
 
 Los tres llevan además `admin::users.read` (sin él, los selectores de `vet`, `responsible`… muestran el documentId en vez del correo) y la biblioteca de medios.
 
@@ -3282,7 +3472,7 @@ Reglas:
 
 ## 11. Criterios de aceptación
 
-- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 43 content types y 41 componentes.
+- [ ] Strapi arranca sin errores y el Content-Type Builder muestra 47 content types y 42 componentes.
 - [ ] Ningún atributo se llama `status`, `locale`, `meta` ni otro nombre reservado.
 - [ ] Todas las relaciones bidireccionales aparecen en ambos lados y los `inversedBy`/`mappedBy` coinciden.
 - [ ] Ningún content type tiene Draft & Publish activado.

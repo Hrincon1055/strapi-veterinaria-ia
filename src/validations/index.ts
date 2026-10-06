@@ -3,6 +3,7 @@ import type { Core } from '@strapi/strapi';
 import actor from './actor';
 import archived from './archived';
 import billing from './billing';
+import cash from './cash';
 import catalog from './catalog';
 import clinic from './clinic';
 import clinical from './clinical';
@@ -48,6 +49,7 @@ export default (strapi: Core.Strapi): void => {
   staffSchedule(strapi);
   billing(strapi);
   hospitalization(strapi);
+  cash(strapi);
   catalog(strapi);
   travel(strapi);
   documents(strapi);

@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "Pago",
+    "description": "Dinero que entra (pago o anticipo) o sale (devolución) por una caja, con su medio. No se borra ni se edita: se reversa."
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "kind": { "type": "enumeration", "enum": ["payment", "refund"], "default": "payment", "required": true },
+    "purpose": { "type": "enumeration", "enum": ["invoice", "advance"], "default": "invoice", "required": true },
+    "invoice": { "type": "relation", "relation": "manyToOne", "target": "api::billing.invoice" },
+    "customer": { "type": "relation", "relation": "manyToOne", "target": "api::customer.customer" },
+    "session": { "type": "relation", "relation": "manyToOne", "target": "api::cash.cash-session" },
+    "method": { "type": "enumeration", "enum": ["cash", "card", "transfer", "credit_balance", "other"], "required": true },
+    "amount": { "type": "integer", "required": true, "min": 1 },
+    "receivedAmount": { "type": "integer", "min": 0 },
+    "changeAmount": { "type": "integer", "default": 0, "min": 0 },
+    "cardType": { "type": "enumeration", "enum": ["debit", "credit"] },
+    "cardBrand": { "type": "string", "maxLength": 30 },
+    "cardLast4": { "type": "string", "maxLength": 4, "regex": "^[0-9]{4}$" },
+    "authorizationCode": { "type": "string", "maxLength": 30 },
+    "transferChannel": { "type": "enumeration", "enum": ["bank", "nequi", "daviplata", "other"] },
+    "reference": { "type": "string", "maxLength": 60 },
+    "paidAt": { "type": "datetime" },
+    "receivedBy": { "type": "relation", "relation": "manyToOne", "target": "admin::user" },
+    "state": { "type": "enumeration", "enum": ["posted", "reversed"], "default": "posted", "required": true },
+    "reversalReason": { "type": "text" },
+    "reversedAt": { "type": "datetime" },
+    "notes": { "type": "text" },
+    "searchLabel": { "type": "string", "maxLength": 255 }
+  }
+}

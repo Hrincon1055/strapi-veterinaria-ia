@@ -40,6 +40,10 @@ export const REQUIRED_RELATIONS: Record<string, string[]> = {
   'api::notification.notification-recipient': ['notification', 'recipient'],
   'api::notification.notification-delivery': ['recipient'],
   'api::hospitalization.cage': ['room'],
+  'api::cash.cash-session': ['register'],
+  'api::cash.cash-movement': ['session'],
+  // `payment.customer` y `payment.session` los completa o exige `validations/cash.ts`
+  // (el cliente sale de la factura; un pago migrado no tiene turno).
   'api::hospitalization.hospitalization': ['pet', 'cage', 'responsibleVet'],
   'api::hospitalization.treatment-order': ['hospitalization', 'product'],
   'api::hospitalization.evolution-entry': ['hospitalization'],
